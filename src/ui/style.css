@@ -80,3 +80,7 @@ em.rms { background: #78aaff; }
   .layout { grid-template-columns: 1fr; padding: 16px; }
   .face { min-height: 300px; }
 }
+
+.nav { font-size: 12px; }
+.nav a { color: var(--muted); text-decoration: none; }
+.nav a:hover { color: var(--text); }

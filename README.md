@@ -24,8 +24,11 @@ npm install
 npm run dev
 ```
 
-Open the printed URL (default `http://localhost:5173`), choose a preset and
-press **Play** or Space.
+Open the printed URL (default `http://localhost:5173`) and pick a playground:
+
+- **klattsch playground** (`/klattsch/`): ARPABET phonemes straight into klattsch.
+
+Press **Play** or Space. Browsers start audio only after a click or key press.
 
 | Command | What it does |
 | --- | --- |
@@ -35,7 +38,7 @@ press **Play** or Space.
 | `npm run build` | Type check, then production build to `dist/` |
 | `npm run preview` | Serve the production build |
 
-## Using the playground
+## klattsch playground
 
 - **Preset**: a phrase plus the voice settings written for it. *Lip workout* is
   a slow diagnostic phrase for checking mouth shapes.
@@ -83,6 +86,9 @@ src/voice/performance.ts   compilePerformance()  ──► SpeechPerformance
   `controlsToMouth()` in `adapter.ts` is the rig mapping. Another character
   would replace this adapter and keep the control format.
 - **Playback** (`src/playback.ts`) owns the single clock.
+- **Stage** (`src/ui/stage.ts`) is the shared page shell: face, timeline,
+  readouts, playback and diagnostics. Each playground in `src/apps/` adds its
+  own inputs and a `compile()` callback that returns a `SpeechPerformance`.
 - `src/analysis.ts` holds the objective checks (RMS envelope, correlation,
   sync report) shared by the tests and the diagnostics panel.
 
@@ -113,7 +119,7 @@ These were delegated to the implementer. Each is a choice, not a requirement.
 
 | Area | Decision | Why |
 | --- | --- | --- |
-| Voice engine | klattsch 0.8.0 from npm (MIT) | The brief names it. It is published on npm and needs no vendoring. Its `phrases` output gives per-phoneme start/end times, which is the timing source the face needs. |
+| Voice engine | klattsch 0.8.0 from npm (MIT) | The brief's working prototype starts from klattsch. Babble Engine + klattsch set the feature direction, not the final stack. It is published on npm and needs no vendoring. Its `phrases` output gives per-phoneme start/end times, which is the timing source the face needs. |
 | Audio path | Render the whole utterance with `renderToBuffer`, then play it with an `AudioBufferSourceNode` | The start time on the `AudioContext` clock is then exact, so audio and face share one timeline. Rendering is fast (≈40 ms for a 1 s phrase in Node). klattsch's AudioWorklet would suit streaming, which is out of scope. |
 | Clock | Face time = audible context time − start, using `getOutputTimestamp()` (falls back to `currentTime − outputLatency`) | Keeps the face in step with what reaches the speakers, not with what is being computed. |
 | Timing source | klattsch `phrases` (per-phoneme `tStartMs`/`tEndMs`) | klattsch gives synthesis targets, not visemes. Phrases keep phoneme identity and timing, as the brief asked. |
@@ -173,8 +179,8 @@ listening):
 ### Observations (for the later review)
 
 - The speech has a clear 1980s-synth character (klattsch describes itself as
-  "Votrax/SAM tier"). That suits fictional robots and creatures more than
-  realistic mumbling.
+  "Votrax/SAM tier"). That fits the goal: stylized, fictional voices, never
+  realistic speech.
 - On normal phrases, jaw/loudness correlation is low (0.1–0.2). This is
   expected, not a sync fault: IY, UW and M are loud with a nearly closed jaw.
   The `AA . AA . AA` calibration phrase is the meaningful sync check. The

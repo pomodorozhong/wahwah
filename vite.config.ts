@@ -1,8 +1,17 @@
+import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  // Three.js alone is ~550 kB minified; one chunk is fine for a local prototype.
-  build: { chunkSizeWarningLimit: 800 },
+  build: {
+    // Three.js alone is ~550 kB minified; one chunk is fine for a local prototype.
+    chunkSizeWarningLimit: 800,
+    rolldownOptions: {
+      input: {
+        home: resolve(import.meta.dirname, 'index.html'),
+        klattsch: resolve(import.meta.dirname, 'klattsch/index.html'),
+      },
+    },
+  },
   test: {
     environment: 'node',
   },
