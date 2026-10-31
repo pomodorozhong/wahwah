@@ -2,16 +2,19 @@
 // Each playground page supplies its own input panel and a compile() callback.
 
 import './style.css';
-import { renderPerformance, segmentAt, type PerformanceSegment, type SpeechPerformance } from '../voice/performance';
+import { segmentAt, type PerformanceSegment, type Timeline, type Utterance } from '../voice/performance';
 import { generateFaceTrack, sampleFaceTrack } from '../puppet/generate';
 import type { FaceControlTrack, FaceControls } from '../puppet/controls';
 import { rmsEnvelope, syncReport, type SyncReport } from '../analysis';
 import { PreviewFace } from '../host/face';
 import { FaceHostAdapter } from '../host/adapter';
+import { DebugPuppet } from '../host/debug';
+import { MotionTracker } from '../puppet/motion';
 import { Player } from '../playback';
 
 export interface Prepared {
-  performance: SpeechPerformance;
+  engine: string;
+  performance: Timeline;
   audio: Float32Array<ArrayBuffer>;
   sampleRate: number;
   envelope: number[];
@@ -23,8 +26,8 @@ export interface StageOptions {
   title: string;
   /** Page-specific inputs, placed above the shared controls. */
   inputsHtml: string;
-  /** Build the utterance from the page's current inputs. */
-  compile: () => SpeechPerformance;
+  /** Build the utterance from the page's current inputs, with any engine. */
+  compile: () => Utterance;
   /** Called every frame with the playback time and active segment. */
   onFrame?: (time: number | null, segment: PerformanceSegment | null) => void;
   /** Extra fields for the window.__mumble debug hook. */
@@ -36,6 +39,9 @@ const NAV = `<nav class="nav"><a href="../">Playgrounds</a></nav>`;
 export class Stage {
   readonly face: PreviewFace;
   readonly host: FaceHostAdapter;
+  readonly debugPuppet: DebugPuppet;
+  private readonly motion = new MotionTracker();
+  private view: 'face' | 'debug' = 'face';
   private player: Player | null = null;
   private prepared: Prepared | null = null;
   private generatorRuns = 0;
@@ -59,6 +65,9 @@ export class Stage {
           <div class="toggles">
             <label><input id="puppet" type="checkbox" checked /> Puppet output</label>
             <label><input id="idle" type="checkbox" checked /> Idle blink &amp; sway</label>
+            <label>Puppet view
+              <select id="view"><option value="face">Face</option><option value="debug">Debug (instructions only)</option></select>
+            </label>
           </div>
           <div class="buttons">
             <button id="play" class="primary">Play</button>
@@ -84,6 +93,9 @@ export class Stage {
     this.timeline = byId('timeline');
     this.face = new PreviewFace(byId('face'));
     this.host = new FaceHostAdapter(this.face);
+    this.debugPuppet = new DebugPuppet(byId('face'));
+    this.setView('face');
+    byId<HTMLSelectElement>('view').addEventListener('change', (e) => this.setView((e.target as HTMLSelectElement).value as 'face' | 'debug'));
 
     this.puppetEl.addEventListener('change', () => this.invalidate());
     byId<HTMLInputElement>('idle').addEventListener('change', (e) => {
@@ -102,6 +114,13 @@ export class Stage {
     requestAnimationFrame((now) => this.frame(now));
   }
 
+  setView(view: 'face' | 'debug'): void {
+    this.view = view;
+    byId<HTMLSelectElement>('view').value = view;
+    this.face.renderer.domElement.hidden = view !== 'face';
+    this.debugPuppet.visible = view === 'debug';
+  }
+
   /** Inputs changed: stop, relax the face, and rebuild. */
   invalidate(): void {
     this.player?.stop();
@@ -117,8 +136,9 @@ export class Stage {
   prepare(): Prepared {
     if (this.prepared) return this.prepared;
     const sampleRate = this.player?.sampleRate ?? 48000;
-    const performance = this.opts.compile();
-    const audio = renderPerformance(performance, sampleRate) as Float32Array<ArrayBuffer>;
+    const utterance = this.opts.compile();
+    const performance = utterance.timeline;
+    const audio = utterance.render(sampleRate) as Float32Array<ArrayBuffer>;
     // Puppet disabled means the instruction generator does not run at all.
     let track: FaceControlTrack | null = null;
     if (this.puppetEl.checked) {
@@ -126,6 +146,7 @@ export class Stage {
       this.generatorRuns++;
     }
     const p: Prepared = {
+      engine: utterance.engine,
       performance,
       audio,
       sampleRate,
@@ -135,8 +156,8 @@ export class Stage {
     };
     this.prepared = p;
     const warn = byId('warnings');
-    warn.hidden = performance.warnings.length === 0;
-    warn.textContent = performance.warnings.join('; ');
+    warn.hidden = utterance.warnings.length === 0;
+    warn.textContent = utterance.warnings.join('; ');
     this.renderDiagnostics(p);
     return p;
   }
@@ -160,6 +181,7 @@ export class Stage {
   private renderDiagnostics(p: Prepared): void {
     const r = p.report;
     const rows = [
+      ['engine', p.engine],
       ['duration', `${p.performance.durationSeconds.toFixed(2)} s`],
       ['segments', String(p.performance.segments.length)],
       ['peak RMS', Math.max(0, ...p.envelope).toFixed(3)],
@@ -244,7 +266,9 @@ export class Stage {
       if (p.track) this.host.follow(sampleFaceTrack(p.track, time));
     }
     this.host.tick(dt);
-    this.face.render(dt);
+    const motion = this.motion.update(this.host.controls, dt);
+    if (this.view === 'face') this.face.render(dt);
+    else this.debugPuppet.render(motion, this.puppetEl.checked);
     this.showControls(this.host.controls, segment?.phoneme ?? null, time, this.player?.level() ?? 0);
     this.drawTimeline(time);
     this.opts.onFrame?.(time, segment);
@@ -265,7 +289,9 @@ export class Stage {
           generatorRuns: this.generatorRuns,
           playCount: this.playCount,
           report: this.prepared?.report ?? null,
-          warnings: this.prepared?.performance.warnings ?? [],
+          engine: this.prepared?.engine ?? null,
+          view: this.view,
+          motion: this.motion.current,
           audioContext: player
             ? { state: player.ctx.state, sampleRate: player.ctx.sampleRate, baseLatency: player.ctx.baseLatency, outputLatency: player.ctx.outputLatency }
             : null,

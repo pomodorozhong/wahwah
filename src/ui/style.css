@@ -105,3 +105,10 @@ input[type='number'] {
 .spoken .w.on small { color: #3a1d12; }
 .spoken .empty { color: var(--muted); }
 .babble-out { display: block; font: 11px ui-monospace, monospace; color: var(--muted); word-break: break-word; }
+
+.face { position: relative; }
+.debug-puppet { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.debug-puppet[hidden], .face canvas[hidden] { display: none; }
+.toggles select { margin-left: 4px; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 2px 4px; font: 12px system-ui, sans-serif; }
+.group { display: flex; flex-direction: column; gap: 12px; }
+[data-for-engine][hidden] { display: none; }

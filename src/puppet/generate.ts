@@ -1,7 +1,7 @@
 // Puppet instruction generator: speech performance -> timed face controls.
 // Pure and host-agnostic; it is only called when puppet output is enabled.
 
-import type { SpeechPerformance } from '../voice/performance';
+import type { Timeline } from '../voice/performance';
 import {
   NEUTRAL,
   lerpControls,
@@ -35,7 +35,7 @@ interface Keyframe {
 
 const smoothstep = (t: number) => t * t * (3 - 2 * t);
 
-function buildKeyframes(performance: SpeechPerformance, opts: Required<GenerateOptions>): Keyframe[] {
+function buildKeyframes(performance: Timeline, opts: Required<GenerateOptions>): Keyframe[] {
   const keys: Keyframe[] = [{ time: 0, pose: { ...NEUTRAL }, dominance: 1 }];
   for (const seg of performance.segments) {
     const len = seg.endSeconds - seg.startSeconds;
@@ -86,14 +86,14 @@ function poseAt(keys: Keyframe[], time: number): FaceControls {
   return keys[keys.length - 1].pose;
 }
 
-function phonemeAt(performance: SpeechPerformance, time: number): string | null {
+function phonemeAt(performance: Timeline, time: number): string | null {
   for (const s of performance.segments) {
     if (time >= s.startSeconds && time < s.endSeconds) return s.phoneme;
   }
   return null;
 }
 
-export function generateFaceTrack(performance: SpeechPerformance, options: GenerateOptions = {}): FaceControlTrack {
+export function generateFaceTrack(performance: Timeline, options: GenerateOptions = {}): FaceControlTrack {
   const opts = { ...DEFAULT_GENERATE_OPTIONS, ...options };
   const keys = buildKeyframes(performance, opts);
   const count = Math.max(2, Math.ceil(performance.durationSeconds * opts.sampleRateHz) + 1);

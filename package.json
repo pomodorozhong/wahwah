@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "babble-engine": "github:wrongfloor-dev/babble-engine#c1d0571f40081a934777b3039d26658229ff5a33",
     "klattsch": "^0.8.0",
     "three": "^0.187.0"
   },

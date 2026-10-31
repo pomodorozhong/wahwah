@@ -1,6 +1,6 @@
 // klattsch playground: ARPABET phoneme input straight into klattsch.
 
-import { compilePerformance, type VoiceSettings } from '../voice/performance';
+import { compilePerformance, klattschUtterance, type VoiceSettings } from '../voice/performance';
 import { PRESETS } from '../voice/presets';
 import { Stage, byId } from '../ui/stage';
 
@@ -25,7 +25,7 @@ const inputsHtml = `
 const stage = new Stage(document.querySelector<HTMLDivElement>('#app')!, {
   title: 'klattsch playground',
   inputsHtml,
-  compile: () => compilePerformance(phonemesEl.value, voiceSettings()),
+  compile: () => klattschUtterance(compilePerformance(phonemesEl.value, voiceSettings())),
 });
 
 const presetSel = byId<HTMLSelectElement>('preset');

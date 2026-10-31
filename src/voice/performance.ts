@@ -38,14 +38,32 @@ export interface PerformanceSegment {
 }
 
 /**
+ * The engine-independent part of a performance: sounds on a timeline. This is
+ * all the puppet instruction generator needs.
+ */
+export interface Timeline {
+  durationSeconds: number;
+  segments: PerformanceSegment[];
+}
+
+/**
+ * Something a playground can play: a timeline plus a way to render its audio.
+ * Each sound engine (klattsch, Babble Engine) produces one.
+ */
+export interface Utterance {
+  engine: string;
+  timeline: Timeline;
+  warnings: string[];
+  render(sampleRate: number): Float32Array;
+}
+
+/**
  * The shared speech performance: the internal handoff that both the audio
  * renderer and the puppet instruction generator read.
  */
-export interface SpeechPerformance {
+export interface SpeechPerformance extends Timeline {
   source: string;
   settings: VoiceSettings;
-  durationSeconds: number;
-  segments: PerformanceSegment[];
   /** klattsch synthesis targets, consumed only by the audio renderer. */
   schedule: ScheduleEvent[];
   warnings: string[];
@@ -90,9 +108,19 @@ export function renderPerformance(performance: SpeechPerformance, sampleRate: nu
   });
 }
 
+/** Wrap a klattsch performance as a playable utterance. */
+export function klattschUtterance(performance: SpeechPerformance): Utterance {
+  return {
+    engine: 'klattsch',
+    timeline: performance,
+    warnings: performance.warnings,
+    render: (sampleRate) => renderPerformance(performance, sampleRate),
+  };
+}
+
 /** The segment that is sounding at `timeSeconds`, if any. */
-export function segmentAt(performance: SpeechPerformance, timeSeconds: number): PerformanceSegment | null {
-  for (const s of performance.segments) {
+export function segmentAt(timeline: Timeline, timeSeconds: number): PerformanceSegment | null {
+  for (const s of timeline.segments) {
     if (timeSeconds >= s.startSeconds && timeSeconds < s.endSeconds) return s;
   }
   return null;

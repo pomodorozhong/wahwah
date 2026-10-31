@@ -7,7 +7,10 @@ goal is fictional voices, never realistic speech.
 
 - **Babble playground** (`/babble/`): type English and hear invented gibberish
   that keeps its rhythm, stress, pauses and intonation, in the spirit of
-  [Babble Engine](https://github.com/wrongfloor-dev/babble-engine).
+  [Babble Engine](https://github.com/wrongfloor-dev/babble-engine). It can
+  speak through klattsch or through Babble Engine itself.
+- Both pages have a **debug puppet** that draws only the instructions: each
+  control's value, its direction and speed, and the force pushing it.
 - **klattsch playground** (`/klattsch/`): type ARPABET phonemes straight into
   klattsch.
 
@@ -48,6 +51,14 @@ Press **Play** or Space. Browsers start audio only after a click or key press.
 
 ## Babble playground
 
+- **Sound engine**:
+  - *klattsch + our text-to-babble* (described below).
+  - *Babble Engine*: its own text-to-babble and synthesis, with 15 styles that
+    speak the text (*Bloopa Doopa* ignores text, so it's left out) and several
+    voices each.
+
+  Text, mood and seed are shared between engines, so the same line can be
+  compared directly.
 - **English text** (up to 500 characters) or one of the samples. Under the box,
   each English word is shown with its babble, e.g. `Hello → AL-bun`, and
   capitals mark the stressed syllable. The word being spoken is highlighted
@@ -64,7 +75,23 @@ Press **Play** or Space. Browsers start audio only after a click or key press.
   adjusts it.
 - **Generated klattsch phonemes** shows the exact string sent to klattsch.
 
-How English becomes babble (`src/babble/`):
+With **Babble Engine**, the engine invents the syllables itself and reports
+only each syllable's start time and text (e.g. `zah`, `Noo`, or one letter at
+a time in *Critter Chatter*). `src/engines/babbleEngine.ts` turns that into the
+same timeline klattsch produces:
+
+- The syllable's letters give an onset consonant and vowel, e.g. `zah` → S + AA
+  and `Noo` → N + UW.
+- A syllable ends at the next syllable or at the first 30 ms of quiet in the
+  rendered audio, whichever comes first. Quiet gaps become pauses, so the mouth
+  closes between words.
+- The English word highlight follows Babble Engine's per-character `reveal`
+  times.
+
+The puppet instruction generator and both puppet views run unchanged on either
+engine.
+
+How English becomes babble with klattsch (`src/babble/`):
 
 1. Split the text into words and punctuation.
 2. Count each word's syllables and guess its stressed syllable with English
@@ -102,6 +129,31 @@ Space plays or replays from the start, and Esc stops. Any edit (preset, text,
 slider, puppet toggle) stops playback and relaxes the face. The next play uses
 the new settings.
 
+## Debug puppet
+
+Pick **Puppet view → Debug (instructions only)** on either page. The 3D face is
+replaced by a diagram of the control stream itself:
+
+- **Shape**: a mouth outline sized by the controls. Height follows `jawOpen`,
+  width follows `lipWidth − lipRound`, and a dashed ring grows with
+  `lipRound`. Faint outlines trail the last few frames.
+- **Arrows**, one axis per control: jaw is vertical (down = opening), width is
+  horizontal from both corners (outward = widening), and rounding is diagonal
+  from the ring (outward = rounding).
+  - **Solid arrow = velocity**: the direction the control is moving, with
+    length proportional to speed (45 px per unit/s).
+  - **Outlined arrow = force**: the push on the control, i.e. its
+    acceleration, treating each control as a unit mass (1.6 px per unit/s²).
+    For example, a jaw that is still opening but already slowing shows a solid
+    arrow down and an outlined arrow up.
+- **Table**: value, velocity (units/s) and force (units/s²) for each control.
+
+Velocity and force come from `src/puppet/motion.ts`. It is a host-agnostic
+`MotionTracker` that differentiates whatever controls the host receives
+(playback, relaxing after stop, or a future live source), with 20/40 ms
+smoothing. The debug puppet is a second host for the same control format,
+which shows the format isn't tied to the 3D face.
+
 ## Module boundaries
 
 ```text
@@ -128,6 +180,13 @@ src/voice/performance.ts   compilePerformance()  ──► SpeechPerformance
 - **Babble** (`src/babble/`) turns English into a klattsch phoneme string and
   maps each phoneme back to the English word that produced it. It is pure and
   deterministic, with no audio, DOM or Three.js.
+- **Engines**: every sound source produces an `Utterance`, which is a
+  `Timeline` (sounds with timing) plus `render(sampleRate)`. klattsch's
+  utterance comes from `klattschUtterance()` and Babble Engine's from
+  `src/engines/babbleEngine.ts`. The puppet generator reads only the
+  `Timeline`.
+- **Debug host** (`src/host/debug.ts`) draws the controls and their motion
+  (`src/puppet/motion.ts`) on a 2D canvas, with no Three.js.
 - **Voice** (`src/voice/`) depends only on klattsch. It runs in Node, which is
   how the tests use it.
 - **Puppet instruction generator** (`src/puppet/`) is pure TypeScript with no
@@ -188,6 +247,9 @@ These were delegated to the implementer. Each is a choice, not a requirement.
 | Babble: moods | Five moods scale pitch and rate, and set the klattsch voice-quality options (`aspiration`, `effort`, `tilt`, `vibratoDepth`) | Uses klattsch features directly, with no extra DSP. |
 | Babble: sound source | klattsch, through the same voice → puppet pipeline as the klattsch playground | Your choice, so the text behaviour and the face can be evaluated together. |
 | Layout | The stage stays pinned to the viewport height, and the camera distance fits the head to both width and height | The babble panel is taller, which had stretched and cropped the face. |
+| Second engine | Babble Engine 1.4.0 (MIT), installed from GitHub pinned to commit `c1d0571`. It isn't on the npm registry. | It is the feature-direction reference and does text-to-babble end to end, so it's the most useful comparison with klattsch. I read the pinned source before installing: it is a self-contained synthesizer with no network, storage or file access. |
+| Babble Engine mouth shapes | Letters of each invented syllable → onset + vowel codes, plus syllable ends from audio loudness | The engine reports no per-sound identity. This reuses the existing generator and face mapping unchanged. |
+| Debug "force" | Acceleration of each control (unit mass), next to velocity | "Direction" is the sign of the velocity. "Force" is the push that changes it, which shows easing in and out more clearly than speed alone. |
 | Package versions | three 0.187, vite 8.3, typescript 7.0, vitest 5.0 | Latest at the time of writing. |
 
 ## Verification
@@ -196,7 +258,18 @@ Environment: macOS 26.6.2, Node 26.12.0, npm 11.20.0, and the Claude desktop
 app's built-in browser (Chromium) at an `AudioContext` sample rate of 48 kHz,
 `baseLatency` 5.3 ms and `outputLatency` 32 ms.
 
-**Automated** (`npm test`, 57 tests, all passing). Babble (39 tests):
+**Automated** (`npm test`, 77 tests, all passing). Engines and motion (20 tests):
+
+- `MotionTracker`: rising/falling controls give positive/negative velocity
+  (0.1 per frame at 60 fps → 6/s). x = t² gives force ≈ 2. Constant speed and a
+  still pose give no force.
+- Babble Engine adapter: syllable letters → sounds (`zah` → S AA, `Noo` → N UW,
+  `Ou` → AW, `ya` → Y AA, …). Syllables end at silence and gaps become pauses,
+  and output is deterministic per seed. For the *sim*, *animal*, *grumble* and
+  *droid* styles: the audio is audible, the jaw opens above 0.5, the mouth is
+  closed (< 0.05) in the pause after "there!", and jaw/loudness r > 0.3.
+
+Babble (39 tests):
 
 - Syllable counts for 12 sample words (*jumped* 1, *table* 2, *banana* 3,
   *information* 4, *2026* 2, …), stress placement, and punctuation
@@ -245,6 +318,24 @@ screenshots, not by listening):
   generator didn't run.
 - No console errors. At 375 px wide there is no horizontal scroll.
 
+**In the browser, Babble Engine and the debug puppet**:
+
+- Babble Engine *Babblish/Lottie* on "Hello there! How are you today?": output
+  level 0.19, the face reached AA (jaw 0.90), and the English highlight moved
+  from *Hello* to *How*. Diagnostics: r = 0.57, with the jaw leading by 10 ms.
+  *Grumble/Angry* gave `Ou mo du gu Noo goo` and the face reached AW.
+- Jaw/loudness correlation for all 15 text styles on that line ranged from
+  0.35 to 0.79. Most were aligned within ±40 ms, but *Gizmo*, *Ghost* and
+  *Soft Tones* had the jaw 70–100 ms behind, likely because those voices
+  swell in slowly. Each line rendered in 6–125 ms.
+- Debug puppet during klattsch babble: while closing, the jaw showed velocity
+  −1.60/s with force +54/s² (slowing before reopening). While opening, it
+  showed +6.8/s, with width arrows pointing outward.
+- Puppet off with Babble Engine: audio played (level 0.29), the face stayed
+  neutral, and the generator didn't run.
+- Each engine shows only its own controls. Both pages had no console errors in
+  a fresh tab.
+
 **In the browser, klattsch playground**:
 
 - Play: the output analyser read RMS 0.2–0.42 during speech and 0 after the
@@ -278,6 +369,14 @@ screenshots, not by listening):
   foreground tab doesn't have this problem.
 
 ## Known limitations
+
+- Babble Engine mouth shapes are guessed from romanized syllable text, and
+  syllable ends from loudness. *Critter Chatter* speaks letter by letter, so
+  its mouth follows letters. Styles with slow-onset sounds lag by up to
+  ~100 ms. Babble Engine's own room/reverb (`play()`) isn't used, so its audio
+  plays dry.
+- The debug puppet differentiates frame by frame, so very uneven frame timing
+  makes the force readout jumpy. Long arrows are clipped at 150 px.
 
 - Babble syllable counts and stress are heuristic. Unusual words can get the
   wrong count, and some stress is wrong (e.g. *today* stresses the first
