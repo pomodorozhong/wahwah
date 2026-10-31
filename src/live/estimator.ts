@@ -6,14 +6,18 @@
 // recent peak. Mouth shape (mode 'formants'): F1/F2 from LPC are matched to
 // reference vowels with an adaptive speaker scale; unvoiced hiss is read as
 // s / sh / f by its frequency; a quiet voiced hum is read as closed lips (m/b).
+// Mode 'profile' instead matches MFCCs against the speaker's own calibration
+// recordings (see profile.ts), which absorbs their accent, mic and room.
 // Mode 'centroid' keeps the earlier brightness-only guess for comparison.
 
 import { NEUTRAL, normalizeControls, type FaceControls } from '../puppet/controls';
 import { VISEMES } from '../puppet/visemes';
 import { estimateFormants, fullCentroid, highBandRatio, periodicity } from './features';
 import { bestScale, matchVowel } from './vowels';
+import { mfcc } from './mfcc';
+import { argmax, classPose, classify, isVowel, vowelPose, type ProfileClassId, type VoiceProfile } from './profile';
 
-export type ShapeMode = 'formants' | 'centroid' | 'off';
+export type ShapeMode = 'profile' | 'formants' | 'centroid' | 'off';
 
 export interface LiveSettings {
   /** Extra amplification of the jaw response, 0.5..3. */
@@ -64,6 +68,8 @@ export interface LiveFrame extends FaceControls {
   /** What the frame was read as, and the closest sound code ("AA", "S", "M" …). */
   soundClass: SoundClass;
   sound: string | null;
+  /** Profile mode: smoothed probability of each calibrated sound. */
+  probabilities: Partial<Record<ProfileClassId, number>> | null;
 }
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
@@ -122,8 +128,20 @@ export class LiveMouthEstimator {
   private logScale = 0;
   private lastVowelPose: FaceControls = { ...NEUTRAL };
   private started = false;
+  private profile: VoiceProfile | null = null;
+  private probs: Partial<Record<ProfileClassId, number>> = {};
 
   constructor(public settings: LiveSettings = { ...DEFAULT_LIVE }) {}
+
+  /** Use a speaker's calibration profile (for shapeMode 'profile'). */
+  setProfile(profile: VoiceProfile | null): void {
+    this.profile = profile;
+    this.probs = {};
+  }
+
+  get hasProfile(): boolean {
+    return this.profile !== null;
+  }
 
   reset(): void {
     this.floorDb = -60;
@@ -131,6 +149,7 @@ export class LiveMouthEstimator {
     this.jaw = this.width = this.round = 0;
     this.logScale = 0;
     this.lastVowelPose = { ...NEUTRAL };
+    this.probs = {};
     this.started = false;
   }
 
@@ -171,8 +190,49 @@ export class LiveMouthEstimator {
     let sound: string | null = null;
     let per = { value: 0, pitchHz: 0 };
     let formants = { f1: 0, f2: 0 };
+    let probabilities: Partial<Record<ProfileClassId, number>> | null = null;
 
-    if (voiced && spectrumDb && s.shapeMode === 'centroid') {
+    if (spectrumDb && s.shapeMode === 'profile' && this.profile) {
+      // Match against the speaker's own recordings; smooth the per-sound
+      // probabilities over ~50 ms so single odd frames do not flicker.
+      const raw = voiced ? classify(this.profile, mfcc(spectrumDb, sampleRate)) : { silence: 1 };
+      const k = 1 - Math.exp(-dtSeconds / 0.05);
+      const ids = new Set([...Object.keys(this.probs), ...Object.keys(raw)] as ProfileClassId[]);
+      for (const id of ids) this.probs[id] = (this.probs[id] ?? 0) + ((raw[id] ?? 0) - (this.probs[id] ?? 0)) * k;
+      probabilities = { ...this.probs };
+      const best = argmax(this.probs);
+      sound = best === 'silence' ? null : best;
+      if (!voiced) {
+        soundClass = 'silence';
+        jawTarget = 0;
+      } else {
+        // Soft blend over the calibrated sounds. "silence" has no say while the
+        // voice is audible (sounds the profile has never heard, like t, k or l,
+        // would otherwise snap the mouth shut), and each sound contributes its
+        // own pose: vowels opened by loudness, mm closed, ss teeth together.
+        const speech = (Object.entries(this.probs) as [ProfileClassId, number][]).filter(([id]) => id !== 'silence');
+        const total = speech.reduce((t, [, p]) => t + p, 0);
+        const vowel = vowelPose(this.probs);
+        const share = TUNING.jawLoudnessShare;
+        jawTarget = widthTarget = roundTarget = 0;
+        if (total > 0) {
+          for (const [id, p] of speech) {
+            const w = p / total;
+            const pose = isVowel(id) ? vowel ?? classPose(id) : classPose(id);
+            const jaw = isVowel(id) ? loud * (share + (1 - share) * Math.min(1, pose.jawOpen / 0.9)) : pose.jawOpen;
+            const shape = isVowel(id) ? Math.min(1, loud * 2) : 1;
+            jawTarget += w * jaw;
+            widthTarget += w * pose.lipWidth * shape;
+            roundTarget += w * pose.lipRound * shape;
+          }
+        } else {
+          jawTarget = loud * share;
+        }
+        const top = speech.sort((x, y) => y[1] - x[1])[0]?.[0];
+        soundClass = top === 'M' ? 'closure' : top === 'S' || top === 'SH' ? 'fricative' : top ? 'vowel' : 'voiced';
+        sound = top ?? null;
+      }
+    } else if (voiced && spectrumDb && s.shapeMode === 'centroid') {
       centroidHz = spectralCentroid(spectrumDb, sampleRate);
       // Dark (< ~900 Hz) reads as "oo", bright (> ~1600 Hz) as "ee".
       roundTarget = clamp01((1100 - centroidHz) / 500);
@@ -244,6 +304,7 @@ export class LiveMouthEstimator {
       speakerScale: Math.exp(this.logScale),
       soundClass,
       sound,
+      probabilities,
     };
   }
 

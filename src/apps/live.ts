@@ -4,6 +4,8 @@
 import { DEFAULT_LIVE, LiveMouthEstimator, type LiveFrame, type ShapeMode } from '../live/estimator';
 import { REFERENCE_VOWELS } from '../live/vowels';
 import { renderSweep, PT_VOWELS } from '../live/ptVoice';
+import { frameFeatures, parseProfile, serializeProfile, type CalibrationStep, type ProfileClassId, type VoiceProfile } from '../live/profile';
+import { CalibrationRunner, READY_SECONDS } from '../ui/calibrationUi';
 import { NEUTRAL, type FaceControls } from '../puppet/controls';
 import { compilePerformance, renderPerformance, DEFAULT_VOICE } from '../voice/performance';
 import { moodVoice, textToBabble } from '../babble/generate';
@@ -21,12 +23,24 @@ renderShell(document.querySelector<HTMLDivElement>('#app')!, {
   transportHtml: '<button id="start" class="primary">● Start</button><button id="stop" disabled>■ Stop</button>',
   panelHtml:
     section(
+      'Voice profile',
+      `<p class="hint" id="profileStatus">No profile yet. Calibrate once (about 30 seconds) so the face reads your own voice, mic and room instead of a textbook reference.</p>
+      <div class="profile-buttons">
+        <button id="calibrate" class="primary" type="button">Calibrate my voice</button>
+        <button id="exportProfile" type="button" disabled>Export</button>
+        <label class="file-button">Import<input id="importProfile" type="file" accept=".json,application/json" hidden /></label>
+        <button id="clearProfile" type="button" disabled>Forget</button>
+      </div>
+      <ul class="profile-report" id="profileReport"></ul>`,
+    ) +
+    section(
       'Source',
       `<label class="field">Input
         <select id="source">
           <option value="mic">Microphone</option>
           <option value="test">Test signal: babble sentence (klattsch, played aloud)</option>
           <option value="sweep">Test signal: vowel sweep ah·ee·oo·eh (Pink Trombone, played aloud)</option>
+          <option value="demo">Demo voice: a synthetic speaker who also answers the calibration prompts</option>
         </select>
       </label>
       <label class="field" id="deviceField">Microphone device <select id="device"><option value="">Default</option></select></label>
@@ -42,6 +56,7 @@ renderShell(document.querySelector<HTMLDivElement>('#app')!, {
       ${slider('release', 'Close time', 20, 300, 10, DEFAULT_LIVE.releaseSeconds * 1000)}
       <label class="field">Mouth shape from
         <select id="shapeMode">
+          <option value="profile" disabled>Your voice profile (calibrate first)</option>
           <option value="formants">Formants: vowels, s/sh/f, closed lips</option>
           <option value="centroid">Brightness only (earlier method)</option>
           <option value="off">Loudness only (jaw)</option>
@@ -69,6 +84,9 @@ const deviceEl = byId<HTMLSelectElement>('device');
 const monitorEl = byId<HTMLInputElement>('monitor');
 const startBtn = byId<HTMLButtonElement>('start');
 const stopBtn = byId<HTMLButtonElement>('stop');
+const shapeModeEl = byId<HTMLSelectElement>('shapeMode');
+const PROFILE_KEY = 'mumble.voiceProfile.v1';
+let profile: VoiceProfile | null = null;
 
 interface Running {
   ctx: AudioContext;
@@ -103,9 +121,24 @@ function readSettings(): void {
   byId('releaseOut').textContent = `${num('release')} ms`;
 }
 
-function testSignal(ctx: AudioContext, kind: 'test' | 'sweep'): AudioBufferSourceNode {
+// The demo voice: deliberately unlike the formant mode's adult-male reference.
+const DEMO_VOICE = { ...DEFAULT_VOICE, formantScale: 1.25, pitchHz: 230 };
+
+/** What the demo speaker says for a calibration step (its "get ready" phase included). */
+function demoStepAudio(step: CalibrationStep, sampleRate: number): Float32Array<ArrayBuffer> | null {
+  if (step.id === 'silence') return null;
+  const seconds = READY_SECONDS + step.seconds;
+  // Start speaking ~0.5 s into "get ready", like a person reacting to the prompt.
+  const sound = renderPerformance(compilePerformance(`p500 ${step.id}`, { ...DEMO_VOICE, msPerPhoneme: (seconds - 0.4) * 1000 }), sampleRate);
+  return sound.subarray(0, Math.round(seconds * sampleRate)) as Float32Array<ArrayBuffer>;
+}
+
+function testSignal(ctx: AudioContext, kind: 'test' | 'sweep' | 'demo'): AudioBufferSourceNode {
   let pcm: Float32Array<ArrayBuffer>;
-  if (kind === 'sweep') {
+  if (kind === 'demo') {
+    const script = textToBabble('Hi! I am the demo voice. Watch my mouth: ah, ee, ooh. So soft, so sweet!', { seed: 5 });
+    pcm = renderPerformance(compilePerformance(script.phonemes, moodVoice(DEMO_VOICE, script.mood)), ctx.sampleRate) as Float32Array<ArrayBuffer>;
+  } else if (kind === 'sweep') {
     // Pink Trombone gliding between vowel shapes: a voice the analyzer was not tuned on.
     const v = PT_VOWELS;
     pcm = renderSweep(
@@ -154,7 +187,7 @@ async function start(): Promise<void> {
       nodes.push(src, monitor);
       void listDevices();
     } else {
-      const src = testSignal(ctx, sourceEl.value as 'test' | 'sweep');
+      const src = testSignal(ctx, sourceEl.value as 'test' | 'sweep' | 'demo');
       src.connect(analyser);
       src.connect(ctx.destination);
       src.start();
@@ -180,6 +213,7 @@ async function start(): Promise<void> {
 }
 
 function stop(): void {
+  calibration?.cancel();
   if (!running) return;
   running.nodes.forEach((n) => {
     if (n instanceof AudioScheduledSourceNode) n.stop();
@@ -200,6 +234,140 @@ async function listDevices(): Promise<void> {
   const current = deviceEl.value;
   deviceEl.innerHTML = '<option value="">Default</option>' + inputs.map((d, i) => `<option value="${d.deviceId}">${d.label || `Microphone ${i + 1}`}</option>`).join('');
   deviceEl.value = inputs.some((d) => d.deviceId === current) ? current : '';
+}
+
+// ---- voice profile -----------------------------------------------------------
+
+const calibration = new CalibrationRunner(
+  byId('face'),
+  {
+    onStep: (step) => {
+      if (running && sourceEl.value === 'demo') playClip(demoStepAudio(step, running.ctx.sampleRate));
+    },
+    onFinish: (p) => {
+      applyProfile(p, true);
+      // Back to the demo sentence, after this display frame (start() swaps the input).
+      if (running && sourceEl.value === 'demo') setTimeout(() => void start(), 0);
+    },
+    onCancel: () => {
+      if (running && sourceEl.value === 'demo') setTimeout(() => void start(), 0);
+    },
+  },
+  () => running?.ctx.sampleRate ?? 48000,
+);
+
+/** Replace a test source with a one-shot clip (or silence) during calibration. */
+function playClip(pcm: Float32Array<ArrayBuffer> | null): void {
+  if (!running) return;
+  for (const n of running.nodes) {
+    if (n instanceof AudioScheduledSourceNode) n.stop();
+    n.disconnect();
+  }
+  running.nodes = [];
+  if (!pcm) return;
+  const buffer = running.ctx.createBuffer(1, pcm.length, running.ctx.sampleRate);
+  buffer.copyToChannel(pcm, 0);
+  const src = running.ctx.createBufferSource();
+  src.buffer = buffer;
+  src.connect(running.analyser);
+  src.connect(running.ctx.destination);
+  src.start();
+  running.nodes.push(src);
+}
+
+async function startCalibration(): Promise<void> {
+  if (!running) await start();
+  if (!running) return; // the input could not start; the source hint says why
+  calibration.start(performance.now());
+}
+
+const LABELS: Record<ProfileClassId, string> = { silence: 'quiet', AA: 'aa', IY: 'ee', UW: 'oo', EH: 'eh', OW: 'oh', M: 'mm', S: 'ss', SH: 'sh' };
+
+function applyProfile(p: VoiceProfile | null, fresh = false): void {
+  profile = p;
+  estimator.setProfile(p);
+  const profileOption = shapeModeEl.querySelector<HTMLOptionElement>('option[value="profile"]')!;
+  profileOption.disabled = !p;
+  profileOption.textContent = p ? 'Your voice profile (calibrated)' : 'Your voice profile (calibrate first)';
+  byId<HTMLButtonElement>('exportProfile').disabled = !p;
+  byId<HTMLButtonElement>('clearProfile').disabled = !p;
+  byId<HTMLButtonElement>('calibrate').textContent = p ? 'Calibrate again' : 'Calibrate my voice';
+  const report = byId('profileReport');
+  if (!p) {
+    report.innerHTML = '';
+    byId('profileStatus').textContent = 'No profile yet. Calibrate once (about 30 seconds) so the face reads your own voice, mic and room instead of a textbook reference.';
+    if (shapeModeEl.value === 'profile') shapeModeEl.value = 'formants';
+    readSettings();
+    return;
+  }
+  const when = new Date(p.createdAt).toLocaleString();
+  const errors = p.quality.messages.filter((m) => m.level === 'error').length;
+  byId('profileStatus').textContent = errors
+    ? `Profile from ${when} is incomplete: ${errors} sound${errors > 1 ? 's' : ''} missing. The rest is used; calibrate again for better results.`
+    : `Using your voice profile from ${when}. Room noise ${p.noiseFloorDb.toFixed(0)} dBFS, voice ${p.vowelLevelDb.toFixed(0)} dBFS.`;
+  const icon = { ok: '✓', warn: '!', error: '✗' } as const;
+  const accuracy = (Object.entries(p.quality.accuracy) as [ProfileClassId, number][])
+    .map(([id, a]) => `<span class="acc${a < 0.75 ? " low" : ""}">${LABELS[id]} ${(a * 100).toFixed(0)}%</span>`)
+    .join(' ');
+  report.innerHTML =
+    p.quality.messages.map((m) => `<li class="${m.level}"><b>${icon[m.level]}</b><span>${escapeHtml(m.text)}</span></li>`).join('') +
+    `<li class="ok accuracy"><b>≈</b><span>Recognized from the others: ${accuracy}</span></li>`;
+  if (fresh) {
+    // Use the levels measured during calibration.
+    byId<HTMLInputElement>('gate').value = String(p.suggested.gateDb);
+    byId<HTMLInputElement>('range').value = String(p.suggested.rangeDb);
+    try {
+      localStorage.setItem(PROFILE_KEY, serializeProfile(p));
+    } catch {
+      // Storage unavailable (private mode): the profile still works until reload; Export keeps it.
+    }
+  }
+  shapeModeEl.value = 'profile';
+  readSettings();
+}
+
+const escapeHtml = (t: string) => t.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+
+function loadStoredProfile(): void {
+  try {
+    const text = localStorage.getItem(PROFILE_KEY);
+    if (text) applyProfile(parseProfile(text));
+  } catch {
+    // Missing, unreadable or outdated: start without a profile.
+  }
+}
+
+function exportProfile(): void {
+  if (!profile) return;
+  const blob = new Blob([serializeProfile(profile)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `voice-profile-${profile.createdAt.slice(0, 10)}.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+async function importProfile(file: File): Promise<void> {
+  try {
+    const p = parseProfile(await file.text());
+    applyProfile(p);
+    try {
+      localStorage.setItem(PROFILE_KEY, serializeProfile(p));
+    } catch {
+      // Not persisted; still active for this visit.
+    }
+  } catch (err) {
+    byId('profileStatus').textContent = `Could not import that file: ${(err as Error).message}`;
+  }
+}
+
+function forgetProfile(): void {
+  try {
+    localStorage.removeItem(PROFILE_KEY);
+  } catch {
+    // Nothing stored.
+  }
+  applyProfile(null);
 }
 
 function renderLatency(): void {
@@ -328,14 +496,17 @@ function frame(now: number): void {
   let controls: FaceControls | null = null;
   let level = 0;
   const t = now / 1000;
-  if (running) {
-    running.analyser.getFloatTimeDomainData(timeBuf);
+  // Calibration callbacks may swap the input, so work on this frame's input only.
+  const input = running;
+  if (input) {
+    input.analyser.getFloatTimeDomainData(timeBuf);
     let sum = 0;
     for (const v of timeBuf) sum += v * v;
     level = Math.sqrt(sum / FFT);
+    input.analyser.getFloatFrequencyData(specBuf);
+    calibration.frame(now, calibration.running ? frameFeatures(timeBuf, specBuf, input.ctx.sampleRate) : null);
     if (view.puppetEnabled) {
-      running.analyser.getFloatFrequencyData(specBuf);
-      lastFrame = estimator.process(timeBuf, specBuf, running.ctx.sampleRate, dt);
+      lastFrame = estimator.process(timeBuf, specBuf, input.ctx.sampleRate, dt);
       estimatorRuns++;
       controls = lastFrame;
       if (lastFrame.f1 && lastFrame.f2) vowelTrail.push({ t, f1: lastFrame.f1, f2: lastFrame.f2 });
@@ -360,6 +531,14 @@ function frame(now: number): void {
 }
 
 startBtn.addEventListener('click', () => void start());
+byId('calibrate').addEventListener('click', () => void startCalibration());
+byId('exportProfile').addEventListener('click', exportProfile);
+byId('clearProfile').addEventListener('click', forgetProfile);
+byId<HTMLInputElement>('importProfile').addEventListener('change', (e) => {
+  const file = (e.target as HTMLInputElement).files?.[0];
+  if (file) void importProfile(file);
+  (e.target as HTMLInputElement).value = '';
+});
 stopBtn.addEventListener('click', stop);
 sourceEl.addEventListener('change', () => {
   byId('deviceField').hidden = sourceEl.value !== 'mic';
@@ -391,6 +570,9 @@ Object.assign(window, {
       motion: view.motion.current,
       latency: byId('latency').textContent,
       vowelTrail: vowelTrail.length,
+      calibration: { running: calibration.running, step: calibration.stepId, phase: calibration.phaseName },
+      profile: profile && { classes: profile.classes.map((c) => c.id), messages: profile.quality.messages, accuracy: profile.quality.accuracy, suggested: profile.suggested },
+      shapeMode: shapeModeEl.value,
     }),
     start,
     stop,
@@ -398,5 +580,6 @@ Object.assign(window, {
 });
 
 readSettings();
+loadStoredProfile();
 void listDevices();
 requestAnimationFrame(frame);

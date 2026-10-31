@@ -158,12 +158,53 @@ in TypeScript, with no extra dependency:
    - a babble sentence (klattsch);
    - a **vowel sweep** ah · ee · oo · eh made by
      [Pink Trombone](https://github.com/chdh/pink-trombone-mod), a different
-     voice that the analyzer was not tuned on.
+     voice that the analyzer was not tuned on;
+   - a **demo voice**: a synthetic speaker, smaller and higher than the
+     formant reference, who also answers the calibration prompts.
 
    The test signals show the mode without a mic.
 2. Press **● Start**. With the microphone, *Hear the microphone* sends it to
    your speakers (use headphones). The audio never leaves the page.
-3. Talk. The face (or the debug puppet) follows your voice.
+3. **Calibrate my voice** once (about 30 seconds, see below). Without a
+   profile, the face uses the formant method.
+4. Talk. The face (or the debug puppet) follows your voice.
+
+### Voice profile (calibration)
+
+A textbook vowel reference doesn't fit every voice, mic and room. The
+calibration records *your* sounds and reads your live voice by comparison
+with them. This is the approach real-time lip-sync tools use: uLipSync and its
+web port wLipSync, both MIT, calibrate MFCC profiles per speaker.
+
+- **Guided recording.** *Calibrate my voice* starts the input if needed. A
+  card over the face then walks through 9 prompts: stay quiet, "aaaa",
+  "eeee", "oooo", "eh-eh-eh", "ohhh", "mmmm", "ssss" and "shhhh". Each has
+  1.2 s to get ready and 2 s of recording, and the first 0.35 s of each
+  recording is skipped while you start the sound. A level meter shows that
+  you're heard, and *Cancel* stops at any point.
+- **What's stored** (`src/live/profile.ts`, `src/live/mfcc.ts`):
+  - up to 50 MFCC frames per sound (c1–c12 of 26 mel bands, 100–7600 Hz);
+  - your room's noise floor and your voice level;
+  - suggested *Gate* and *Loudness range*, which are applied to the sliders.
+- **Profile mode** (*Mouth shape from → Your voice profile*, chosen
+  automatically):
+  - Each frame's MFCCs are matched to your nearest 9 recorded frames and
+    turned into a probability per sound, smoothed over about 50 ms.
+  - The mouth is a probability-weighted blend: vowels use their designed
+    pose opened by loudness, "mm" closes, "ss" and "sh" use their poses.
+  - "Silence" has no say over shape while you're audibly speaking. Without
+    that, sounds you didn't record (t, k, l …) would snap the mouth shut.
+- **Quality report**, shown after recording:
+  - how often each sound is recognized from the others;
+  - a warning when two sounds are mistaken for each other (e.g. you said
+    "ee" when asked for "eh");
+  - a warning when a sound wasn't heard, or your voice is less than 15 dB
+    above the room;
+  - a warning when your "ss" has almost nothing above 4 kHz (telephone-band
+    audio), or a note when it stops at about 8 kHz (Bluetooth "call mode").
+- **Saved in this browser** (localStorage) and loaded on the next visit.
+  *Export* / *Import* move it as a JSON file (about 35 KB), and *Forget*
+  deletes it.
 
 How the live voice analysis works (`src/live/estimator.ts`, pure and
 host-agnostic):
@@ -289,8 +330,9 @@ src/voice/performance.ts   compilePerformance()  ──► SpeechPerformance
   deterministic, with no audio, DOM or Three.js.
 - **Live analysis** (`src/live/`) turns audio frames into `FaceControls`.
   `features.ts` handles spectrum, LPC formants and periodicity, `vowels.ts`
-  the reference vowels and speaker scale, and `estimator.ts` combines them
-  with loudness. `ptVoice.ts` renders Pink Trombone test voices. None of it
+  the reference vowels and speaker scale, `mfcc.ts` and `profile.ts` the voice
+  profile, and `estimator.ts` combines them with loudness.
+  `src/ui/calibrationUi.ts` is the guided recording card. `ptVoice.ts` renders Pink Trombone test voices. None of it
   touches the microphone or Web Audio, which live in `src/apps/live.ts`.
 - **UI** (`src/ui/puppetView.ts`) holds the page shell, the transport bar, the
   meters and the `PuppetView` (face or debug puppet). `src/ui/stage.ts` adds
@@ -369,6 +411,8 @@ These were delegated to the implementer. Each is a choice, not a requirement.
 | Cartoon-teacher voice | Our own additive muted-trombone synth, driven by the existing babble + klattsch timing and pitch | The sound is a brass instrument with a plunger mute, so a small purpose-built synth gets closer than a speech synth. Reusing the performance keeps the face in exact sync. Babble Engine's *Talking Instruments → trombone* voice is another option already on the page. |
 | Trombone rendering speed | Rotating phasors instead of a `sin()` per harmonic per sample | 6.5 s of audio renders in 76 ms instead of 295 ms, so sliders stay responsive. |
 | Live jaw | Loudness above an adaptive noise floor, capped relative to a decaying recent peak | The brief asked for loudness-driven jaw first. The peak cap fixes a jaw stuck fully open in a quiet room (seen with the test signal). |
+| Calibration | A 9-sound guided recording, MFCC templates with k-nearest-neighbour matching, and a soft blend of sound poses | The formant method looked right on synthetic voices but not on a real one. Per-speaker profiles are the standard robust fix (uLipSync, wLipSync), and they absorb accent, mic and room. Hard-switching on the single best sound snapped the jaw shut on unrecorded consonants (sentence jaw r 0.36); the soft blend restores 0.42–0.44. |
+| Profile vs formant mode | The profile is used whenever one exists, and formant mode stays as the fallback | On held sounds the profile is right for every calibrated sound across voice sizes, where formant mode fails for higher voices. In whole sentences the profile has a little less lip-width detail (r 0.44–0.46 vs 0.55–0.59), because it knows 5 vowels rather than a continuous vowel space, and better rounding on 2 of 3 voices. |
 | Live mouth shape | LPC formants matched to reference vowels with an adaptive speaker scale, plus fricative and closure cues. Brightness-only is kept as a mode. | Brightness gave only one axis (ah ↔ oo). Formants are the cue that transfers best between voices, and the vowel poses reuse the text pipeline's visemes. |
 | Pink Trombone's role | A second, articulatory test voice (held vowels, vowel sweep, live test signal), not the inversion model | I first tried matching the whole spectral envelope against a 252-entry Pink Trombone tract codebook. It recovered Pink Trombone's own shapes but read klattsch's "oo" as an open "ah": envelope shape carries each voice's brightness. Formants transfer, so the analysis matches formants and Pink Trombone checks it on a voice it wasn't tuned on. |
 | Pink Trombone package | `pink-trombone-mod` 0.1.0 from npm (MIT), imported as `pink-trombone-mod/Synthesizer.js` | I read its synth modules before installing: plain TypeScript with no network, storage or DOM use (only its demo UI, which we don't import, touches the page). It has no package entry point, and its extensionless imports need Vite to process it in tests (`server.deps.inline`). |
@@ -386,7 +430,30 @@ Environment: macOS 26.6.2, Node 26.12.0, npm 11.20.0, and the Claude desktop
 app's built-in browser (Chromium) at an `AudioContext` sample rate of 48 kHz,
 `baseLatency` 5.3 ms and `outputLatency` 32 ms.
 
-**Automated** (`npm test`, 113 tests, all passing). Live mouth shapes
+**Automated** (`npm test`, 127 tests, all passing). Voice profile
+(14 tests in `tests/profile.test.ts`, which run the real calibration flow on
+synthetic speakers):
+
+- MFCCs separate "aa" from "ee" by more than twice the change from a pitch
+  shift.
+- A profile has all 9 sounds, more than 90% recognized from each other, and
+  sensible suggested settings.
+- **Voices far from the reference:** after calibrating a female-like
+  (scale 1.15, 200 Hz) and a child-like (scale 1.3, 270 Hz) klattsch voice,
+  that voice's aa, ee, oo, eh, mm, ss and sh are each read as the right sound
+  and pose. Uncalibrated formant mode reads the child-like "oo" with rounding
+  below 0.6.
+- **Pink Trombone** calibrates, and its ah → ee → oo sweep is read as AA, IY,
+  UW.
+- **Sentences** (child-like voice): jaw and width stay above r 0.3, and
+  rounding at least matches formant mode.
+- **Quality checks:** a missing sound gives an error naming it; "ee" given for
+  "eh" is reported as a confusion; a 4 kHz telephone-band mic warns; an
+  8 kHz call-mode mic gives a note only; a voice drowned in noise warns.
+- The profile round-trips through JSON and classifies the same, and other
+  files are rejected.
+
+Live mouth shapes
 (23 tests in `tests/liveShapes.test.ts`):
 
 - **LPC formants** on klattsch AA, AH, IY and UH at 110 and 220 Hz are within
@@ -509,6 +576,25 @@ screenshots, not by listening):
   generator didn't run.
 - No console errors. At 375 px wide there is no horizontal scroll.
 
+**In the browser, calibration** (demo voice as the speaker):
+
+- The card walked through all 9 steps (about 30 s) with the level meter
+  moving, then switched *Mouth shape from* to the profile and set Gate/Range
+  to the suggested 16/45 dB.
+- The report: "All 9 sounds are clearly distinct (100% recognized)". Room
+  noise showed as −90 dBFS: the demo's digital silence, clamped.
+- Afterwards the demo sentence was read through the profile: AA with jaw
+  0.85, OW with rounding 0.60–0.73, and EH.
+- The profile was saved and reloaded automatically after a page reload.
+  *Cancel* mid-calibration kept the old profile. *Forget* cleared storage,
+  went back to formant mode and disabled Export.
+- Two bugs found and fixed in this check:
+  - finishing the calibration restarted the demo source from inside the
+    frame loop and crashed that frame;
+  - the per-sound percentages didn't wrap.
+
+  No console errors after the fixes.
+
 **In the browser, live formant mode** (Pink Trombone vowel sweep as input):
 
 - The face moved through distinct shapes:
@@ -594,9 +680,14 @@ screenshots, not by listening):
 
 ## Known limitations
 
-- Live mode was only verified with synthetic voices (klattsch and Pink
-  Trombone), not a real microphone, which the desktop app's browser pane
-  blocks. Mic levels vary widely, so *Sensitivity*, *Gate* and *Loudness
+- Live mode, including calibration, was only verified with synthetic voices
+  (klattsch, Pink Trombone and the demo voice), not a real microphone, which
+  the desktop app's browser pane blocks. Whether your voice profile fixes your
+  voice can only be checked with your voice.
+- Profile mode knows only the 9 recorded sounds. Other vowels are blends of
+  the nearest ones (ih and ae read as eh), and unrecorded consonants follow
+  loudness. A profile is tied to one voice and mic setup: calibrate again
+  after changing mic or room. Mic levels vary widely, so *Sensitivity*, *Gate* and *Loudness
   range* may need tuning per setup. Analysis runs once per display frame, so
   a background tab stops it.
 - Formant mode limits:

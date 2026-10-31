@@ -1,13 +1,15 @@
 // Feed audio through the live estimator frame by frame, as the live page does.
 import { LiveMouthEstimator, DEFAULT_LIVE, type LiveFrame, type ShapeMode } from '../../src/live/estimator';
+import type { VoiceProfile } from '../../src/live/profile';
 import { magnitudeSpectrumDb } from '../../src/live/features';
 
 export const SR = 48000;
 export const N = 1024;
 export const DT = 1 / 60;
 
-export function runLive(audio: Float32Array, shapeMode: ShapeMode = 'formants', lead = 0.3): LiveFrame[] {
-  const est = new LiveMouthEstimator({ ...DEFAULT_LIVE, shapeMode });
+export function runLive(audio: Float32Array, shapeMode: ShapeMode = 'formants', lead = 0.3, profile: VoiceProfile | null = null): LiveFrame[] {
+  const est = new LiveMouthEstimator({ ...DEFAULT_LIVE, shapeMode, ...(profile ? { gateDb: profile.suggested.gateDb, rangeDb: profile.suggested.rangeDb } : {}) });
+  est.setProfile(profile);
   // A little near-silence first, like a room before someone speaks.
   const pad = new Float32Array(Math.round(lead * SR));
   for (let i = 0; i < pad.length; i++) pad[i] = 1e-4 * Math.sin(i * 0.37);
