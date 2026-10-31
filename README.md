@@ -1,8 +1,15 @@
-# Mumble voice playground
+# Mumble voice playgrounds
 
-A first prototype for invented speech with an optional 3D puppet. You type
-phonemes, [klattsch](https://github.com/tgies/klattsch) speaks them, and a
-procedural Three.js face moves its jaw and lips on the same timeline.
+Prototypes for invented, stylized speech with an optional 3D puppet. Text or
+phonemes go in, [klattsch](https://github.com/tgies/klattsch) speaks them, and
+a procedural Three.js face moves its jaw and lips on the same timeline. The
+goal is fictional voices, never realistic speech.
+
+- **Babble playground** (`/babble/`): type English and hear invented gibberish
+  that keeps its rhythm, stress, pauses and intonation, in the spirit of
+  [Babble Engine](https://github.com/wrongfloor-dev/babble-engine).
+- **klattsch playground** (`/klattsch/`): type ARPABET phonemes straight into
+  klattsch.
 
 ![Face mid-utterance](docs/face.jpg)
 
@@ -26,6 +33,7 @@ npm run dev
 
 Open the printed URL (default `http://localhost:5173`) and pick a playground:
 
+- **Babble playground** (`/babble/`): English text in, babble out.
 - **klattsch playground** (`/klattsch/`): ARPABET phonemes straight into klattsch.
 
 Press **Play** or Space. Browsers start audio only after a click or key press.
@@ -37,6 +45,39 @@ Press **Play** or Space. Browsers start audio only after a click or key press.
 | `npm test` | Vitest unit and sync tests (Node, no browser) |
 | `npm run build` | Type check, then production build to `dist/` |
 | `npm run preview` | Serve the production build |
+
+## Babble playground
+
+- **English text** (up to 500 characters) or one of the samples. Under the box,
+  each English word is shown with its babble, e.g. `Hello → AL-bun`, and
+  capitals mark the stressed syllable. The word being spoken is highlighted
+  during playback.
+- **Language style**: an invented sound inventory. *Bubbly* is soft and round
+  (B, M, L; AA, OW, UW), *Chirpy* is bright and clicky (T, K, S; IY, EY), and
+  *Grumbly* is low and chewy (G, M, R; AH, UH, AO, with more closed syllables).
+- **Mood**: Neutral, Happy, Sad, Angry or Surprised. Each sets pitch and speed,
+  melody liveliness, stress emphasis, question/exclamation/statement glides,
+  and voice quality (breathiness, effort, brightness, vibrato).
+- **Seed**: picks a different babble "vocabulary". **New seed** rolls a random
+  one.
+- **Pitch / speaking rate / voice size** set the base voice, and the mood
+  adjusts it.
+- **Generated klattsch phonemes** shows the exact string sent to klattsch.
+
+How English becomes babble (`src/babble/`):
+
+1. Split the text into words and punctuation.
+2. Count each word's syllables and guess its stressed syllable with English
+   rules of thumb. Function words such as *the* and *you* stay unstressed.
+3. Invent one syllable per English syllable (onset + vowel + optional coda)
+   from the style's weighted inventory. The random choice is seeded by
+   `seed + style + word`, so **the same word always babbles the same way**.
+4. Add melody: a small per-syllable pitch wobble (seeded by position, so
+   repeated words don't sound copied) plus a glide on stressed syllables.
+5. Punctuation shapes the phrase. `,` `;` `:` become short pauses. `.` `!` `?`
+   and newlines become long pauses. `...` and dashes become hesitations. A
+   question rises on its last syllable, an exclamation lifts its stressed
+   syllable, and a statement falls at the end.
 
 ## klattsch playground
 
@@ -64,7 +105,13 @@ the new settings.
 ## Module boundaries
 
 ```text
-phoneme text + VoiceSettings
+English text + seed/style/mood
+        │
+        ▼
+src/babble/generate.ts     textToBabble()  ──► BabbleScript (klattsch phonemes + word map)
+        │                  moodVoice()     ──► VoiceSettings
+        ▼
+phoneme text + VoiceSettings   (the klattsch playground starts here)
         │
         ▼
 src/voice/performance.ts   compilePerformance()  ──► SpeechPerformance
@@ -78,6 +125,9 @@ src/voice/performance.ts   compilePerformance()  ──► SpeechPerformance
                                     src/host/adapter.ts  FaceHostAdapter ──► src/host/face.ts (Three.js)
 ```
 
+- **Babble** (`src/babble/`) turns English into a klattsch phoneme string and
+  maps each phoneme back to the English word that produced it. It is pure and
+  deterministic, with no audio, DOM or Three.js.
 - **Voice** (`src/voice/`) depends only on klattsch. It runs in Node, which is
   how the tests use it.
 - **Puppet instruction generator** (`src/puppet/`) is pure TypeScript with no
@@ -132,6 +182,12 @@ These were delegated to the implementer. Each is a choice, not a requirement.
 | Edits during playback | Stop and relax, then use the new settings on the next play | Prevents the text on screen from mismatching what is heard. |
 | Face | Procedural: a sphere head, eyes, brows and ears. The lips are a tube rebuilt each frame around an outline driven by the controls, with a dark mouth interior and upper teeth. | The brief makes the face optional to embellish. One rebuilt tube shows width, opening and pucker without a modelled rig. |
 | Expressive extras | Idle blink and head sway (toggle). Brows lift slightly with the jaw. | Optional per the brief. Kept cosmetic and outside the control format. |
+| Babble: text analysis | Heuristic syllable counting and stress rules, no pronouncing dictionary | Babble only needs the rhythm of the text, not its pronunciation. The CMU dictionary (via `klattsch/pronounce`) would add 4.7 MB to the page. |
+| Babble: sounds | One invented syllable per English syllable, from per-style weighted inventories. The PRNG is seeded by seed + style + word. | Keeps the text's rhythm and gives a consistent made-up vocabulary, as Babble Engine does. |
+| Babble: melody | Per-position pitch wobble, stress glides, and phrase-final rise/lift/fall via klattsch transient pitch marks (`AA(+40)`) | Transient marks don't accumulate, so pitch can't drift over a long text. |
+| Babble: moods | Five moods scale pitch and rate, and set the klattsch voice-quality options (`aspiration`, `effort`, `tilt`, `vibratoDepth`) | Uses klattsch features directly, with no extra DSP. |
+| Babble: sound source | klattsch, through the same voice → puppet pipeline as the klattsch playground | Your choice, so the text behaviour and the face can be evaluated together. |
+| Layout | The stage stays pinned to the viewport height, and the camera distance fits the head to both width and height | The babble panel is taller, which had stretched and cropped the face. |
 | Package versions | three 0.187, vite 8.3, typescript 7.0, vitest 5.0 | Latest at the time of writing. |
 
 ## Verification
@@ -140,7 +196,23 @@ Environment: macOS 26.6.2, Node 26.12.0, npm 11.20.0, and the Claude desktop
 app's built-in browser (Chromium) at an `AudioContext` sample rate of 48 kHz,
 `baseLatency` 5.3 ms and `outputLatency` 32 ms.
 
-**Automated** (`npm test`, 18 tests, all passing):
+**Automated** (`npm test`, 57 tests, all passing). Babble (39 tests):
+
+- Syllable counts for 12 sample words (*jumped* 1, *table* 2, *banana* 3,
+  *information* 4, *2026* 2, …), stress placement, and punctuation
+  classification.
+- The same input gives the same output, a different seed gives different
+  output, and the same word gets the same sounds wherever it appears.
+- One babble syllable per English syllable. Punctuation runs collapse into a
+  single pause. Questions end rising and statements end falling, by exactly
+  the mood's values.
+- Every spoken phoneme maps back to its English word.
+- All 15 style × mood combinations compile with no klattsch warnings.
+- Happy is higher and faster than Sad. The rendered babble is audible, and its
+  face track moves (jaw range > 0.5).
+- Empty or punctuation-only text gives empty output without errors.
+
+Voice, puppet and sync (18 tests):
 
 - Every preset compiles with no warnings and renders audible audio (peak RMS
   > 0.1, more than 50% of 10 ms windows above 0.01).
@@ -159,8 +231,21 @@ app's built-in browser (Chromium) at an `AudioContext` sample rate of 48 kHz,
 mostly Three.js, and the warning limit is raised to 800 kB. `npm run dev`
 serves the app (HTTP 200).
 
-**In the browser** (checked with page scripts and screenshots, not by
-listening):
+**In the browser, babble playground** (checked with page scripts and
+screenshots, not by listening):
+
+- Play: the output level was 0.37 and the jaw reached 0.50. The highlighted
+  English word moved from *Hello* (`AL-bun`) to *there* (`pa`). Sync
+  diagnostics: jaw↔loudness r = 0.67, with the jaw leading by 20 ms.
+- Changing the mood kept the sounds and changed the melody and length (neutral
+  2.51 s, sad 3.03 s, happy 2.30 s). Changing the style changed the sounds.
+  Setting the same seed again reproduced the same babble exactly.
+  "Banana? Banana!" gave `OO-boo-ru OO-boo-ru` with different pitch glides.
+- Puppet off: audio played (level 0.37), the face stayed neutral, and the
+  generator didn't run.
+- No console errors. At 375 px wide there is no horizontal scroll.
+
+**In the browser, klattsch playground**:
 
 - Play: the output analyser read RMS 0.2–0.42 during speech and 0 after the
   end, so audio is reaching the output graph.
@@ -193,6 +278,15 @@ listening):
   foreground tab doesn't have this problem.
 
 ## Known limitations
+
+- Babble syllable counts and stress are heuristic. Unusual words can get the
+  wrong count, and some stress is wrong (e.g. *today* stresses the first
+  syllable). The rhythm is close but not exact.
+- Babble understands Latin letters, digits and common punctuation. Other
+  scripts (Japanese, emoji) are ignored. Numbers are counted roughly, one
+  syllable per two digits.
+- Babble has no tone-of-text analysis: the mood is chosen by hand, not
+  detected.
 
 - Phoneme input only. Text-to-babble, microphone analysis, the Rust/WASM core,
   packaging and streaming are out of scope for this prototype.

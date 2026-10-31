@@ -187,6 +187,9 @@ export class PreviewFace {
     const h = this.container.clientHeight || 1;
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
+    // Fit the head (about 3 units wide with ears, 3.2 tall) in both directions.
+    const halfFov = THREE.MathUtils.degToRad(this.camera.fov / 2);
+    this.camera.position.z = Math.max(3.2, 3 / this.camera.aspect) / (2 * Math.tan(halfFov)) + 0.6;
     this.camera.updateProjectionMatrix();
   }
 }

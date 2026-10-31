@@ -9,6 +9,7 @@ export default defineConfig({
       input: {
         home: resolve(import.meta.dirname, 'index.html'),
         klattsch: resolve(import.meta.dirname, 'klattsch/index.html'),
+        babble: resolve(import.meta.dirname, 'babble/index.html'),
       },
     },
   },

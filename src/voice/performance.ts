@@ -10,6 +10,14 @@ export interface VoiceSettings {
   msPerPhoneme: number;
   /** Formant scale; above 1 sounds smaller, below 1 sounds larger. */
   formantScale: number;
+  /** Optional expression, passed to klattsch as-is. */
+  vibratoDepth?: number;
+  /** Breathiness, 0-1. */
+  aspiration?: number;
+  /** Glottal tension, 0 (lax) to 1 (tense); klattsch default 0.5. */
+  effort?: number;
+  /** Spectral tilt, -0.95 to 0.95; positive is brighter. */
+  tilt?: number;
 }
 
 export const DEFAULT_VOICE: VoiceSettings = {
@@ -48,6 +56,10 @@ export function compilePerformance(source: string, settings: VoiceSettings): Spe
     baseF0: settings.pitchHz,
     rate: settings.msPerPhoneme,
     scale: settings.formantScale,
+    vibratoDepth: settings.vibratoDepth,
+    aspiration: settings.aspiration,
+    effort: settings.effort,
+    tilt: settings.tilt,
   });
   const segments: PerformanceSegment[] = result.phrases
     .filter((p) => p.kind === 'phoneme' || p.kind === 'pause')
