@@ -2,29 +2,34 @@
 
 import { compilePerformance, klattschUtterance, type VoiceSettings } from '../voice/performance';
 import { PRESETS } from '../voice/presets';
-import { Stage, byId } from '../ui/stage';
+import { Stage, byId, section } from '../ui/stage';
 
-const inputsHtml = `
-  <label class="field">Preset
-    <select id="preset">${PRESETS.map((p) => `<option value="${p.id}">${p.name}</option>`).join('')}</select>
-  </label>
-  <label class="field">Phonemes (ARPABET, klattsch syntax)
-    <textarea id="phonemes" rows="3" spellcheck="false"></textarea>
-  </label>
-  <label class="field slider">Pitch <output id="pitchOut"></output>
-    <input id="pitch" type="range" min="60" max="300" step="1" />
-  </label>
-  <label class="field slider">Speaking rate <output id="rateOut"></output>
-    <input id="rate" type="range" min="50" max="250" step="5" />
-  </label>
-  <label class="field slider">Voice size <output id="scaleOut"></output>
-    <input id="scale" type="range" min="0.8" max="1.3" step="0.01" />
-  </label>
-`;
+const panelHtml =
+  section(
+    'Phonemes',
+    `<label class="field">Preset
+      <select id="preset">${PRESETS.map((p) => `<option value="${p.id}">${p.name}</option>`).join('')}</select>
+    </label>
+    <label class="field">ARPABET, klattsch syntax
+      <textarea id="phonemes" rows="3" spellcheck="false"></textarea>
+    </label>`,
+  ) +
+  section(
+    'Voice',
+    `<label class="field slider">Pitch <output id="pitchOut"></output>
+      <input id="pitch" type="range" min="60" max="300" step="1" />
+    </label>
+    <label class="field slider">Speaking rate <output id="rateOut"></output>
+      <input id="rate" type="range" min="50" max="250" step="5" />
+    </label>
+    <label class="field slider">Voice size <output id="scaleOut"></output>
+      <input id="scale" type="range" min="0.8" max="1.3" step="0.01" />
+    </label>`,
+  );
 
 const stage = new Stage(document.querySelector<HTMLDivElement>('#app')!, {
   title: 'klattsch playground',
-  inputsHtml,
+  panelHtml,
   compile: () => klattschUtterance(compilePerformance(phonemesEl.value, voiceSettings())),
 });
 

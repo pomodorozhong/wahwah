@@ -10,6 +10,7 @@ export default defineConfig({
         home: resolve(import.meta.dirname, 'index.html'),
         klattsch: resolve(import.meta.dirname, 'klattsch/index.html'),
         babble: resolve(import.meta.dirname, 'babble/index.html'),
+        live: resolve(import.meta.dirname, 'live/index.html'),
       },
     },
   },

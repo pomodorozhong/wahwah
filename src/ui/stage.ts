@@ -1,16 +1,15 @@
-// Shared playground stage: face, timeline, readouts, playback and diagnostics.
-// Each playground page supplies its own input panel and a compile() callback.
+// Utterance stage: plays one rendered utterance on a single clock and drives the
+// puppet view from its face-control track. Each playground page supplies its
+// own panel and a compile() callback that returns an Utterance from any engine.
 
-import './style.css';
 import { segmentAt, type PerformanceSegment, type Timeline, type Utterance } from '../voice/performance';
 import { generateFaceTrack, sampleFaceTrack } from '../puppet/generate';
 import type { FaceControlTrack, FaceControls } from '../puppet/controls';
 import { rmsEnvelope, syncReport, type SyncReport } from '../analysis';
-import { PreviewFace } from '../host/face';
-import { FaceHostAdapter } from '../host/adapter';
-import { DebugPuppet } from '../host/debug';
-import { MotionTracker } from '../puppet/motion';
 import { Player } from '../playback';
+import { PuppetView, byId, fitCanvas, renderShell } from './puppetView';
+
+export { byId, section } from './puppetView';
 
 export interface Prepared {
   engine: string;
@@ -24,8 +23,8 @@ export interface Prepared {
 
 export interface StageOptions {
   title: string;
-  /** Page-specific inputs, placed above the shared controls. */
-  inputsHtml: string;
+  /** Page-specific panel content, usually built with section(). */
+  panelHtml: string;
   /** Build the utterance from the page's current inputs, with any engine. */
   compile: () => Utterance;
   /** Called every frame with the playback time and active segment. */
@@ -34,78 +33,32 @@ export interface StageOptions {
   debugState?: () => Record<string, unknown>;
 }
 
-const NAV = `<nav class="nav"><a href="../">Playgrounds</a></nav>`;
+const CONTROL_LINES: [keyof FaceControls, string][] = [['jawOpen', '#ff8a5c'], ['lipWidth', '#7ee081'], ['lipRound', '#d68cff']];
 
 export class Stage {
-  readonly face: PreviewFace;
-  readonly host: FaceHostAdapter;
-  readonly debugPuppet: DebugPuppet;
-  private readonly motion = new MotionTracker();
-  private view: 'face' | 'debug' = 'face';
+  readonly view: PuppetView;
   private player: Player | null = null;
   private prepared: Prepared | null = null;
   private generatorRuns = 0;
   private playCount = 0;
-  private readonly puppetEl: HTMLInputElement;
   private readonly timeline: HTMLCanvasElement;
   private last = performance.now();
 
   constructor(root: HTMLElement, private readonly opts: StageOptions) {
-    root.innerHTML = `
-      <main class="layout">
-        <section class="stage">
-          <div id="face" class="face"></div>
-          <canvas id="timeline" class="timeline" height="120"></canvas>
-        </section>
-        <aside class="panel">
-          ${NAV}
-          <h1>${opts.title}</h1>
-          ${opts.inputsHtml}
-          <p id="warnings" class="warnings" hidden></p>
-          <div class="toggles">
-            <label><input id="puppet" type="checkbox" checked /> Puppet output</label>
-            <label><input id="idle" type="checkbox" checked /> Idle blink &amp; sway</label>
-            <label>Puppet view
-              <select id="view"><option value="face">Face</option><option value="debug">Debug (instructions only)</option></select>
-            </label>
-          </div>
-          <div class="buttons">
-            <button id="play" class="primary">Play</button>
-            <button id="stop">Stop</button>
-          </div>
-          <p class="hint">Space plays or replays from the start. Esc stops. Editing anything stops playback.</p>
-          <div class="readout">
-            <div class="row"><span>Time</span><b id="time">–</b></div>
-            <div class="row"><span>Active sound</span><b id="sound">–</b></div>
-            ${['jawOpen', 'lipWidth', 'lipRound']
-              .map((k) => `<div class="row meter"><span>${k}</span><i><em id="${k}Bar"></em></i><b id="${k}Val">0.00</b></div>`)
-              .join('')}
-            <div class="row meter"><span>output RMS</span><i><em id="rmsBar" class="rms"></em></i><b id="rmsVal">0.00</b></div>
-          </div>
-          <details class="diag" open>
-            <summary>Sync diagnostics (offline render of this utterance)</summary>
-            <div id="diag">–</div>
-          </details>
-        </aside>
-      </main>
-    `;
-    this.puppetEl = byId('puppet');
-    this.timeline = byId('timeline');
-    this.face = new PreviewFace(byId('face'));
-    this.host = new FaceHostAdapter(this.face);
-    this.debugPuppet = new DebugPuppet(byId('face'));
-    this.setView('face');
-    byId<HTMLSelectElement>('view').addEventListener('change', (e) => this.setView((e.target as HTMLSelectElement).value as 'face' | 'debug'));
-
-    this.puppetEl.addEventListener('change', () => this.invalidate());
-    byId<HTMLInputElement>('idle').addEventListener('change', (e) => {
-      this.face.idleMotion = (e.target as HTMLInputElement).checked;
+    renderShell(root, {
+      title: opts.title,
+      panelHtml: opts.panelHtml,
+      transportHtml: '<button id="play" class="primary">▶ Play</button><button id="stop">■ Stop</button>',
     });
+    this.view = new PuppetView();
+    this.timeline = byId('timeline');
+
+    this.view.puppetEl.addEventListener('change', () => this.invalidate());
     byId('play').addEventListener('click', () => void this.play());
     byId('stop').addEventListener('click', () => this.stop());
     window.addEventListener('keydown', (e) => {
       const t = e.target;
-      if (t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement || (t instanceof HTMLInputElement && t.type === 'text')) return;
+      if (t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement || (t instanceof HTMLInputElement && t.type !== 'range' && t.type !== 'checkbox')) return;
       if (e.code === 'Space') { e.preventDefault(); void this.play(); }
       if (e.code === 'Escape') this.stop();
     });
@@ -114,17 +67,10 @@ export class Stage {
     requestAnimationFrame((now) => this.frame(now));
   }
 
-  setView(view: 'face' | 'debug'): void {
-    this.view = view;
-    byId<HTMLSelectElement>('view').value = view;
-    this.face.renderer.domElement.hidden = view !== 'face';
-    this.debugPuppet.visible = view === 'debug';
-  }
-
   /** Inputs changed: stop, relax the face, and rebuild. */
   invalidate(): void {
     this.player?.stop();
-    this.host.relax();
+    this.view.host.relax();
     this.prepared = null;
     this.prepare();
   }
@@ -141,7 +87,7 @@ export class Stage {
     const audio = utterance.render(sampleRate) as Float32Array<ArrayBuffer>;
     // Puppet disabled means the instruction generator does not run at all.
     let track: FaceControlTrack | null = null;
-    if (this.puppetEl.checked) {
+    if (this.view.puppetEnabled) {
       track = generateFaceTrack(performance);
       this.generatorRuns++;
     }
@@ -165,8 +111,9 @@ export class Stage {
   async play(): Promise<void> {
     if (!this.player) {
       this.player = new Player();
-      this.player.onEnded = () => this.host.relax();
-      this.prepared = null; // re-render at the device's sample rate
+      this.player.onEnded = () => this.view.host.relax();
+      // Re-render only if the device runs at a different sample rate.
+      if (this.prepared && this.prepared.sampleRate !== this.player.sampleRate) this.prepared = null;
     }
     const p = this.prepare();
     await this.player.play(p.audio);
@@ -175,7 +122,7 @@ export class Stage {
 
   stop(): void {
     this.player?.stop();
-    this.host.relax();
+    this.view.host.relax();
   }
 
   private renderDiagnostics(p: Prepared): void {
@@ -198,26 +145,8 @@ export class Stage {
     byId('diag').innerHTML = rows.map(([k, v]) => `<div class="row"><span>${k}</span><b>${v}</b></div>`).join('');
   }
 
-  private showControls(c: FaceControls, phoneme: string | null, time: number | null, rms: number): void {
-    byId('time').textContent = time === null ? '–' : `${Math.max(0, time).toFixed(2)} s`;
-    byId('sound').textContent = phoneme ?? (time === null ? '–' : 'pause');
-    for (const k of ['jawOpen', 'lipWidth', 'lipRound'] as const) {
-      byId(`${k}Bar`).style.width = `${c[k] * 100}%`;
-      byId(`${k}Val`).textContent = c[k].toFixed(2);
-    }
-    byId('rmsBar').style.width = `${Math.min(1, rms * 2) * 100}%`;
-    byId('rmsVal').textContent = rms.toFixed(2);
-  }
-
   private drawTimeline(time: number | null): void {
-    const canvas = this.timeline;
-    const dpr = Math.min(window.devicePixelRatio, 2);
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
-    if (canvas.width !== w * dpr) { canvas.width = w * dpr; canvas.height = h * dpr; }
-    const g = canvas.getContext('2d')!;
-    g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    g.clearRect(0, 0, w, h);
+    const { g, w, h } = fitCanvas(this.timeline);
     const p = this.prepared;
     if (!p) return;
     const dur = p.performance.durationSeconds || 1;
@@ -237,8 +166,7 @@ export class Stage {
       g.fillRect(x(i * 0.01), h - bh, Math.max(1, x(0.01)), bh);
     });
     if (p.track) {
-      const lines: [keyof FaceControls, string][] = [['jawOpen', '#ff8a5c'], ['lipWidth', '#7ee081'], ['lipRound', '#d68cff']];
-      for (const [k, color] of lines) {
+      for (const [k, color] of CONTROL_LINES) {
         g.strokeStyle = color;
         g.lineWidth = 1.5;
         g.beginPath();
@@ -261,15 +189,13 @@ export class Stage {
     const time = this.player?.position() ?? null;
     const p = this.prepared;
     let segment: PerformanceSegment | null = null;
+    let controls: FaceControls | null = null;
     if (time !== null && p) {
       segment = segmentAt(p.performance, time);
-      if (p.track) this.host.follow(sampleFaceTrack(p.track, time));
+      if (p.track) controls = sampleFaceTrack(p.track, time);
     }
-    this.host.tick(dt);
-    const motion = this.motion.update(this.host.controls, dt);
-    if (this.view === 'face') this.face.render(dt);
-    else this.debugPuppet.render(motion, this.puppetEl.checked);
-    this.showControls(this.host.controls, segment?.phoneme ?? null, time, this.player?.level() ?? 0);
+    this.view.update(dt, controls);
+    this.view.showReadout(time, segment?.phoneme ?? null, this.player?.level() ?? 0);
     this.drawTimeline(time);
     this.opts.onFrame?.(time, segment);
     requestAnimationFrame((n) => this.frame(n));
@@ -283,15 +209,15 @@ export class Stage {
         return {
           playing: player?.playing ?? false,
           time: player?.position() ?? null,
-          controls: { ...this.host.controls },
+          controls: { ...this.view.host.controls },
           level: player?.level() ?? 0,
-          puppetEnabled: this.puppetEl.checked,
+          puppetEnabled: this.view.puppetEnabled,
           generatorRuns: this.generatorRuns,
           playCount: this.playCount,
           report: this.prepared?.report ?? null,
           engine: this.prepared?.engine ?? null,
-          view: this.view,
-          motion: this.motion.current,
+          view: this.view.view,
+          motion: this.view.motion.current,
           audioContext: player
             ? { state: player.ctx.state, sampleRate: player.ctx.sampleRate, baseLatency: player.ctx.baseLatency, outputLatency: player.ctx.outputLatency }
             : null,
@@ -301,14 +227,8 @@ export class Stage {
       /** Stop playback and hold a pose, e.g. for screenshots of the rig mapping. */
       holdPose: (c: FaceControls) => {
         this.stop();
-        this.host.follow(c);
-        this.face.render(0);
-        return this.face.renderer.domElement;
+        return this.view.holdPose(c);
       },
     };
   }
-}
-
-export function byId<T extends HTMLElement = HTMLElement>(id: string): T {
-  return document.getElementById(id) as T;
 }

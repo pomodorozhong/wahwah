@@ -7,12 +7,15 @@ goal is fictional voices, never realistic speech.
 
 - **Babble playground** (`/babble/`): type English and hear invented gibberish
   that keeps its rhythm, stress, pauses and intonation, in the spirit of
-  [Babble Engine](https://github.com/wrongfloor-dev/babble-engine). It can
-  speak through klattsch or through Babble Engine itself.
-- Both pages have a **debug puppet** that draws only the instructions: each
-  control's value, its direction and speed, and the force pushing it.
+  [Babble Engine](https://github.com/wrongfloor-dev/babble-engine). Three
+  engines can speak it: klattsch, a **wah-wah muted trombone** (the
+  cartoon-teacher voice, `/babble/?engine=trombone`), or Babble Engine itself.
+- **Live mic playground** (`/live/`): talk into the microphone and the puppet
+  follows in real time, from live voice analysis, with latency readouts.
 - **klattsch playground** (`/klattsch/`): type ARPABET phonemes straight into
   klattsch.
+- Every page has a **debug puppet** view that draws only the instructions:
+  each control's value, its direction and speed, and the force pushing it.
 
 ![Face mid-utterance](docs/face.jpg)
 
@@ -37,9 +40,26 @@ npm run dev
 Open the printed URL (default `http://localhost:5173`) and pick a playground:
 
 - **Babble playground** (`/babble/`): English text in, babble out.
+- **Live mic playground** (`/live/`): microphone in, mouth motion out.
 - **klattsch playground** (`/klattsch/`): ARPABET phonemes straight into klattsch.
 
-Press **Play** or Space. Browsers start audio only after a click or key press.
+Press **Play** or Space (or **Start** on the live page). Browsers start audio
+only after a click or key press, and the microphone only after you allow it.
+
+### Layout
+
+Every page uses the same layout:
+
+- **Left: the stage.** It holds the face (or debug puppet), a **transport bar**
+  with play/stop, time, active sound, *Puppet output*, *View* and *Idle
+  motion*, a row of **meters** (jawOpen, lipWidth, lipRound and the audio
+  level), and the **timeline**.
+- **Right: a panel** with collapsible sections (Text, Engine and character,
+  Voice, Diagnostics …).
+
+On desktop both columns stay pinned to the window height, and the panel
+scrolls on its own, so the face and transport are always visible while you
+change settings. Below 860 px wide, the columns stack.
 
 | Command | What it does |
 | --- | --- |
@@ -52,7 +72,11 @@ Press **Play** or Space. Browsers start audio only after a click or key press.
 ## Babble playground
 
 - **Sound engine**:
-  - *klattsch + our text-to-babble* (described below).
+  - *klattsch formant voice*: our text-to-babble (described below), spoken by
+    klattsch.
+  - *Wah-wah trombone*: the same text-to-babble, played on a muted trombone
+    (see [Wah-wah trombone](#wah-wah-trombone)). Its extra controls are
+    *Brassiness*, *Plunger wah* and *Transpose*.
   - *Babble Engine*: its own text-to-babble and synthesis, with 15 styles that
     speak the text (*Bloopa Doopa* ignores text, so it's left out) and several
     voices each.
@@ -105,6 +129,62 @@ How English becomes babble with klattsch (`src/babble/`):
    and newlines become long pauses. `...` and dashes become hesitations. A
    question rises on its last syllable, an exclamation lifts its stressed
    syllable, and a statement falls at the end.
+
+### Wah-wah trombone
+
+The muffled "wah-wah" adult voice of classic cartoons is a trombone played with
+a plunger mute. `src/engines/trombone.ts` is a small synth of our own written
+in TypeScript, with no extra dependency:
+
+- **Timing and pitch** come from the same klattsch performance as the other
+  engines (`f0Curve()` follows klattsch's pitch targets and glides). Syllables,
+  stress, question rises and moods therefore carry over. *Transpose* shifts the
+  whole contour, by default down 5 semitones into trombone range.
+- **Tone** is additive brass: up to 48 harmonics, a portamento between notes,
+  and a slight vibrato.
+- **Plunger**: a resonant low-pass whose corner frequency follows an
+  "openness" curve. Open vowels (AA) open it wide, rounded vowels (UW) half,
+  and consonants and pauses close it. That gives *wah* on every syllable.
+  Louder notes also get brassier.
+- **Sync with the face**: the plunger and the puppet's jaw both come from the
+  same vowel timeline, so the mouth opens exactly when the horn does.
+  Measured jaw/loudness r = 0.56 on a long sentence and 0.71 on the sample
+  greeting.
+
+## Live mic playground
+
+1. Pick **Input**: *Microphone* (choose a device once permission is granted)
+   or *Test signal*, a looped babble phrase played aloud and analyzed. The
+   test signal shows the mode without a mic.
+2. Press **● Start**. With the microphone, *Hear the microphone* sends it to
+   your speakers (use headphones). The audio never leaves the page.
+3. Talk. The face (or the debug puppet) follows your voice.
+
+How the live voice analysis works (`src/live/estimator.ts`, pure and
+host-agnostic):
+
+- Each display frame reads the latest 1024 samples (21 ms at 48 kHz) and their
+  spectrum from an `AnalyserNode`.
+- **Jaw = loudness.** The level in dBFS is compared with:
+  - a **noise floor** that drops at once to quieter input and creeps up
+    6 dB/s, so a fan or hum is learned within a few seconds but speech is not;
+  - a **recent peak** that decays 3 dB/s.
+
+  The mouth starts to open at *Gate* dB above the floor, but never more than
+  *Loudness range* below the recent peak. That keeps loud and soft sounds
+  distinct even in a dead-silent room. *Sensitivity* scales the opening, and
+  *Open time* / *Close time* smooth it.
+- **Lip shape (experimental)**: the spectral centroid of voiced sound,
+  150–4000 Hz. A dark sound (< ~1100 Hz, like "oo") reads as rounded, and a
+  bright one (> ~1300 Hz, like "ee") as wide.
+- **Puppet output off** stops the estimator. Only the level meter keeps
+  running.
+- The timeline shows the last 6 s on a −90..0 dBFS scale: input level, noise
+  floor, the "opens above" threshold, and the three controls.
+- **Latency** section: input latency (the track's reported latency, or
+  `baseLatency`), half the analysis window, the open-time smoothing, and the
+  display frame are added up into an estimated microphone-to-mouth delay.
+  With the defaults this is about 60 ms.
 
 ## klattsch playground
 
@@ -180,6 +260,13 @@ src/voice/performance.ts   compilePerformance()  ──► SpeechPerformance
 - **Babble** (`src/babble/`) turns English into a klattsch phoneme string and
   maps each phoneme back to the English word that produced it. It is pure and
   deterministic, with no audio, DOM or Three.js.
+- **Live analysis** (`src/live/estimator.ts`) turns audio frames into
+  `FaceControls`. It knows nothing about the microphone or Web Audio, which
+  live in `src/apps/live.ts`.
+- **UI** (`src/ui/puppetView.ts`) holds the page shell, the transport bar, the
+  meters and the `PuppetView` (face or debug puppet). `src/ui/stage.ts` adds
+  utterance playback and the timeline for the babble and klattsch pages. The
+  live page uses `PuppetView` directly.
 - **Engines**: every sound source produces an `Utterance`, which is a
   `Timeline` (sounds with timing) plus `render(sampleRate)`. klattsch's
   utterance comes from `klattschUtterance()` and Babble Engine's from
@@ -250,6 +337,13 @@ These were delegated to the implementer. Each is a choice, not a requirement.
 | Second engine | Babble Engine 1.4.0 (MIT), installed from GitHub pinned to commit `c1d0571`. It isn't on the npm registry. | It is the feature-direction reference and does text-to-babble end to end, so it's the most useful comparison with klattsch. I read the pinned source before installing: it is a self-contained synthesizer with no network, storage or file access. |
 | Babble Engine mouth shapes | Letters of each invented syllable → onset + vowel codes, plus syllable ends from audio loudness | The engine reports no per-sound identity. This reuses the existing generator and face mapping unchanged. |
 | Debug "force" | Acceleration of each control (unit mass), next to velocity | "Direction" is the sign of the velocity. "Force" is the push that changes it, which shows easing in and out more clearly than speed alone. |
+| Cartoon-teacher voice | Our own additive muted-trombone synth, driven by the existing babble + klattsch timing and pitch | The sound is a brass instrument with a plunger mute, so a small purpose-built synth gets closer than a speech synth. Reusing the performance keeps the face in exact sync. Babble Engine's *Talking Instruments → trombone* voice is another option already on the page. |
+| Trombone rendering speed | Rotating phasors instead of a `sin()` per harmonic per sample | 6.5 s of audio renders in 76 ms instead of 295 ms, so sliders stay responsive. |
+| Live jaw | Loudness above an adaptive noise floor, capped relative to a decaying recent peak | The brief asked for loudness-driven jaw first. The peak cap fixes a jaw stuck fully open in a quiet room (seen with the test signal). |
+| Live lip shape | Spectral centroid → round/wide, off-switchable and labelled experimental | Cheap and works on vowels. A richer estimate (formants, ML) needs separate evaluation, as the brief says. |
+| Live page structure | A separate page, sharing `PuppetView` and the control format | Live input has no utterance or timeline, so it doesn't fit `Stage`. Sharing the puppet view keeps hosts identical. |
+| Layout | Transport and meters under the face, a scrolling panel with collapsible sections, 380 px wide | The panel had grown taller than the window with three engines. Always-used controls now stay next to the face. |
+| First play | Re-render only when the device sample rate differs from the prepared audio | First Play used to re-render, delaying the start by up to ~0.3 s with the trombone. |
 | Package versions | three 0.187, vite 8.3, typescript 7.0, vitest 5.0 | Latest at the time of writing. |
 
 ## Verification
@@ -258,7 +352,32 @@ Environment: macOS 26.6.2, Node 26.12.0, npm 11.20.0, and the Claude desktop
 app's built-in browser (Chromium) at an `AudioContext` sample rate of 48 kHz,
 `baseLatency` 5.3 ms and `outputLatency` 32 ms.
 
-**Automated** (`npm test`, 77 tests, all passing). Engines and motion (20 tests):
+**Automated** (`npm test`, 90 tests, all passing). Trombone (5 tests):
+
+- `f0Curve` matches klattsch's base pitch and reaches a +60 Hz glide.
+- Rendered pitch, by autocorrelation, is within 5% of the speech pitch.
+- The plunger is more open on AA than UW, loudness is above 0.9 on vowels, and
+  below 0.15 in a 200 ms pause.
+- Spectral centroid on AA is at least 1.3× that on UW: the *wah*.
+- Output is deterministic and normalized to a 0.7 peak, and the jaw follows
+  loudness (r 0.56, within 60 ms).
+
+Live estimator (8 tests):
+
+- Level and centroid are measured correctly. Silence and quiet noise keep the
+  mouth closed (< 0.02).
+- A loud voice opens the jaw above 0.7 within 100 ms, and it closes below 0.05
+  after the voice stops.
+- A hum that starts in a quiet room first opens the mouth, then is learned as
+  the floor within 8 s.
+- Against digital silence, a soft sound opens the mouth at least 0.4 less than
+  a loud one.
+- Sensitivity ×2 opens at least twice as far as ×0.5. Dark tones read as
+  rounded, bright tones as wide.
+- On rendered speech fed frame by frame, the jaw follows the loudness envelope
+  with r = 0.87, 33 ms behind the sound (never ahead).
+
+Engines and motion (20 tests):
 
 - `MotionTracker`: rising/falling controls give positive/negative velocity
   (0.1 per frame at 60 fps → 6/s). x = t² gives force ≈ 2. Constant speed and a
@@ -318,6 +437,28 @@ screenshots, not by listening):
   generator didn't run.
 - No console errors. At 375 px wide there is no horizontal scroll.
 
+**In the browser, layout, trombone and live mode**:
+
+- The new layout renders on all four pages. At 375 px wide, neither the babble
+  nor the live page scrolls sideways.
+- Babble page, all three engines playing the sample greeting: klattsch (level
+  0.24, r 0.67), trombone (level 0.09, r 0.71) and Babble Engine
+  *animal/fern* (level 0.24, r 0.51). Each engine shows only its own
+  controls, and `?engine=trombone` preselects the trombone.
+- Live page with the test signal:
+  - Loud vowels open the jaw 0.96–0.99, softer sounds 0.55–0.75, and gaps
+    close to 0.01–0.02.
+  - The threshold sits about 30 dB below the recent peak, and lip rounding
+    rose to 0.4–0.8 on dark vowels.
+  - The latency section showed 5.3 ms input, a 21.3 ms window, 25 ms
+    smoothing and a 20 ms frame, about 61 ms in total.
+  - Puppet off stopped the estimator (run count unchanged) and the face went
+    neutral. The debug puppet worked on live input.
+- **The real microphone was not tested.** The desktop app's browser pane
+  blocks microphone access. The page reported "Permission denied" and stayed
+  usable. Mic input needs checking in a normal browser.
+- No console errors on any page in a fresh tab.
+
 **In the browser, Babble Engine and the debug puppet**:
 
 - Babble Engine *Babblish/Lottie* on "Hello there! How are you today?": output
@@ -369,6 +510,14 @@ screenshots, not by listening):
   foreground tab doesn't have this problem.
 
 ## Known limitations
+
+- Live mode was only verified with the test signal, not a real microphone.
+  Mic levels vary widely, so *Sensitivity*, *Gate* and *Loudness range* may
+  need tuning per setup. Lip shape from the spectral centroid is a rough
+  guess: it confuses voice brightness with vowel shape, and sibilants read as
+  "wide". Analysis runs once per display frame, so a background tab stops it.
+- The trombone renders the whole line before playing, like the other engines.
+  It is not a live instrument, and it doesn't follow the microphone.
 
 - Babble Engine mouth shapes are guessed from romanized syllable text, and
   syllable ends from loudness. *Critter Chatter* speaks letter by letter, so
