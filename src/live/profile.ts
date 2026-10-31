@@ -112,6 +112,11 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v
 export class Calibration {
   readonly frames = new Map<ProfileClassId, FrameFeatures[]>();
 
+  /** Forget a step's frames (to record it again). */
+  clear(id: ProfileClassId): void {
+    this.frames.delete(id);
+  }
+
   /** Add a frame recorded `secondsIntoStep` after the step's prompt began. */
   add(id: ProfileClassId, f: FrameFeatures, secondsIntoStep: number): void {
     if (secondsIntoStep < STEP_SETTLE_SECONDS) return;

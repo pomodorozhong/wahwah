@@ -1,25 +1,25 @@
-// Guided calibration: a prompt card over the face that walks through the
-// calibration steps (get ready, then hold the sound), records frames into a
-// Calibration, and hands back the finished VoiceProfile.
+// Guided calibration card over the face, driven by the self-paced
+// CalibrationFlow: an intro, then one prompt per sound that records only while
+// the speaker makes it, with Back / Redo / Skip and a level meter that shows
+// the line to cross.
 
-import { CALIBRATION_STEPS, Calibration, type CalibrationStep, type FrameFeatures, type VoiceProfile } from '../live/profile';
-
-export const READY_SECONDS = 1.2;
+import { CalibrationFlow, type FlowPhase } from '../live/calibrationFlow';
+import { CALIBRATION_STEPS, type CalibrationStep, type FrameFeatures, type VoiceProfile } from '../live/profile';
 
 export interface CalibrationCallbacks {
-  /** A step's "get ready" phase begins (the demo voice starts speaking here). */
+  /** A step starts listening (again); the demo voice speaks here. */
   onStep?: (step: CalibrationStep, index: number) => void;
   onFinish: (profile: VoiceProfile) => void;
   onCancel?: () => void;
 }
 
+const dbToMeter = (db: number) => Math.min(1, Math.max(0, (db + 80) / 70));
+
 export class CalibrationRunner {
   private readonly card: HTMLDivElement;
-  private calibration = new Calibration();
-  private index = -1;
-  private phase: 'ready' | 'record' = 'ready';
-  private phaseStart = 0;
-  private active = false;
+  private flow: CalibrationFlow | null = null;
+  private lastFrameMs = 0;
+  private lastStepKey = '';
 
   constructor(container: HTMLElement, private readonly callbacks: CalibrationCallbacks, private readonly sampleRate: () => number) {
     this.card = document.createElement('div');
@@ -29,90 +29,143 @@ export class CalibrationRunner {
       <div class="calib-step"></div>
       <div class="calib-prompt"></div>
       <div class="calib-hint"></div>
+      <div class="calib-dots"></div>
       <div class="calib-bar"><i></i></div>
-      <div class="calib-level"><span>your level</span><i><em></em></i></div>
-      <button type="button" class="calib-cancel">Cancel</button>`;
+      <div class="calib-level"><span>your level</span><i><em></em><b class="calib-trigger" title="start the sound above this line"></b></i></div>
+      <div class="calib-status" aria-live="polite"></div>
+      <div class="calib-actions">
+        <button type="button" data-act="begin" class="primary">Begin</button>
+        <button type="button" data-act="quiet" class="primary">I’m quiet</button>
+        <button type="button" data-act="back">← Back</button>
+        <button type="button" data-act="redo">Redo</button>
+        <button type="button" data-act="skip">Skip</button>
+        <button type="button" data-act="cancel">Cancel</button>
+      </div>`;
     container.appendChild(this.card);
-    this.card.querySelector('.calib-cancel')!.addEventListener('click', () => this.cancel());
+    this.card.addEventListener('click', (e) => {
+      const act = (e.target as HTMLElement).closest<HTMLButtonElement>('button')?.dataset.act;
+      if (act) this.act(act);
+    });
+    window.addEventListener('keydown', (e) => {
+      if (!this.flow) return;
+      const phase = this.flow.view().phase;
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.act(phase === 'intro' ? 'begin' : phase === 'quiet-wait' ? 'quiet' : 'none');
+      } else if (e.key === 'Escape') this.act('cancel');
+      else if (e.key.toLowerCase() === 'r' && !(e.target instanceof HTMLInputElement)) this.act('redo');
+    });
   }
 
   get running(): boolean {
-    return this.active;
+    return this.flow !== null;
   }
 
   get stepId(): string | null {
-    return this.active ? CALIBRATION_STEPS[this.index].id : null;
+    const v = this.flow?.view();
+    return v?.step?.id ?? null;
   }
 
-  get phaseName(): string | null {
-    return this.active ? this.phase : null;
+  get phaseName(): FlowPhase | null {
+    return this.flow?.view().phase ?? null;
   }
 
   start(nowMs: number): void {
-    this.calibration = new Calibration();
-    this.active = true;
+    this.flow = new CalibrationFlow(this.sampleRate());
+    this.lastFrameMs = NaN; // the first frame defines the clock (it may be audio time)
+    void nowMs;
+    this.lastStepKey = '';
     this.card.hidden = false;
-    this.enterStep(0, nowMs);
+    this.render();
+  }
+
+  /** For the demo voice: answer the quiet step automatically. */
+  confirmQuiet(): void {
+    this.flow?.confirmQuiet();
+    this.render();
   }
 
   cancel(): void {
-    if (!this.active) return;
-    this.active = false;
+    if (!this.flow) return;
+    this.flow = null;
     this.card.hidden = true;
     this.callbacks.onCancel?.();
   }
 
-  /** Call every display frame with the current input analysis. */
+  /** Call every analysis frame with the current input features. */
   frame(nowMs: number, features: FrameFeatures | null): void {
-    if (!this.active) return;
-    const step = CALIBRATION_STEPS[this.index];
-    const t = (nowMs - this.phaseStart) / 1000;
-    if (this.phase === 'ready') {
-      this.setText('.calib-hint', t < READY_SECONDS ? `Get ready… ${step.hint}` : step.hint);
-      this.setBar(t / READY_SECONDS, true);
-      if (t >= READY_SECONDS) {
-        this.phase = 'record';
-        this.phaseStart = nowMs;
-      }
-    } else {
-      if (features) this.calibration.add(step.id, features, t);
-      this.setText('.calib-hint', step.hint);
-      this.setBar(t / step.seconds, false);
-      if (t >= step.seconds) {
-        if (this.index + 1 < CALIBRATION_STEPS.length) this.enterStep(this.index + 1, nowMs);
-        else this.finish();
-      }
+    if (!this.flow) return;
+    const dt = Number.isNaN(this.lastFrameMs) ? 0 : Math.min(0.1, Math.max(0, (nowMs - this.lastFrameMs) / 1000));
+    this.lastFrameMs = nowMs;
+    if (features && this.flow.frame(features, dt)) {
+      const profile = this.flow.profile!;
+      this.flow = null;
+      this.card.hidden = true;
+      this.callbacks.onFinish(profile);
+      return;
     }
-    if (features) {
-      const level = Math.min(1, Math.max(0, (features.levelDb + 70) / 60));
-      (this.card.querySelector('.calib-level em') as HTMLElement).style.width = `${level * 100}%`;
-    }
+    this.render();
   }
 
-  private enterStep(index: number, nowMs: number): void {
-    this.index = index;
-    this.phase = 'ready';
-    this.phaseStart = nowMs;
-    const step = CALIBRATION_STEPS[index];
-    this.setText('.calib-step', `Step ${index + 1} of ${CALIBRATION_STEPS.length}`);
-    this.setText('.calib-prompt', step.id === 'silence' ? step.prompt : `Say ${step.prompt}`);
-    this.callbacks.onStep?.(step, index);
+  private act(action: string): void {
+    const flow = this.flow;
+    if (!flow) return;
+    if (action === 'begin') flow.begin();
+    else if (action === 'quiet') flow.confirmQuiet();
+    else if (action === 'back') flow.back();
+    else if (action === 'redo') flow.redo();
+    else if (action === 'skip') flow.skip();
+    else if (action === 'cancel') return this.cancel();
+    else return;
+    this.lastStepKey = ''; // re-announce the step (the demo voice speaks again)
+    this.render();
   }
 
-  private finish(): void {
-    this.active = false;
-    this.card.hidden = true;
-    this.callbacks.onFinish(this.calibration.build(this.sampleRate()));
+  private render(): void {
+    const flow = this.flow;
+    if (!flow) return;
+    const v = flow.view();
+    const step = v.step;
+    // Announce a newly entered step once.
+    const key = `${v.stepIndex}:${v.phase === 'listening' || v.phase === 'quiet-wait' ? 'start' : 'run'}`;
+    if (step && key !== this.lastStepKey && (v.phase === 'listening' || v.phase === 'quiet-wait')) {
+      this.lastStepKey = key;
+      this.callbacks.onStep?.(step, v.stepIndex);
+    }
+    this.setText('.calib-step', v.phase === 'intro' ? 'Voice calibration' : `Sound ${v.stepIndex + 1} of ${CALIBRATION_STEPS.length}`);
+    this.setText(
+      '.calib-prompt',
+      v.phase === 'intro' ? 'Teach the face your voice' : step ? (step.id === 'silence' ? step.prompt : `Say ${step.prompt}`) : '',
+    );
+    this.setText(
+      '.calib-hint',
+      v.phase === 'intro'
+        ? '9 short sounds, about a minute at your own pace. Press Begin (or Enter).'
+        : step?.hint ?? '',
+    );
+    this.setText('.calib-status', v.status);
+    const dots = this.card.querySelector('.calib-dots') as HTMLElement;
+    const dotsHtml = CALIBRATION_STEPS.map((s, i) => `<span class="${v.done[i] ? 'done' : ''}${i === v.stepIndex && v.phase !== 'intro' ? ' now' : ''}" title="${s.prompt}"></span>`).join('');
+    if (dots.innerHTML !== dotsHtml) dots.innerHTML = dotsHtml;
+    const bar = this.card.querySelector('.calib-bar i') as HTMLElement;
+    bar.style.width = `${v.progress * 100}%`;
+    bar.classList.toggle('waiting', v.phase === 'listening');
+    bar.classList.toggle('ok', v.phase === 'got-it');
+    (this.card.querySelector('.calib-level em') as HTMLElement).style.width = `${dbToMeter(v.levelDb) * 100}%`;
+    const trig = this.card.querySelector('.calib-trigger') as HTMLElement;
+    trig.style.left = `${dbToMeter(v.triggerDb) * 100}%`;
+    trig.hidden = !(v.phase === 'listening' || v.phase === 'capturing');
+    const show = (act: string, on: boolean) => ((this.card.querySelector(`[data-act="${act}"]`) as HTMLElement).hidden = !on);
+    const inStep = v.phase !== 'intro';
+    show('begin', v.phase === 'intro');
+    show('quiet', v.phase === 'quiet-wait');
+    show('back', inStep && v.stepIndex > 0);
+    show('redo', inStep);
+    show('skip', inStep);
   }
 
   private setText(sel: string, text: string): void {
     const el = this.card.querySelector(sel) as HTMLElement;
     if (el.textContent !== text) el.textContent = text;
-  }
-
-  private setBar(fraction: number, waiting: boolean): void {
-    const bar = this.card.querySelector('.calib-bar i') as HTMLElement;
-    bar.style.width = `${Math.min(1, fraction) * 100}%`;
-    bar.classList.toggle('waiting', waiting);
   }
 }

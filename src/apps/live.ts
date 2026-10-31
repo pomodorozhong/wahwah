@@ -5,8 +5,12 @@ import { DEFAULT_LIVE, LiveMouthEstimator, type LiveFrame, type ShapeMode } from
 import { REFERENCE_VOWELS } from '../live/vowels';
 import { renderSweep, PT_VOWELS } from '../live/ptVoice';
 import { frameFeatures, parseProfile, serializeProfile, type CalibrationStep, type ProfileClassId, type VoiceProfile } from '../live/profile';
-import { CalibrationRunner, READY_SECONDS } from '../ui/calibrationUi';
+import { CalibrationRunner } from '../ui/calibrationUi';
 import { ulsInputLength } from '../live/ulipsync';
+import analysisWorkletUrl from '../live/analysisWorklet.ts?worker&url';
+import type { FromWorklet, ToWorklet } from '../live/analysisWorklet';
+import recorderWorkletUrl from '../live/recorderWorklet.ts?worker&url';
+import { analyseRecording, measureMouthLagMs, mouthAt, planPlayback, type AnalysedRecording, type PlaybackPlan } from '../live/delayTest';
 import { magnitudeSpectrumDb } from '../live/features';
 import { NEUTRAL, type FaceControls } from '../puppet/controls';
 import { compilePerformance, renderPerformance, DEFAULT_VOICE } from '../voice/performance';
@@ -35,6 +39,23 @@ renderShell(document.querySelector<HTMLDivElement>('#app')!, {
         <button id="clearProfile" type="button" disabled>Forget</button>
       </div>
       <ul class="profile-report" id="profileReport"></ul>`,
+    ) +
+    section(
+      'Delay test',
+      `<p class="hint">Record yourself, then play it back with the audio held back so the mouth catches up, as a stream would. Try delays to feel what looks in sync.</p>
+      <div class="profile-buttons">
+        <button id="recStart" type="button">● Record</button>
+        <button id="recStop" type="button" disabled>■ Stop</button>
+        <span class="hint" id="recStatus">Nothing recorded yet (up to 20 s).</span>
+      </div>
+      ${slider('audioDelay', 'Audio delay', -100, 400, 5, 0)}
+      <div class="profile-buttons">
+        <button id="playRec" type="button" class="primary" disabled>▶ Play back</button>
+        <button id="stopRec" type="button" disabled>■ Stop</button>
+        <button id="matchLag" type="button" disabled>Match measured lag</button>
+        <label><input id="loopRec" type="checkbox" checked /> Loop</label>
+      </div>
+      <p class="hint" id="lagStatus"></p>`,
     ) +
     section(
       'Source',
@@ -75,7 +96,13 @@ renderShell(document.querySelector<HTMLDivElement>('#app')!, {
     ) +
     section(
       'Latency',
-      `<div id="latency">Start the input to measure.</div>
+      `<label class="field">Analysis runs on
+        <select id="analysisThread">
+          <option value="worklet">Audio thread (worklet), every 5.3 ms</option>
+          <option value="main">Page, once per screen refresh (earlier method)</option>
+        </select>
+      </label>
+      <div id="latency">Start the input to measure.</div>
       <p class="hint">Mic-to-mouth delay is input latency + analysis window + open-time smoothing + one display frame. Lower the open time for snappier motion, at the cost of jitter.</p>`,
       false,
     ),
@@ -100,11 +127,18 @@ interface Running {
   nodes: AudioNode[];
   monitor: GainNode | null;
   started: number;
+  /** Audio-thread analysis node, when the analysis runs there. */
+  worklet: AudioWorkletNode | null;
 }
 let running: Running | null = null;
 let lastFrame: LiveFrame | null = null;
 let frameDts: number[] = [];
 let estimatorRuns = 0;
+/** Worklet stats: hop length and recent analysis cost. */
+const WORKLET_HOP = 256;
+let workletLevel = 0;
+let workletCostMs: number[] = [];
+const threadEl = () => byId<HTMLSelectElement>('analysisThread');
 const history: { t: number; levelDb: number; floorDb: number; thresholdDb: number; c: FaceControls }[] = [];
 const timeBuf = new Float32Array(BUFFER);
 
@@ -126,18 +160,43 @@ function readSettings(): void {
   byId('releaseOut').textContent = `${num('release')} ms`;
   byId('smoothOut').textContent = num('smooth') === 0 ? 'off' : `${(num('smooth') * 1000).toFixed(0)} ms`;
   byId('smoothField').hidden = byId<HTMLSelectElement>('shapeMode').value !== 'ulipsync';
+  syncWorklet();
+  if (clip) analyseClip(); // the delay test follows the current settings
+}
+
+function post(msg: ToWorklet): void {
+  running?.worklet?.port.postMessage(msg);
+}
+
+/** Send the current settings, profile and switches to the audio-thread analysis. */
+function syncWorklet(): void {
+  if (!running?.worklet) return;
+  post({ type: 'settings', settings: { ...estimator.settings } });
+  post({ type: 'profile', profile });
+  post({ type: 'enabled', puppet: view.puppetEnabled });
+  post({ type: 'calibrating', on: calibration.running });
+}
+
+function onWorkletFrame(msg: FromWorklet): void {
+  workletLevel = msg.level;
+  workletCostMs.push(msg.costMs);
+  if (workletCostMs.length > 400) workletCostMs.shift();
+  if (msg.features && calibration.running) calibration.frame(msg.time * 1000, msg.features);
+  if (msg.frame) {
+    lastFrame = msg.frame;
+    estimatorRuns++;
+    if (msg.frame.f1 && msg.frame.f2) vowelTrail.push({ t: performance.now() / 1000, f1: msg.frame.f1, f2: msg.frame.f2 });
+  }
 }
 
 // The demo voice: deliberately unlike the formant mode's adult-male reference.
 const DEMO_VOICE = { ...DEFAULT_VOICE, formantScale: 1.25, pitchHz: 230 };
 
-/** What the demo speaker says for a calibration step (its "get ready" phase included). */
+/** What the demo speaker says for a calibration step: a pause, then the sound held ~2.6 s. */
 function demoStepAudio(step: CalibrationStep, sampleRate: number): Float32Array<ArrayBuffer> | null {
   if (step.id === 'silence') return null;
-  const seconds = READY_SECONDS + step.seconds;
-  // Start speaking ~0.5 s into "get ready", like a person reacting to the prompt.
-  const sound = renderPerformance(compilePerformance(`p500 ${step.id}`, { ...DEMO_VOICE, msPerPhoneme: (seconds - 0.4) * 1000 }), sampleRate);
-  return sound.subarray(0, Math.round(seconds * sampleRate)) as Float32Array<ArrayBuffer>;
+  // Start ~0.7 s after the prompt, like a person reacting to it.
+  return renderPerformance(compilePerformance(`p700 ${step.id}`, { ...DEMO_VOICE, msPerPhoneme: 2600 }), sampleRate) as Float32Array<ArrayBuffer>;
 }
 
 function testSignal(ctx: AudioContext, kind: 'test' | 'sweep' | 'demo'): AudioBufferSourceNode {
@@ -176,6 +235,7 @@ async function start(): Promise<void> {
   let stream: MediaStream | null = null;
   const nodes: AudioNode[] = [];
   let monitor: GainNode | null = null;
+  let worklet: AudioWorkletNode | null = null;
   try {
     if (sourceEl.value === 'mic') {
       stream = await navigator.mediaDevices.getUserMedia({
@@ -200,6 +260,22 @@ async function start(): Promise<void> {
       src.start();
       nodes.push(src);
     }
+    if (threadEl().value === 'worklet') {
+      await ctx.audioWorklet.addModule(analysisWorkletUrl);
+      worklet = new AudioWorkletNode(ctx, 'mouth-analysis', {
+        numberOfInputs: 1,
+        numberOfOutputs: 1,
+        outputChannelCount: [1],
+        processorOptions: { hop: WORKLET_HOP },
+      });
+      // A silent path to the output keeps the node in the processing graph.
+      const sink = ctx.createGain();
+      sink.gain.value = 0;
+      worklet.connect(sink).connect(ctx.destination);
+      for (const n of nodes) if (!(n instanceof GainNode)) n.connect(worklet);
+      worklet.port.onmessage = (e: MessageEvent<FromWorklet>) => onWorkletFrame(e.data);
+      nodes.push(worklet, sink);
+    }
     await ctx.resume();
   } catch (err) {
     stream?.getTracks().forEach((t) => t.stop());
@@ -211,7 +287,9 @@ async function start(): Promise<void> {
   estimator.reset();
   history.length = 0;
   frameDts = [];
-  running = { ctx, analyser, stream, nodes, monitor, started: performance.now() };
+  running = { ctx, analyser, stream, nodes, monitor, started: performance.now(), worklet };
+  workletCostMs = [];
+  syncWorklet();
   stopBtn.disabled = false;
   startBtn.disabled = false;
   startBtn.textContent = '↻ Restart';
@@ -249,7 +327,10 @@ const calibration = new CalibrationRunner(
   byId('face'),
   {
     onStep: (step) => {
-      if (running && sourceEl.value === 'demo') playClip(demoStepAudio(step, running.ctx.sampleRate));
+      if (!running || sourceEl.value !== 'demo') return;
+      playClip(demoStepAudio(step, running.ctx.sampleRate));
+      // The demo speaker also "clicks" I'm quiet on the quiet step.
+      if (step.id === 'silence') setTimeout(() => calibration.confirmQuiet(), 600);
     },
     onFinish: (p) => {
       applyProfile(p, true);
@@ -257,6 +338,7 @@ const calibration = new CalibrationRunner(
       if (running && sourceEl.value === 'demo') setTimeout(() => void start(), 0);
     },
     onCancel: () => {
+      syncWorklet();
       if (running && sourceEl.value === 'demo') setTimeout(() => void start(), 0);
     },
   },
@@ -266,17 +348,21 @@ const calibration = new CalibrationRunner(
 /** Replace a test source with a one-shot clip (or silence) during calibration. */
 function playClip(pcm: Float32Array<ArrayBuffer> | null): void {
   if (!running) return;
+  // Replace only the audio sources; keep the analysis worklet and its sink.
   for (const n of running.nodes) {
-    if (n instanceof AudioScheduledSourceNode) n.stop();
-    n.disconnect();
+    if (n instanceof AudioScheduledSourceNode) {
+      n.stop();
+      n.disconnect();
+    }
   }
-  running.nodes = [];
+  running.nodes = running.nodes.filter((n) => !(n instanceof AudioScheduledSourceNode));
   if (!pcm) return;
   const buffer = running.ctx.createBuffer(1, pcm.length, running.ctx.sampleRate);
   buffer.copyToChannel(pcm, 0);
   const src = running.ctx.createBufferSource();
   src.buffer = buffer;
   src.connect(running.analyser);
+  if (running.worklet) src.connect(running.worklet);
   src.connect(running.ctx.destination);
   src.start();
   running.nodes.push(src);
@@ -286,6 +372,7 @@ async function startCalibration(): Promise<void> {
   if (!running) await start();
   if (!running) return; // the input could not start; the source hint says why
   calibration.start(performance.now());
+  syncWorklet();
 }
 
 const LABELS: Record<ProfileClassId, string> = { silence: 'quiet', AA: 'aa', IY: 'ee', UW: 'oo', EH: 'eh', OW: 'oh', M: 'mm', S: 'ss', SH: 'sh' };
@@ -384,6 +471,150 @@ function forgetProfile(): void {
   applyProfile(null);
 }
 
+// ---- delay test: record, then play back with delayed audio -----------------
+
+const MAX_RECORD_SECONDS = 20;
+let recorder: { node: AudioWorkletNode; sink: GainNode; chunks: Float32Array[]; sampleRate: number; startedMs: number } | null = null;
+let clip: { pcm: Float32Array; sampleRate: number } | null = null;
+let analysed: AnalysedRecording | null = null;
+let measuredLagMs = 0;
+let playback: { ctx: AudioContext; src: AudioBufferSourceNode; plan: PlaybackPlan; delayMs: number } | null = null;
+const audioDelayEl = () => byId<HTMLInputElement>('audioDelay');
+
+async function startRecording(): Promise<void> {
+  stopPlayback();
+  if (!running) await start();
+  const input = running;
+  if (!input || recorder) return;
+  await input.ctx.audioWorklet.addModule(recorderWorkletUrl);
+  const node = new AudioWorkletNode(input.ctx, 'pcm-recorder', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
+  const sink = input.ctx.createGain();
+  sink.gain.value = 0;
+  node.connect(sink).connect(input.ctx.destination);
+  for (const n of input.nodes) if (n instanceof AudioScheduledSourceNode || n instanceof MediaStreamAudioSourceNode) n.connect(node);
+  const rec = { node, sink, chunks: [] as Float32Array[], sampleRate: input.ctx.sampleRate, startedMs: performance.now() };
+  node.port.onmessage = (e: MessageEvent<{ type: 'chunk'; chunk: Float32Array } | { type: 'done' }>) => {
+    if (e.data.type === 'chunk') rec.chunks.push(e.data.chunk);
+    else finishRecording(rec);
+  };
+  recorder = rec;
+  byId<HTMLButtonElement>('recStart').disabled = true;
+  byId<HTMLButtonElement>('recStop').disabled = false;
+}
+
+function stopRecording(): void {
+  recorder?.node.port.postMessage({ type: 'stop' });
+}
+
+function finishRecording(rec: NonNullable<typeof recorder>): void {
+  rec.node.disconnect();
+  rec.sink.disconnect();
+  recorder = null;
+  const length = rec.chunks.reduce((n, c) => n + c.length, 0);
+  const pcm = new Float32Array(length);
+  let o = 0;
+  for (const c of rec.chunks) {
+    pcm.set(c, o);
+    o += c.length;
+  }
+  clip = { pcm, sampleRate: rec.sampleRate };
+  analysed = null;
+  byId<HTMLButtonElement>('recStart').disabled = false;
+  byId<HTMLButtonElement>('recStop').disabled = true;
+  byId<HTMLButtonElement>('playRec').disabled = length === 0;
+  byId('recStatus').textContent = `Recorded ${(length / rec.sampleRate).toFixed(1)} s.`;
+  analyseClip();
+}
+
+/** Analyse the clip with the current mode, settings and profile (as live would). */
+function analyseClip(): void {
+  if (!clip) return;
+  analysed = analyseRecording(clip.pcm, clip.sampleRate, { ...estimator.settings }, profile, WORKLET_HOP);
+  measuredLagMs = measureMouthLagMs(clip.pcm, analysed);
+  byId<HTMLButtonElement>('matchLag').disabled = false;
+  renderLagStatus();
+}
+
+function renderLagStatus(): void {
+  const el = byId('lagStatus');
+  const delay = Number(audioDelayEl().value);
+  byId('audioDelayOut').textContent = `${delay > 0 ? '+' : ''}${delay} ms`;
+  if (!analysed) {
+    el.textContent = '';
+    return;
+  }
+  const off = measuredLagMs - delay;
+  el.textContent =
+    `In this clip the mouth trails the sound by ≈${measuredLagMs.toFixed(0)} ms (${estimator.settings.shapeMode} mode). ` +
+    (Math.abs(off) < 10 ? `With ${delay} ms of audio delay they line up.` : off > 0 ? `With ${delay} ms of audio delay the mouth is still ≈${off.toFixed(0)} ms late.` : `With ${delay} ms of audio delay the mouth is ≈${(-off).toFixed(0)} ms early.`);
+}
+
+function playClipBack(): void {
+  if (!clip) return;
+  if (!analysed) analyseClip();
+  stopPlayback();
+  stop(); // pause live input so it does not mix with the playback
+  const ctx = new AudioContext({ latencyHint: 'interactive' });
+  const buffer = ctx.createBuffer(1, clip.pcm.length, clip.sampleRate);
+  buffer.copyToChannel(clip.pcm as Float32Array<ArrayBuffer>, 0);
+  const delayMs = Number(audioDelayEl().value);
+  const schedule = () => {
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(ctx.destination);
+    const plan = planPlayback(ctx.currentTime, delayMs);
+    src.start(plan.audioStart);
+    return { src, plan };
+  };
+  void ctx.resume();
+  const first = schedule();
+  playback = { ctx, ...first, delayMs };
+  byId<HTMLButtonElement>('stopRec').disabled = false;
+}
+
+function stopPlayback(): void {
+  if (!playback) return;
+  try {
+    playback.src.stop();
+  } catch {
+    // not started yet
+  }
+  void playback.ctx.close();
+  playback = null;
+  view.host.relax();
+  byId<HTMLButtonElement>('stopRec').disabled = true;
+}
+
+/** Context time currently reaching the speakers. */
+function audibleTime(ctx: AudioContext): number {
+  const ts = ctx.getOutputTimestamp?.();
+  if (ts && ts.contextTime !== undefined && ts.performanceTime) return ts.contextTime + (performance.now() - ts.performanceTime) / 1000;
+  return ctx.currentTime - (ctx.outputLatency || 0);
+}
+
+/** Mouth for the playback right now, or null when not playing. Restarts loops. */
+function playbackControls(): { controls: FaceControls; t: number } | null {
+  if (!playback || !analysed) return null;
+  const t = audibleTime(playback.ctx) - playback.plan.mouthZero;
+  const end = analysed.duration + Math.max(0, playback.delayMs / 1000) + 0.4;
+  if (t > end) {
+    if (byId<HTMLInputElement>('loopRec').checked) {
+      const ctx = playback.ctx;
+      const buffer = playback.src.buffer!;
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      src.connect(ctx.destination);
+      const plan = planPlayback(ctx.currentTime, playback.delayMs);
+      src.start(plan.audioStart);
+      playback = { ...playback, src, plan };
+    } else {
+      stopPlayback();
+    }
+    return null;
+  }
+  return { controls: view.puppetEnabled ? mouthAt(analysed, t) : { ...NEUTRAL }, t };
+}
+
 function renderLatency(): void {
   if (!running) return;
   const ctx = running.ctx;
@@ -394,13 +625,18 @@ function renderLatency(): void {
   const inputMs = (trackLatency?.latency ?? ctx.baseLatency ?? 0) * 1000;
   const uls = estimator.settings.shapeMode === 'ulipsync';
   const smoothMs = (uls ? estimator.settings.smoothSeconds : estimator.settings.attackSeconds) * 1000;
-  // Half the window on average; the attack time constant to reach ~63% open.
-  const total = inputMs + windowMs / 2 + smoothMs + frameMs;
+  // Analysis cadence: every worklet hop, or once per screen frame. On average a
+  // sound waits half a cadence to be analysed and half a frame to be drawn.
+  const cadenceMs = running.worklet ? (WORKLET_HOP / ctx.sampleRate) * 1000 : frameMs;
+  const total = inputMs + windowMs / 2 + smoothMs + cadenceMs / 2 + frameMs / 2;
+  const cost = [...workletCostMs].sort((a, b) => a - b);
   const rows = [
     ['input latency', `${inputMs.toFixed(1)} ms${trackLatency?.latency === undefined ? ' (baseLatency)' : ''}`],
     ['analysis window', `${windowMs.toFixed(1)} ms (${windowSamples} samples)`],
     [uls ? 'spring smoothing' : 'open smoothing', `${smoothMs.toFixed(0)} ms`],
+    ['analysis cadence', running.worklet ? `${cadenceMs.toFixed(1)} ms (audio thread)` : `${cadenceMs.toFixed(1)} ms (per frame)`],
     ['display frame', `${frameMs.toFixed(1)} ms`],
+    ...(running.worklet && cost.length ? [['audio-thread cost', `${cost[cost.length >> 1]} ms median, ${cost[Math.floor(cost.length * 0.99)]} ms p99`]] : []),
     ['≈ mic→mouth', `${total.toFixed(0)} ms`],
   ];
   byId('latency').innerHTML = rows.map(([k, v]) => `<div class="row"><span>${k}</span><b>${v}</b></div>`).join('');
@@ -514,7 +750,27 @@ function frame(now: number): void {
   const t = now / 1000;
   // Calibration callbacks may swap the input, so work on this frame's input only.
   const input = running;
-  if (input) {
+  const pb = playbackControls();
+  if (pb) {
+    controls = pb.controls;
+    view.update(dt, controls);
+    view.showReadout(pb.t, 'playback', 0);
+    if (recorder && performance.now() - recorder.startedMs > MAX_RECORD_SECONDS * 1000) stopRecording();
+    requestAnimationFrame(frame);
+    return;
+  }
+  if (recorder && performance.now() - recorder.startedMs > MAX_RECORD_SECONDS * 1000) stopRecording();
+  if (recorder) byId('recStatus').textContent = `Recording… ${((performance.now() - recorder.startedMs) / 1000).toFixed(1)} s`;
+  if (input?.worklet) {
+    // Analysis happens on the audio thread; just draw its latest result.
+    level = workletLevel;
+    if (view.puppetEnabled && lastFrame) controls = lastFrame;
+    frameDts.push(dt);
+    if (frameDts.length > 60) frameDts.shift();
+    const f = lastFrame;
+    history.push({ t, levelDb: 20 * Math.log10(Math.max(level, 1e-7)), floorDb: f?.floorDb ?? -90, thresholdDb: f?.thresholdDb ?? -90, c: controls ?? { ...NEUTRAL } });
+    while (history.length && history[0].t < t - HISTORY_SECONDS) history.shift();
+  } else if (input) {
     input.analyser.getFloatTimeDomainData(timeBuf);
     const sr = input.ctx.sampleRate;
     const shortFrame = timeBuf.subarray(BUFFER - FFT);
@@ -550,7 +806,23 @@ function frame(now: number): void {
   requestAnimationFrame(frame);
 }
 
-startBtn.addEventListener('click', () => void start());
+startBtn.addEventListener('click', () => {
+  stopPlayback();
+  void start();
+});
+byId('recStart').addEventListener('click', () => void startRecording());
+byId('recStop').addEventListener('click', stopRecording);
+byId('playRec').addEventListener('click', playClipBack);
+byId('stopRec').addEventListener('click', stopPlayback);
+byId('matchLag').addEventListener('click', () => {
+  audioDelayEl().value = String(Math.round(measuredLagMs / 5) * 5);
+  renderLagStatus();
+  if (playback) playClipBack();
+});
+audioDelayEl().addEventListener('input', () => {
+  renderLagStatus();
+  if (playback) playClipBack(); // restart with the new delay
+});
 byId('calibrate').addEventListener('click', () => void startCalibration());
 byId('exportProfile').addEventListener('click', exportProfile);
 byId('clearProfile').addEventListener('click', forgetProfile);
@@ -573,6 +845,10 @@ monitorEl.addEventListener('change', () => {
 });
 view.puppetEl.addEventListener('change', () => {
   if (!view.puppetEnabled) view.host.relax();
+  syncWorklet();
+});
+threadEl().addEventListener('change', () => {
+  if (running) void start();
 });
 for (const id of ['sensitivity', 'gate', 'range', 'attack', 'release', 'smooth', 'shapeMode']) byId(id).addEventListener('input', readSettings);
 
@@ -591,6 +867,9 @@ Object.assign(window, {
       latency: byId('latency').textContent,
       vowelTrail: vowelTrail.length,
       calibration: { running: calibration.running, step: calibration.stepId, phase: calibration.phaseName },
+      thread: running?.worklet ? 'worklet' : running ? 'main' : null,
+      delayTest: { recording: !!recorder, clipSeconds: clip ? clip.pcm.length / clip.sampleRate : 0, measuredLagMs, playing: !!playback, delayMs: Number(audioDelayEl().value) },
+      workletCost: [...workletCostMs],
       profile: profile && { classes: profile.classes.map((c) => c.id), messages: profile.quality.messages, accuracy: profile.quality.accuracy, suggested: profile.suggested },
       shapeMode: shapeModeEl.value,
     }),
@@ -600,6 +879,7 @@ Object.assign(window, {
 });
 
 readSettings();
+renderLagStatus();
 loadStoredProfile();
 void listDevices();
 requestAnimationFrame(frame);

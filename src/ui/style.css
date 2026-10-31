@@ -212,4 +212,16 @@ button:disabled { opacity: 0.5; cursor: default; }
 .calib-level { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center; font-size: 11px; color: var(--muted); }
 .calib-level i { display: block; height: 6px; border-radius: 3px; background: var(--panel); overflow: hidden; }
 .calib-level em { display: block; height: 100%; width: 0; background: var(--level); }
-.calib-cancel { align-self: center; padding: 5px 14px; font-size: 12px; }
+
+.calib-status { font-size: 13px; min-height: 1.4em; }
+.calib-dots { display: flex; justify-content: center; gap: 6px; }
+.calib-dots span { width: 8px; height: 8px; border-radius: 50%; background: var(--panel); border: 1px solid var(--line); }
+.calib-dots span.done { background: var(--width); border-color: var(--width); }
+.calib-dots span.now { outline: 2px solid var(--accent); outline-offset: 1px; }
+.calib-bar i.ok { background: var(--width); }
+.calib-level i { position: relative; }
+.calib-trigger { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--text); }
+.calib-trigger[hidden] { display: none; }
+.calib-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.calib-actions button { flex: none; padding: 6px 12px; font-size: 12px; }
+.calib-actions button[hidden] { display: none; }

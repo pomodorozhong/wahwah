@@ -176,12 +176,24 @@ calibration records *your* sounds and reads your live voice by comparison
 with them. This is the approach real-time lip-sync tools use: uLipSync and its
 web port wLipSync, both MIT, calibrate MFCC profiles per speaker.
 
-- **Guided recording.** *Calibrate my voice* starts the input if needed. A
-  card over the face then walks through 9 prompts: stay quiet, "aaaa",
-  "eeee", "oooo", "eh-eh-eh", "ohhh", "mmmm", "ssss" and "shhhh". Each has
-  1.2 s to get ready and 2 s of recording, and the first 0.35 s of each
-  recording is skipped while you start the sound. A level meter shows that
-  you're heard, and *Cancel* stops at any point.
+- **Guided recording, at your own pace** (`src/live/calibrationFlow.ts`,
+  `src/ui/calibrationUi.ts`). *Calibrate my voice* starts the input if
+  needed. A card over the face shows an intro, then 9 prompts: stay quiet,
+  "aaaa", "eeee", "oooo", "eh-eh-eh", "ohhh", "mmmm", "ssss" and "shhhh".
+  - **Nothing runs on a timer.** The quiet step waits for *I'm quiet* (or
+    Enter), then measures the room for 1.5 s.
+  - **Each sound records only while you make it.** Recording starts when
+    your level crosses a line on the meter: 14 dB above the measured room,
+    or 8 dB for mm / ss / sh. The bar fills only while the sound is there,
+    and pausing keeps the progress. After 1.5 s of sound (the first 0.35 s
+    of each attempt is skipped), it shows "✓ Got it" and moves on.
+  - **You can redo, go back and skip.** *Redo* (R) re-records this sound,
+    *← Back* re-records the previous one, *Skip* moves on, and *Cancel*
+    (Esc) stops.
+  - After 6 s without hearing you, it suggests checking the meter or moving
+    closer. Dots show which sounds are done.
+  - The demo voice answers each prompt about 0.7 s after it appears and
+    clicks *I'm quiet* itself.
 - **What's stored** (`src/live/profile.ts`, `src/live/mfcc.ts`):
   - up to 50 MFCC frames per sound (c1–c12 of 26 mel bands, 100–7600 Hz);
   - your room's noise floor and your voice level;
@@ -278,10 +290,51 @@ host-agnostic):
   running.
 - The timeline shows the last 6 s on a −90..0 dBFS scale: input level, noise
   floor, the "opens above" threshold, and the three controls.
-- **Latency** section: input latency (the track's reported latency, or
-  `baseLatency`), half the analysis window, the open-time smoothing, and the
-  display frame are added up into an estimated microphone-to-mouth delay.
-  With the defaults this is about 60 ms.
+- **Analysis runs on the audio thread** (`src/live/analysisWorklet.ts`) by
+  default.
+  - An AudioWorklet keeps a 4096-sample ring buffer and runs the same
+    estimator every **256 samples (5.3 ms)**, about 187 times a second. It
+    posts each result to the page, which draws the latest one at its own
+    frame rate.
+  - Analysis timing no longer depends on screen refreshes, and it keeps
+    running when the tab isn't in front.
+  - *Latency → Analysis runs on* switches back to the earlier
+    once-per-screen-refresh analysis for comparison.
+  - Measured in the browser: 187 analyses/s, 0 ms median and 3 ms p99 per
+    hop at the 1 ms timer resolution available in a worklet. The estimate
+    fell from about 61 ms to about 54 ms.
+- **Latency** section: the estimated microphone-to-mouth delay adds up
+  - input latency (the track's reported latency, or `baseLatency`);
+  - half the analysis window;
+  - the smoothing (open time, or the uLipSync spring);
+  - half the analysis cadence (5.3 ms on the audio thread, one frame on the
+    page);
+  - half a display frame.
+
+  It also shows the audio thread's per-hop cost.
+
+### Delay test (record and play back)
+
+Some lag between voice and mouth always remains. Streams hide it by
+**delaying the audio** to match the avatar. *Delay test* lets you feel how
+much delay looks right (`src/live/delayTest.ts`,
+`src/live/recorderWorklet.ts`):
+
+1. **● Record** (up to 20 s) from the current input, mic or test signal. The
+   clip is recorded on the audio thread.
+2. It's analysed **exactly as live mode would**: the same estimator, mode,
+   settings and profile, one causal frame per 5.3 ms. The page then
+   measures how far the mouth trails the sound in this clip, as the
+   jaw-vs-loudness lag. That was ≈50 ms for the demo voice in profile mode.
+3. **▶ Play back** pauses the live input and plays the clip with **Audio
+   delay** (−100 to +400 ms) applied. The mouth follows the clip as if it
+   were arriving live, while the audio is heard later (positive) or earlier
+   (negative).
+   - *Match measured lag* sets the delay to the measured lag.
+   - A readout says whether the mouth is now late, early or lined up.
+   - Changing the delay restarts playback, and *Loop* repeats the clip.
+   - Changing the mode or settings re-analyses the clip, so modes can be
+     compared on the same recording.
 
 ## klattsch playground
 
@@ -361,7 +414,9 @@ src/voice/performance.ts   compilePerformance()  ──► SpeechPerformance
   `features.ts` handles spectrum, LPC formants and periodicity, `vowels.ts`
   the reference vowels and speaker scale, `mfcc.ts` and `profile.ts` the voice
   profile, and `estimator.ts` combines them with loudness.
-  `src/ui/calibrationUi.ts` is the guided recording card. `ptVoice.ts` renders Pink Trombone test voices. None of it
+  `src/ui/calibrationUi.ts` is the guided recording card, driven by the pure
+  `calibrationFlow.ts`. `analysisWorklet.ts` runs the estimator on the audio
+  thread, and `delayTest.ts` / `recorderWorklet.ts` power the delay test. `ptVoice.ts` renders Pink Trombone test voices. None of it
   touches the microphone or Web Audio, which live in `src/apps/live.ts`.
 - **UI** (`src/ui/puppetView.ts`) holds the page shell, the transport bar, the
   meters and the `PuppetView` (face or debug puppet). `src/ui/stage.ts` adds
@@ -441,6 +496,9 @@ These were delegated to the implementer. Each is a choice, not a requirement.
 | Trombone rendering speed | Rotating phasors instead of a `sin()` per harmonic per sample | 6.5 s of audio renders in 76 ms instead of 295 ms, so sliders stay responsive. |
 | Live jaw | Loudness above an adaptive noise floor, capped relative to a decaying recent peak | The brief asked for loudness-driven jaw first. The peak cap fixes a jaw stuck fully open in a quiet room (seen with the test signal). |
 | Calibration | A 9-sound guided recording, MFCC templates with k-nearest-neighbour matching, and a soft blend of sound poses | The formant method looked right on synthetic voices but not on a real one. Per-speaker profiles are the standard robust fix (uLipSync, wLipSync), and they absorb accent, mic and room. Hard-switching on the single best sound snapped the jaw shut on unrecorded consonants (sentence jaw r 0.36); the soft blend restores 0.42–0.44. |
+| Calibration pacing | Voice-triggered capture with explicit Begin / I'm quiet, plus Redo / Back / Skip | Fixed 1.2 s + 2 s windows were too hard to follow. Recording only while the sound is present also keeps late starts and breaths out of the templates. |
+| Live analysis thread | AudioWorklet, 256-sample hop, results posted to the page | Analysis takes under 1 ms, so speed was never the problem; *when* it runs was. Rust/WASM would not change the delay. The page path is kept as an option. |
+| Delay test | Record, analyse offline with the live estimator at the worklet cadence, play back with a scheduled audio offset | It reproduces live timing exactly and lets the delay change instantly without re-recording. |
 | uLipSync-style mode | Ported faithfully and offered as a choice, not the default | It was expected to feel smoother. On sentences (three synthetic voice sizes, aligned windows) it measured differently: at uLipSync's 50 ms spring it **lags more** than profile mode (≈100–117 ms vs 88–92 ms), is **jerkier** (jaw jerk ≈0.02 vs 0.013) and tracks shapes less well. With a faster 20 ms spring it reads lip width (r ≈0.5 vs 0.43–0.46) and rounding better, but jitters about 4× more. Softening its winner-takes-most scoring changed jerk by under 10%. The feel can only be judged on a real voice, so the slider is there to try. |
 | Profile vs formant mode | The profile is used whenever one exists, and formant mode stays as the fallback | On held sounds the profile is right for every calibrated sound across voice sizes, where formant mode fails for higher voices. In whole sentences the profile has a little less lip-width detail (r 0.44–0.46 vs 0.55–0.59), because it knows 5 vowels rather than a continuous vowel space, and better rounding on 2 of 3 voices. |
 | Live mouth shape | LPC formants matched to reference vowels with an adaptive speaker scale, plus fricative and closure cues. Brightness-only is kept as a mode. | Brightness gave only one axis (ah ↔ oo). Formants are the cue that transfers best between voices, and the vowel poses reuse the text pipeline's visemes. |
@@ -460,7 +518,27 @@ Environment: macOS 26.6.2, Node 26.12.0, npm 11.20.0, and the Claude desktop
 app's built-in browser (Chromium) at an `AudioContext` sample rate of 48 kHz,
 `baseLatency` 5.3 ms and `outputLatency` 32 ms.
 
-**Automated** (`npm test`, 138 tests, all passing). uLipSync port
+**Automated** (`npm test`, 147 tests, all passing). Calibration flow
+(5 tests in `tests/calibrationFlow.test.ts`, feeding synthetic speech frame
+by frame):
+
+- The intro and quiet steps never time out on their own.
+- Nothing records while the speaker waits, even for 4 s.
+- A pause mid-sound keeps the progress, and the sound completes when they
+  carry on.
+- Back clears the previous sound, Redo resets progress, and Skip moves on.
+- A full session, with random human-like delays before each sound, builds a
+  profile whose report is all ✓.
+
+Delay test (4 tests in `tests/delayTest.test.ts`):
+
+- One causal frame per 5.3 ms hop.
+- Neutral before the clip starts, and interpolation between frames.
+- The measured mouth lag is positive and under 150 ms, and it grows with
+  more smoothing.
+- Playback scheduling for positive and negative delays (never in the past).
+
+uLipSync port
 (11 tests in `tests/ulipsync.test.ts`):
 
 - **Analysis:** 64 ms of input (3072 samples at 48 kHz, 2823 at 44.1 kHz)
@@ -623,6 +701,25 @@ screenshots, not by listening):
 - Puppet off: audio played (level 0.37), the face stayed neutral, and the
   generator didn't run.
 - No console errors. At 375 px wide there is no horizontal scroll.
+
+**In the browser, calibration flow, worklet and delay test** (demo voice):
+
+- **New calibration:** the intro waited for Begin. "Say aaaa" waited ("Start
+  the sound whenever you are ready"), then showed "Recording. Keep holding
+  it…" as the bar filled. With the analysis on the audio thread, the whole
+  session finished in about 40 s with "All 9 sounds are clearly distinct
+  (99% recognized)".
+- **Bug found and fixed:** with no audio source connected (the demo's quiet
+  step), the worklet produced no frames, so the quiet step never finished.
+  It now analyses a missing input as silence.
+- **Worklet:** 187 analyses/s. The face followed the demo (UW, rounding
+  0.91), and the latency estimate was 54 ms.
+- **Delay test:**
+  - recorded 4.9 s and measured ≈50 ms of mouth lag;
+  - *Match measured lag* set 50 ms ("they line up");
+  - playback paused the live input, moved the face, looped, and stopped.
+- No console errors in a fresh tab. A delay that *feels* right can only be
+  judged by watching, which is the point of the tool.
 
 **In the browser, uLipSync-style mode** (demo voice):
 
