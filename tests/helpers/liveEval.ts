@@ -2,6 +2,7 @@
 import { LiveMouthEstimator, DEFAULT_LIVE, type LiveFrame, type ShapeMode } from '../../src/live/estimator';
 import type { VoiceProfile } from '../../src/live/profile';
 import { magnitudeSpectrumDb } from '../../src/live/features';
+import { ulsInputLength } from '../../src/live/ulipsync';
 
 export const SR = 48000;
 export const N = 1024;
@@ -18,9 +19,11 @@ export function runLive(audio: Float32Array, shapeMode: ShapeMode = 'formants', 
   x.set(audio, pad.length);
   const hop = Math.round(SR * DT);
   const frames: LiveFrame[] = [];
-  for (let end = N; end <= x.length; end += hop) {
+  const longN = ulsInputLength(SR);
+  // Only the uLipSync-style mode needs the longer 64 ms window before its first frame.
+  for (let end = shapeMode === 'ulipsync' ? longN : N; end <= x.length; end += hop) {
     const f = x.subarray(end - N, end);
-    const fr = est.process(f, magnitudeSpectrumDb(f), SR, DT);
+    const fr = est.process(f, magnitudeSpectrumDb(f), SR, DT, shapeMode === 'ulipsync' ? x.subarray(end - longN, end) : undefined);
     if (end - N >= pad.length) frames.push(fr);
   }
   return frames;

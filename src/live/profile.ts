@@ -7,6 +7,7 @@ import { NEUTRAL, lerpControls, type FaceControls } from '../puppet/controls';
 import { VISEMES } from '../puppet/visemes';
 import { fullCentroid, highBandRatio } from './features';
 import { MFCC_COEFFS, mfcc } from './mfcc';
+import { ULS, ulsMfcc } from './ulipsync';
 
 export type ProfileClassId = 'silence' | 'AA' | 'IY' | 'UW' | 'EH' | 'OW' | 'M' | 'S' | 'SH';
 
@@ -49,12 +50,19 @@ export interface FrameFeatures {
   /** Fraction of power above 8.5 kHz (near zero on 16 kHz-band "call" audio). */
   veryHighRatio: number;
   centroidHz: number;
+  /** uLipSync-style MFCCs from the longer 64 ms window, when one was given. */
+  uls?: Float64Array;
 }
 
-export function frameFeatures(frame: Float32Array, spectrumDb: Float32Array, sampleRate: number): FrameFeatures {
+/**
+ * @param frame  latest ~21 ms (1024 samples at 48 kHz)
+ * @param longFrame  latest 64 ms (`ulsInputLength`), for the uLipSync-style features
+ */
+export function frameFeatures(frame: Float32Array, spectrumDb: Float32Array, sampleRate: number, longFrame?: Float32Array): FrameFeatures {
   let sum = 0;
   for (const v of frame) sum += v * v;
   return {
+    uls: longFrame ? ulsMfcc(longFrame, sampleRate) : undefined,
     mfcc: mfcc(spectrumDb, sampleRate),
     levelDb: 20 * Math.log10(Math.max(Math.sqrt(sum / Math.max(1, frame.length)), 1e-7)),
     highRatio: highBandRatio(spectrumDb, sampleRate, 4000),
@@ -87,6 +95,8 @@ export interface VoiceProfile {
   classes: ProfileClass[];
   /** Live settings derived from the recording. */
   suggested: { gateDb: number; rangeDb: number };
+  /** uLipSync-style profile: the average MFCC of each sound (absent in older profiles). */
+  uls?: { prototypes: Partial<Record<ProfileClassId, number[]>> };
   quality: { messages: QualityMessage[]; accuracy: Partial<Record<ProfileClassId, number>> };
 }
 
@@ -164,6 +174,18 @@ export class Calibration {
       suggested: { gateDb, rangeDb },
       quality: { messages, accuracy: {} },
     };
+
+    // uLipSync-style prototypes: the mean 64 ms MFCC of each recorded sound
+    // (uLipSync averages its last 16 calibration frames; this averages all of them).
+    const prototypes: Partial<Record<ProfileClassId, number[]>> = {};
+    for (const c of classes) {
+      const ulsFrames = c.frames.map((f) => f.uls).filter((u): u is Float64Array => !!u);
+      if (ulsFrames.length < MIN_FRAMES / 2) continue;
+      const mean = new Array(ULS.mfccNum).fill(0);
+      for (const u of ulsFrames) u.forEach((v, i) => (mean[i] += v / ulsFrames.length));
+      prototypes[c.id] = mean;
+    }
+    if (Object.keys(prototypes).length >= 2) profile.uls = { prototypes };
 
     // Input checks.
     if (snr < 15) messages.unshift({ level: 'warn', text: `Your voice is only ${snr.toFixed(0)} dB above the room noise. Move closer to the mic or somewhere quieter.` });
@@ -281,7 +303,13 @@ export const isVowel = (id: ProfileClassId) => VOWELS.includes(id);
 
 export function serializeProfile(p: VoiceProfile): string {
   const round = (v: number) => Math.round(v * 1000) / 1000;
-  return JSON.stringify({ ...p, mean: p.mean.map(round), std: p.std.map(round), classes: p.classes.map((c) => ({ ...c, templates: c.templates.map((t) => t.map(round)) })) });
+  return JSON.stringify({
+    ...p,
+    mean: p.mean.map(round),
+    std: p.std.map(round),
+    classes: p.classes.map((c) => ({ ...c, templates: c.templates.map((t) => t.map(round)) })),
+    uls: p.uls && { prototypes: Object.fromEntries(Object.entries(p.uls.prototypes).map(([k, v]) => [k, v!.map(round)])) },
+  });
 }
 
 /** Parse and sanity-check a saved profile; throws with a readable message. */
@@ -291,6 +319,11 @@ export function parseProfile(text: string): VoiceProfile {
   if (!Array.isArray(p.classes) || p.mean?.length !== MFCC_COEFFS || p.std?.length !== MFCC_COEFFS) throw new Error('The profile is incomplete.');
   for (const c of p.classes) {
     if (!c.templates.every((t) => Array.isArray(t) && t.length === MFCC_COEFFS && t.every(Number.isFinite))) throw new Error(`Sound ${c.id} has bad data.`);
+  }
+  if (p.uls) {
+    for (const [id, v] of Object.entries(p.uls.prototypes)) {
+      if (!Array.isArray(v) || v.length !== ULS.mfccNum || !v.every(Number.isFinite)) throw new Error(`uLipSync data for ${id} is bad.`);
+    }
   }
   return p;
 }

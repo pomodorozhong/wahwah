@@ -8,16 +8,20 @@
 // s / sh / f by its frequency; a quiet voiced hum is read as closed lips (m/b).
 // Mode 'profile' instead matches MFCCs against the speaker's own calibration
 // recordings (see profile.ts), which absorbs their accent, mic and room.
+// Mode 'ulipsync' ports uLipSync's pipeline (ulipsync.ts): 64 ms MFCCs at
+// 16 kHz, one averaged template per calibrated sound, 10^-distance scores, and
+// a critically damped spring on every weight and on the loudness.
 // Mode 'centroid' keeps the earlier brightness-only guess for comparison.
 
-import { NEUTRAL, normalizeControls, type FaceControls } from '../puppet/controls';
+import { NEUTRAL, lerpControls, normalizeControls, type FaceControls } from '../puppet/controls';
 import { VISEMES } from '../puppet/visemes';
 import { estimateFormants, fullCentroid, highBandRatio, periodicity } from './features';
 import { bestScale, matchVowel } from './vowels';
 import { mfcc } from './mfcc';
 import { argmax, classPose, classify, isVowel, vowelPose, type ProfileClassId, type VoiceProfile } from './profile';
+import { SmoothDamp, ULS, ulsMfcc, ulsScores } from './ulipsync';
 
-export type ShapeMode = 'profile' | 'formants' | 'centroid' | 'off';
+export type ShapeMode = 'ulipsync' | 'profile' | 'formants' | 'centroid' | 'off';
 
 export interface LiveSettings {
   /** Extra amplification of the jaw response, 0.5..3. */
@@ -31,6 +35,8 @@ export interface LiveSettings {
   releaseSeconds: number;
   /** How lip shape is estimated. */
   shapeMode: ShapeMode;
+  /** uLipSync-style mode: spring smoothing time, seconds (uLipSync default 0.05). */
+  smoothSeconds: number;
 }
 
 export const DEFAULT_LIVE: LiveSettings = {
@@ -40,6 +46,7 @@ export const DEFAULT_LIVE: LiveSettings = {
   attackSeconds: 0.025,
   releaseSeconds: 0.08,
   shapeMode: 'formants',
+  smoothSeconds: ULS.smoothness,
 };
 
 export type SoundClass = 'silence' | 'vowel' | 'closure' | 'fricative' | 'voiced';
@@ -130,6 +137,8 @@ export class LiveMouthEstimator {
   private started = false;
   private profile: VoiceProfile | null = null;
   private probs: Partial<Record<ProfileClassId, number>> = {};
+  private springs = new Map<ProfileClassId, SmoothDamp>();
+  private volumeSpring = new SmoothDamp();
 
   constructor(public settings: LiveSettings = { ...DEFAULT_LIVE }) {}
 
@@ -137,6 +146,13 @@ export class LiveMouthEstimator {
   setProfile(profile: VoiceProfile | null): void {
     this.profile = profile;
     this.probs = {};
+    this.springs.clear();
+    this.volumeSpring.reset();
+  }
+
+  /** Whether the profile has the uLipSync-style templates (profiles made before it do not). */
+  get hasUlsProfile(): boolean {
+    return !!this.profile?.uls;
   }
 
   get hasProfile(): boolean {
@@ -150,6 +166,8 @@ export class LiveMouthEstimator {
     this.logScale = 0;
     this.lastVowelPose = { ...NEUTRAL };
     this.probs = {};
+    this.springs.clear();
+    this.volumeSpring.reset();
     this.started = false;
   }
 
@@ -157,8 +175,9 @@ export class LiveMouthEstimator {
    * @param frame  latest time-domain samples (e.g. 1024 at 48 kHz)
    * @param spectrumDb  matching magnitude spectrum in dB, or null to skip shape estimation
    * @param dtSeconds  time since the previous call
+   * @param longFrame  latest 64 ms of samples, for mode 'ulipsync'
    */
-  process(frame: Float32Array, spectrumDb: Float32Array | null, sampleRate: number, dtSeconds: number): LiveFrame {
+  process(frame: Float32Array, spectrumDb: Float32Array | null, sampleRate: number, dtSeconds: number, longFrame?: Float32Array): LiveFrame {
     const s = this.settings;
     const levelDb = rmsDb(frame);
     // Noise floor: drops instantly to quieter input, creeps up slowly, so steady
@@ -191,8 +210,42 @@ export class LiveMouthEstimator {
     let per = { value: 0, pitchHz: 0 };
     let formants = { f1: 0, f2: 0 };
     let probabilities: Partial<Record<ProfileClassId, number>> | null = null;
+    // Mode 'ulipsync' sets the controls itself (its own springs replace the smoothing below).
+    let direct: FaceControls | null = null;
 
-    if (spectrumDb && s.shapeMode === 'profile' && this.profile) {
+    if (s.shapeMode === 'ulipsync' && this.profile?.uls && longFrame) {
+      const prototypes = this.profile.uls.prototypes as Record<ProfileClassId, number[]>;
+      const scores = ulsScores(ulsMfcc(longFrame, sampleRate), prototypes);
+      const weights: Partial<Record<ProfileClassId, number>> = {};
+      for (const id of Object.keys(scores) as ProfileClassId[]) {
+        let spring = this.springs.get(id);
+        if (!spring) this.springs.set(id, (spring = new SmoothDamp()));
+        spring.smoothTime = s.smoothSeconds;
+        weights[id] = spring.update(scores[id], dtSeconds);
+      }
+      // Loudness: from the gate (quiet) to the calibrated vowel level (fully open),
+      // like uLipSync's min/max volume, scaled by sensitivity, on its own spring.
+      // Volume over the whole 64 ms input, as LipSyncJob does (GetRMSVolume(input)).
+      const longDb = rmsDb(longFrame);
+      const fullDb = Math.max(gateLevel + 6, this.profile.vowelLevelDb);
+      const volTarget = clamp01(((longDb - gateLevel) / (fullDb - gateLevel)) * s.sensitivity);
+      this.volumeSpring.smoothTime = s.smoothSeconds;
+      const vol = this.volumeSpring.update(volTarget, dtSeconds);
+      // Mouth = weighted blend of sound poses × loudness (uLipSync multiplies each
+      // blend shape weight by the volume).
+      let total = 0;
+      let pose: FaceControls = { ...NEUTRAL };
+      for (const [id, w] of Object.entries(weights) as [ProfileClassId, number][]) {
+        if (w <= 0) continue;
+        total += w;
+        pose = lerpControls(pose, classPose(id), w / total);
+      }
+      direct = { jawOpen: pose.jawOpen * vol, lipWidth: pose.lipWidth * vol, lipRound: pose.lipRound * vol };
+      probabilities = weights;
+      const best = argmax(weights);
+      sound = best === 'silence' || vol < 0.05 ? null : best;
+      soundClass = !voiced || !sound ? (voiced ? 'voiced' : 'silence') : best === 'M' ? 'closure' : best === 'S' || best === 'SH' ? 'fricative' : 'vowel';
+    } else if (spectrumDb && s.shapeMode === 'profile' && this.profile) {
       // Match against the speaker's own recordings; smooth the per-sound
       // probabilities over ~50 ms so single odd frames do not flicker.
       const raw = voiced ? classify(this.profile, mfcc(spectrumDb, sampleRate)) : { silence: 1 };
@@ -282,11 +335,17 @@ export class LiveMouthEstimator {
       }
     }
 
-    const tau = jawTarget > this.jaw ? s.attackSeconds : s.releaseSeconds;
-    this.jaw += (jawTarget - this.jaw) * (1 - Math.exp(-dtSeconds / tau));
-    const shapeK = 1 - Math.exp(-dtSeconds / 0.04);
-    this.width += (widthTarget - this.width) * shapeK;
-    this.round += (roundTarget - this.round) * shapeK;
+    if (direct) {
+      this.jaw = direct.jawOpen;
+      this.width = direct.lipWidth;
+      this.round = direct.lipRound;
+    } else {
+      const tau = jawTarget > this.jaw ? s.attackSeconds : s.releaseSeconds;
+      this.jaw += (jawTarget - this.jaw) * (1 - Math.exp(-dtSeconds / tau));
+      const shapeK = 1 - Math.exp(-dtSeconds / 0.04);
+      this.width += (widthTarget - this.width) * shapeK;
+      this.round += (roundTarget - this.round) * shapeK;
+    }
 
     const c = normalizeControls({ jawOpen: this.jaw, lipWidth: this.width, lipRound: this.round });
     return {

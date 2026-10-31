@@ -206,6 +206,35 @@ web port wLipSync, both MIT, calibrate MFCC profiles per speaker.
   *Export* / *Import* move it as a JSON file (about 35 KB), and *Forget*
   deletes it.
 
+### uLipSync-style mode
+
+*Mouth shape from → uLipSync-style* is a TypeScript port of
+[uLipSync](https://github.com/hecomi/uLipSync)'s analysis, scoring and
+smoothing (MIT, Copyright (c) 2021 hecomi; the notice is in
+`src/live/ulipsync.ts`). It uses the same calibration recording, which also
+stores one averaged uLipSync template per sound. Profiles made before this
+mode need recalibrating to enable it.
+
+- **Analysis**, as uLipSync's `LipSyncJob`:
+  - the latest **64 ms**, low-passed and decimated to 16 kHz;
+  - pre-emphasis 0.97, Hamming window, peak normalization;
+  - FFT magnitude, 30 mel bands over 0–8 kHz, then 10·log₁₀;
+  - an unnormalized DCT, keeping c1–c12.
+- **Scoring**, with uLipSync's defaults: L2 distance to each sound's
+  averaged template, no standardization, 10^−distance, normalized to
+  proportions.
+- **Motion**: Unity's `SmoothDamp`, a critically damped spring, on every
+  sound's weight and on the volume (taken over the same 64 ms). The mouth is
+  the weighted blend of the sounds' poses × volume.
+  - **uLipSync smoothness** sets the spring time: 50 ms is uLipSync's
+    default, and 0 turns it off.
+- **Deviations** from uLipSync:
+  - templates average all recorded frames instead of the last 16;
+  - the low-pass is computed only at the samples kept after decimation,
+    which gives identical output;
+  - the volume range comes from the calibration (gate → your vowel level)
+    instead of fixed log₁₀ bounds.
+
 How the live voice analysis works (`src/live/estimator.ts`, pure and
 host-agnostic):
 
@@ -412,6 +441,7 @@ These were delegated to the implementer. Each is a choice, not a requirement.
 | Trombone rendering speed | Rotating phasors instead of a `sin()` per harmonic per sample | 6.5 s of audio renders in 76 ms instead of 295 ms, so sliders stay responsive. |
 | Live jaw | Loudness above an adaptive noise floor, capped relative to a decaying recent peak | The brief asked for loudness-driven jaw first. The peak cap fixes a jaw stuck fully open in a quiet room (seen with the test signal). |
 | Calibration | A 9-sound guided recording, MFCC templates with k-nearest-neighbour matching, and a soft blend of sound poses | The formant method looked right on synthetic voices but not on a real one. Per-speaker profiles are the standard robust fix (uLipSync, wLipSync), and they absorb accent, mic and room. Hard-switching on the single best sound snapped the jaw shut on unrecorded consonants (sentence jaw r 0.36); the soft blend restores 0.42–0.44. |
+| uLipSync-style mode | Ported faithfully and offered as a choice, not the default | It was expected to feel smoother. On sentences (three synthetic voice sizes, aligned windows) it measured differently: at uLipSync's 50 ms spring it **lags more** than profile mode (≈100–117 ms vs 88–92 ms), is **jerkier** (jaw jerk ≈0.02 vs 0.013) and tracks shapes less well. With a faster 20 ms spring it reads lip width (r ≈0.5 vs 0.43–0.46) and rounding better, but jitters about 4× more. Softening its winner-takes-most scoring changed jerk by under 10%. The feel can only be judged on a real voice, so the slider is there to try. |
 | Profile vs formant mode | The profile is used whenever one exists, and formant mode stays as the fallback | On held sounds the profile is right for every calibrated sound across voice sizes, where formant mode fails for higher voices. In whole sentences the profile has a little less lip-width detail (r 0.44–0.46 vs 0.55–0.59), because it knows 5 vowels rather than a continuous vowel space, and better rounding on 2 of 3 voices. |
 | Live mouth shape | LPC formants matched to reference vowels with an adaptive speaker scale, plus fricative and closure cues. Brightness-only is kept as a mode. | Brightness gave only one axis (ah ↔ oo). Formants are the cue that transfers best between voices, and the vowel poses reuse the text pipeline's visemes. |
 | Pink Trombone's role | A second, articulatory test voice (held vowels, vowel sweep, live test signal), not the inversion model | I first tried matching the whole spectral envelope against a 252-entry Pink Trombone tract codebook. It recovered Pink Trombone's own shapes but read klattsch's "oo" as an open "ah": envelope shape carries each voice's brightness. Formants transfer, so the analysis matches formants and Pink Trombone checks it on a voice it wasn't tuned on. |
@@ -430,7 +460,25 @@ Environment: macOS 26.6.2, Node 26.12.0, npm 11.20.0, and the Claude desktop
 app's built-in browser (Chromium) at an `AudioContext` sample rate of 48 kHz,
 `baseLatency` 5.3 ms and `outputLatency` 32 ms.
 
-**Automated** (`npm test`, 127 tests, all passing). Voice profile
+**Automated** (`npm test`, 138 tests, all passing). uLipSync port
+(11 tests in `tests/ulipsync.test.ts`):
+
+- **Analysis:** 64 ms of input (3072 samples at 48 kHz, 2823 at 44.1 kHz)
+  gives 12 coefficients. They separate aa from ee and are insensitive to
+  loudness (peak normalization).
+- **Scoring:** proportions sum to 1, and one unit of distance means a 10×
+  weight ratio.
+- **SmoothDamp:** no overshoot, monotonic, settles within 0.5 s, and a longer
+  smooth time responds more slowly.
+- **Profiles:** calibration stores one template per sound, and it survives
+  JSON.
+- **Voices:** after calibrating female- and child-like voices, their aa, ee,
+  oo, mm, ss and sh are read correctly. A Pink Trombone sweep reads ah → ee →
+  oo.
+- **Smoothness trade-off on sentences:** a 20 ms spring tracks lip width
+  better than the 50 ms default, and the default is steadier.
+
+Voice profile
 (14 tests in `tests/profile.test.ts`, which run the real calibration flow on
 synthetic speakers):
 
@@ -576,6 +624,16 @@ screenshots, not by listening):
   generator didn't run.
 - No console errors. At 375 px wide there is no horizontal scroll.
 
+**In the browser, uLipSync-style mode** (demo voice):
+
+- After a fresh calibration the option became available ("uLipSync-style
+  (calibrated, spring-smoothed)"), and the smoothness slider (50 ms) showed
+  only in this mode.
+- The demo's "ee" read as IY (width 0.84, jaw 0.19).
+- The latency breakdown showed the 64 ms window: about 82 ms
+  microphone-to-mouth with the 50 ms spring as the smoothing step.
+- No console errors.
+
 **In the browser, calibration** (demo voice as the speaker):
 
 - The card walked through all 9 steps (about 30 s) with the level meter
@@ -684,6 +742,10 @@ screenshots, not by listening):
   (klattsch, Pink Trombone and the demo voice), not a real microphone, which
   the desktop app's browser pane blocks. Whether your voice profile fixes your
   voice can only be checked with your voice.
+- The uLipSync-style mode inherits uLipSync's design limits: a 64 ms window
+  plus spring smoothing adds delay, and there's no handling for sounds
+  outside the profile. It was not better than profile mode on synthetic
+  voices, and nothing here shows it feels better on a real voice.
 - Profile mode knows only the 9 recorded sounds. Other vowels are blends of
   the nearest ones (ih and ae read as eh), and unrecorded consonants follow
   loudness. A profile is tied to one voice and mic setup: calibrate again

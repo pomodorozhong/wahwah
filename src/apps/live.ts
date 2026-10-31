@@ -6,12 +6,15 @@ import { REFERENCE_VOWELS } from '../live/vowels';
 import { renderSweep, PT_VOWELS } from '../live/ptVoice';
 import { frameFeatures, parseProfile, serializeProfile, type CalibrationStep, type ProfileClassId, type VoiceProfile } from '../live/profile';
 import { CalibrationRunner, READY_SECONDS } from '../ui/calibrationUi';
+import { ulsInputLength } from '../live/ulipsync';
+import { magnitudeSpectrumDb } from '../live/features';
 import { NEUTRAL, type FaceControls } from '../puppet/controls';
 import { compilePerformance, renderPerformance, DEFAULT_VOICE } from '../voice/performance';
 import { moodVoice, textToBabble } from '../babble/generate';
 import { PuppetView, byId, fitCanvas, renderShell, section } from '../ui/puppetView';
 
-const FFT = 1024;
+const FFT = 1024; // short analysis window (~21 ms at 48 kHz)
+const BUFFER = 4096; // time-domain history; uLipSync-style mode uses the last 64 ms
 const HISTORY_SECONDS = 6;
 
 const slider = (id: string, label: string, min: number, max: number, step: number, value: number) =>
@@ -54,9 +57,11 @@ renderShell(document.querySelector<HTMLDivElement>('#app')!, {
       ${slider('range', 'Loudness range to full open', 10, 50, 1, DEFAULT_LIVE.rangeDb)}
       ${slider('attack', 'Open time', 5, 120, 5, DEFAULT_LIVE.attackSeconds * 1000)}
       ${slider('release', 'Close time', 20, 300, 10, DEFAULT_LIVE.releaseSeconds * 1000)}
+      <div id="smoothField">${slider('smooth', 'uLipSync smoothness', 0, 0.2, 0.01, DEFAULT_LIVE.smoothSeconds)}</div>
       <label class="field">Mouth shape from
         <select id="shapeMode">
           <option value="profile" disabled>Your voice profile (calibrate first)</option>
+          <option value="ulipsync" disabled>uLipSync-style (calibrate first)</option>
           <option value="formants">Formants: vowels, s/sh/f, closed lips</option>
           <option value="centroid">Brightness only (earlier method)</option>
           <option value="off">Loudness only (jaw)</option>
@@ -101,8 +106,7 @@ let lastFrame: LiveFrame | null = null;
 let frameDts: number[] = [];
 let estimatorRuns = 0;
 const history: { t: number; levelDb: number; floorDb: number; thresholdDb: number; c: FaceControls }[] = [];
-const timeBuf = new Float32Array(FFT);
-const specBuf = new Float32Array(FFT / 2);
+const timeBuf = new Float32Array(BUFFER);
 
 function readSettings(): void {
   const num = (id: string) => Number(byId<HTMLInputElement>(id).value);
@@ -112,6 +116,7 @@ function readSettings(): void {
     rangeDb: num('range'),
     attackSeconds: num('attack') / 1000,
     releaseSeconds: num('release') / 1000,
+    smoothSeconds: num('smooth'),
     shapeMode: byId<HTMLSelectElement>('shapeMode').value as ShapeMode,
   };
   byId('sensitivityOut').textContent = `×${num('sensitivity').toFixed(2)}`;
@@ -119,6 +124,8 @@ function readSettings(): void {
   byId('rangeOut').textContent = `${num('range')} dB`;
   byId('attackOut').textContent = `${num('attack')} ms`;
   byId('releaseOut').textContent = `${num('release')} ms`;
+  byId('smoothOut').textContent = num('smooth') === 0 ? 'off' : `${(num('smooth') * 1000).toFixed(0)} ms`;
+  byId('smoothField').hidden = byId<HTMLSelectElement>('shapeMode').value !== 'ulipsync';
 }
 
 // The demo voice: deliberately unlike the formant mode's adult-male reference.
@@ -164,7 +171,7 @@ async function start(): Promise<void> {
   startBtn.disabled = true;
   const ctx = new AudioContext({ latencyHint: 'interactive' });
   const analyser = ctx.createAnalyser();
-  analyser.fftSize = FFT;
+  analyser.fftSize = BUFFER;
   analyser.smoothingTimeConstant = 0;
   let stream: MediaStream | null = null;
   const nodes: AudioNode[] = [];
@@ -289,6 +296,13 @@ function applyProfile(p: VoiceProfile | null, fresh = false): void {
   const profileOption = shapeModeEl.querySelector<HTMLOptionElement>('option[value="profile"]')!;
   profileOption.disabled = !p;
   profileOption.textContent = p ? 'Your voice profile (calibrated)' : 'Your voice profile (calibrate first)';
+  const ulsOption = shapeModeEl.querySelector<HTMLOptionElement>('option[value="ulipsync"]')!;
+  ulsOption.disabled = !p?.uls;
+  ulsOption.textContent = !p
+    ? 'uLipSync-style (calibrate first)'
+    : p.uls
+      ? 'uLipSync-style (calibrated, spring-smoothed)'
+      : 'uLipSync-style (calibrate again to enable)';
   byId<HTMLButtonElement>('exportProfile').disabled = !p;
   byId<HTMLButtonElement>('clearProfile').disabled = !p;
   byId<HTMLButtonElement>('calibrate').textContent = p ? 'Calibrate again' : 'Calibrate my voice';
@@ -322,7 +336,7 @@ function applyProfile(p: VoiceProfile | null, fresh = false): void {
       // Storage unavailable (private mode): the profile still works until reload; Export keeps it.
     }
   }
-  shapeModeEl.value = 'profile';
+  if (shapeModeEl.value !== 'ulipsync' || !p.uls) shapeModeEl.value = 'profile';
   readSettings();
 }
 
@@ -373,17 +387,19 @@ function forgetProfile(): void {
 function renderLatency(): void {
   if (!running) return;
   const ctx = running.ctx;
-  const windowMs = (FFT / ctx.sampleRate) * 1000;
+  const windowSamples = estimator.settings.shapeMode === 'ulipsync' ? ulsInputLength(ctx.sampleRate) : FFT;
+  const windowMs = (windowSamples / ctx.sampleRate) * 1000;
   const frameMs = frameDts.length ? (frameDts.reduce((a, b) => a + b, 0) / frameDts.length) * 1000 : 0;
   const trackLatency = running.stream?.getAudioTracks()[0]?.getSettings() as MediaTrackSettings & { latency?: number };
   const inputMs = (trackLatency?.latency ?? ctx.baseLatency ?? 0) * 1000;
-  const smoothMs = estimator.settings.attackSeconds * 1000;
+  const uls = estimator.settings.shapeMode === 'ulipsync';
+  const smoothMs = (uls ? estimator.settings.smoothSeconds : estimator.settings.attackSeconds) * 1000;
   // Half the window on average; the attack time constant to reach ~63% open.
   const total = inputMs + windowMs / 2 + smoothMs + frameMs;
   const rows = [
     ['input latency', `${inputMs.toFixed(1)} ms${trackLatency?.latency === undefined ? ' (baseLatency)' : ''}`],
-    ['analysis window', `${windowMs.toFixed(1)} ms (${FFT} samples)`],
-    ['open smoothing', `${smoothMs.toFixed(0)} ms`],
+    ['analysis window', `${windowMs.toFixed(1)} ms (${windowSamples} samples)`],
+    [uls ? 'spring smoothing' : 'open smoothing', `${smoothMs.toFixed(0)} ms`],
     ['display frame', `${frameMs.toFixed(1)} ms`],
     ['≈ mic→mouth', `${total.toFixed(0)} ms`],
   ];
@@ -500,13 +516,17 @@ function frame(now: number): void {
   const input = running;
   if (input) {
     input.analyser.getFloatTimeDomainData(timeBuf);
+    const sr = input.ctx.sampleRate;
+    const shortFrame = timeBuf.subarray(BUFFER - FFT);
+    const longFrame = timeBuf.subarray(BUFFER - ulsInputLength(sr));
     let sum = 0;
-    for (const v of timeBuf) sum += v * v;
+    for (const v of shortFrame) sum += v * v;
     level = Math.sqrt(sum / FFT);
-    input.analyser.getFloatFrequencyData(specBuf);
-    calibration.frame(now, calibration.running ? frameFeatures(timeBuf, specBuf, input.ctx.sampleRate) : null);
+    // Same spectrum as the tests and calibration use (Blackman window, dB).
+    const specBuf = magnitudeSpectrumDb(shortFrame);
+    calibration.frame(now, calibration.running ? frameFeatures(shortFrame, specBuf, sr, longFrame) : null);
     if (view.puppetEnabled) {
-      lastFrame = estimator.process(timeBuf, specBuf, input.ctx.sampleRate, dt);
+      lastFrame = estimator.process(shortFrame, specBuf, sr, dt, longFrame);
       estimatorRuns++;
       controls = lastFrame;
       if (lastFrame.f1 && lastFrame.f2) vowelTrail.push({ t, f1: lastFrame.f1, f2: lastFrame.f2 });
@@ -554,7 +574,7 @@ monitorEl.addEventListener('change', () => {
 view.puppetEl.addEventListener('change', () => {
   if (!view.puppetEnabled) view.host.relax();
 });
-for (const id of ['sensitivity', 'gate', 'range', 'attack', 'release', 'shapeMode']) byId(id).addEventListener('input', readSettings);
+for (const id of ['sensitivity', 'gate', 'range', 'attack', 'release', 'smooth', 'shapeMode']) byId(id).addEventListener('input', readSettings);
 
 // Hook for automated browser checks; not part of the puppet interface.
 Object.assign(window, {

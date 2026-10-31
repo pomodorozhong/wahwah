@@ -4,6 +4,7 @@ import { magnitudeSpectrumDb } from '../../src/live/features';
 import { DEFAULT_VOICE, compilePerformance, renderPerformance } from '../../src/voice/performance';
 import { renderTract, PT_VOWELS, PT_M } from '../../src/live/ptVoice';
 import { SR, N, DT } from './liveEval';
+import { ulsInputLength } from '../../src/live/ulipsync';
 
 export type StepVoice = (id: ProfileClassId, seconds: number) => Float32Array;
 
@@ -35,9 +36,10 @@ export function calibrate(voice: StepVoice, steps = CALIBRATION_STEPS): VoicePro
   for (const step of steps) {
     const audio = voice(step.id, step.seconds);
     const hop = Math.round(SR * DT);
-    for (let end = N; end <= audio.length; end += hop) {
+    const longN = ulsInputLength(SR);
+    for (let end = longN; end <= audio.length; end += hop) {
       const f = audio.subarray(end - N, end);
-      cal.add(step.id, frameFeatures(f, magnitudeSpectrumDb(f), SR), end / SR);
+      cal.add(step.id, frameFeatures(f, magnitudeSpectrumDb(f), SR, audio.subarray(end - longN, end)), end / SR);
     }
   }
   return cal.build(SR);
