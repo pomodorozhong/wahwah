@@ -154,8 +154,13 @@ in TypeScript, with no extra dependency:
 ## Live mic playground
 
 1. Pick **Input**: *Microphone* (choose a device once permission is granted)
-   or *Test signal*, a looped babble phrase played aloud and analyzed. The
-   test signal shows the mode without a mic.
+   or a test signal played aloud and analyzed:
+   - a babble sentence (klattsch);
+   - a **vowel sweep** ah · ee · oo · eh made by
+     [Pink Trombone](https://github.com/chdh/pink-trombone-mod), a different
+     voice that the analyzer was not tuned on.
+
+   The test signals show the mode without a mic.
 2. Press **● Start**. With the microphone, *Hear the microphone* sends it to
    your speakers (use headphones). The audio never leaves the page.
 3. Talk. The face (or the debug puppet) follows your voice.
@@ -174,9 +179,31 @@ host-agnostic):
   *Loudness range* below the recent peak. That keeps loud and soft sounds
   distinct even in a dead-silent room. *Sensitivity* scales the opening, and
   *Open time* / *Close time* smooth it.
-- **Lip shape (experimental)**: the spectral centroid of voiced sound,
-  150–4000 Hz. A dark sound (< ~1100 Hz, like "oo") reads as rounded, and a
-  bright one (> ~1300 Hz, like "ee") as wide.
+- **Mouth shape**, set by *Mouth shape from*:
+  - **Formants** (default): vowels, s/sh/f and closed lips, described below.
+  - **Brightness only**: the earlier method. It is one dark ↔ bright axis, so
+    it only really tells "ah" from "oo".
+  - **Loudness only**: the jaw, nothing else.
+
+  In formant mode each frame is read as one of:
+  - **Vowel.** A pitched frame (periodicity ≥ 0.5) gets F1 and F2 from a
+    14th-order LPC fit at 12 kHz (`src/live/features.ts`). They are matched
+    against ten reference vowels from klattsch's Klatt (1980) bank
+    (`src/live/vowels.ts`) in log-frequency space, after dividing by an
+    adaptive **speaker scale**. The scale is the stretch that best fits recent
+    vowels (1 = adult male, ~1.15 adult female, ~1.3 child) and adapts over
+    about 2 s. The three nearest vowels' mouth poses are blended; they are the
+    same designed visemes the text pipeline uses. Their openness is then
+    scaled by loudness.
+  - **Fricative.** Unvoiced hiss (low periodicity, more than 35% of power
+    above 2.5 kHz) is placed by its frequency centre: above 5.2 kHz → **s**
+    (teeth together, spread), 2.8–5.2 kHz → **sh** (rounded), lower → **f**.
+  - **Closed lips** (m, n, b): a pitched hum with more than 95% of its power
+    below 500 Hz *and* at least 8 dB below recent speech. *Unverified on real
+    speech* (see Known limitations).
+- The **Vowel map** section plots your live F1/F2 on a vowel chart (front
+  left, open down) against the reference vowels at your speaker scale, with a
+  one-second trail.
 - **Puppet output off** stops the estimator. Only the level meter keeps
   running.
 - The timeline shows the last 6 s on a −90..0 dBFS scale: input level, noise
@@ -260,9 +287,11 @@ src/voice/performance.ts   compilePerformance()  ──► SpeechPerformance
 - **Babble** (`src/babble/`) turns English into a klattsch phoneme string and
   maps each phoneme back to the English word that produced it. It is pure and
   deterministic, with no audio, DOM or Three.js.
-- **Live analysis** (`src/live/estimator.ts`) turns audio frames into
-  `FaceControls`. It knows nothing about the microphone or Web Audio, which
-  live in `src/apps/live.ts`.
+- **Live analysis** (`src/live/`) turns audio frames into `FaceControls`.
+  `features.ts` handles spectrum, LPC formants and periodicity, `vowels.ts`
+  the reference vowels and speaker scale, and `estimator.ts` combines them
+  with loudness. `ptVoice.ts` renders Pink Trombone test voices. None of it
+  touches the microphone or Web Audio, which live in `src/apps/live.ts`.
 - **UI** (`src/ui/puppetView.ts`) holds the page shell, the transport bar, the
   meters and the `PuppetView` (face or debug puppet). `src/ui/stage.ts` adds
   utterance playback and the timeline for the babble and klattsch pages. The
@@ -340,7 +369,12 @@ These were delegated to the implementer. Each is a choice, not a requirement.
 | Cartoon-teacher voice | Our own additive muted-trombone synth, driven by the existing babble + klattsch timing and pitch | The sound is a brass instrument with a plunger mute, so a small purpose-built synth gets closer than a speech synth. Reusing the performance keeps the face in exact sync. Babble Engine's *Talking Instruments → trombone* voice is another option already on the page. |
 | Trombone rendering speed | Rotating phasors instead of a `sin()` per harmonic per sample | 6.5 s of audio renders in 76 ms instead of 295 ms, so sliders stay responsive. |
 | Live jaw | Loudness above an adaptive noise floor, capped relative to a decaying recent peak | The brief asked for loudness-driven jaw first. The peak cap fixes a jaw stuck fully open in a quiet room (seen with the test signal). |
-| Live lip shape | Spectral centroid → round/wide, off-switchable and labelled experimental | Cheap and works on vowels. A richer estimate (formants, ML) needs separate evaluation, as the brief says. |
+| Live mouth shape | LPC formants matched to reference vowels with an adaptive speaker scale, plus fricative and closure cues. Brightness-only is kept as a mode. | Brightness gave only one axis (ah ↔ oo). Formants are the cue that transfers best between voices, and the vowel poses reuse the text pipeline's visemes. |
+| Pink Trombone's role | A second, articulatory test voice (held vowels, vowel sweep, live test signal), not the inversion model | I first tried matching the whole spectral envelope against a 252-entry Pink Trombone tract codebook. It recovered Pink Trombone's own shapes but read klattsch's "oo" as an open "ah": envelope shape carries each voice's brightness. Formants transfer, so the analysis matches formants and Pink Trombone checks it on a voice it wasn't tuned on. |
+| Pink Trombone package | `pink-trombone-mod` 0.1.0 from npm (MIT), imported as `pink-trombone-mod/Synthesizer.js` | I read its synth modules before installing: plain TypeScript with no network, storage or DOM use (only its demo UI, which we don't import, touches the page). It has no package entry point, and its extensionless imports need Vite to process it in tests (`server.deps.inline`). |
+| LPC order | 14 at 12 kHz | Orders 8–12 locked onto harmonics for voices above ~180 Hz ("oo" read as 890/2240 Hz). Order 14 keeps "oo" at 330–410 / 990–1180 Hz up to 300 Hz pitch. |
+| Lip rounding source | Vowel match only | Mixing in spectral darkness raised klattsch scores (0.27 → 0.41) but made Pink Trombone's "ee" look rounded (0.3–0.7). It depends on the voice, so it was left out. |
+| Closure rule | Low-band share above 0.95 and at least 8 dB below the recent peak | The low-band share alone can't separate "m" from "oo" (both 0.97–1.0). Neither test synth models a nasal murmur's lower level, so the rule follows phonetics and is marked unverified. |
 | Live page structure | A separate page, sharing `PuppetView` and the control format | Live input has no utterance or timeline, so it doesn't fit `Stage`. Sharing the puppet view keeps hosts identical. |
 | Layout | Transport and meters under the face, a scrolling panel with collapsible sections, 380 px wide | The panel had grown taller than the window with three engines. Always-used controls now stay next to the face. |
 | First play | Re-render only when the device sample rate differs from the prepared audio | First Play used to re-render, delaying the start by up to ~0.3 s with the trombone. |
@@ -352,7 +386,45 @@ Environment: macOS 26.6.2, Node 26.12.0, npm 11.20.0, and the Claude desktop
 app's built-in browser (Chromium) at an `AudioContext` sample rate of 48 kHz,
 `baseLatency` 5.3 ms and `outputLatency` 32 ms.
 
-**Automated** (`npm test`, 90 tests, all passing). Trombone (5 tests):
+**Automated** (`npm test`, 113 tests, all passing). Live mouth shapes
+(23 tests in `tests/liveShapes.test.ts`):
+
+- **LPC formants** on klattsch AA, AH, IY and UH at 110 and 220 Hz are within
+  15% of the bank's targets. Pink Trombone's ah has F1 > 600, ee has
+  F2 > 1800, and oo has F2 < 1000. Periodicity separates a tone (> 0.9, pitch
+  ≈ 150 Hz) from noise (< 0.3).
+- **Vowel matching** maps each reference vowel to itself. A 20%-shifted "ee"
+  still reads as "ee" at scale 1.2, and the scale search picks a value
+  above 1.
+- **Held sounds, klattsch**: AA opens the jaw (> 0.6), IY is wide and nearly
+  closed, UW is rounded, EH is spread and half open, S has the teeth together,
+  and SH is rounded.
+- **Held sounds, Pink Trombone** (not tuned on): AA opens, IY is wide, and UW
+  is rounded above 0.8.
+- **Pink Trombone sweep** ah → ee → oo: the jaw is highest on ah, width is
+  above 0.5 on ee, and rounding above 0.6 on oo.
+- **Closure rule**: a constructed signal, a buzzy vowel then a hum 14 dB
+  quieter, reads as closure, with the jaw below 0.1.
+- **Whole sentences** (objective score): each control is correlated with the
+  face track the text pipeline makes for the same rendered sentence, over
+  four sentences, each in a larger voice (scale 1, 120 Hz) and a smaller one
+  (scale 1.15, 200 Hz):
+
+  | Mode | jaw | width | round |
+  | --- | --- | --- | --- |
+  | Loudness only | 0.50 | — | — |
+  | Brightness only (before) | 0.50 | 0.10 | 0.40 |
+  | **Formants (now)** | 0.49 | **0.58** | 0.27 |
+
+  Lip width went from essentially uncorrelated to clearly tracking, and the
+  jaw is unchanged. Rounding is the weakest control: on klattsch sentences
+  the old brightness cue scores higher. As above, that cue doesn't hold
+  across voices.
+- **Speaker scale**: a smaller voice ends with a larger scale than a bigger
+  one.
+- **Speed**: the analysis takes under 4 ms per frame, inside a 16.7 ms frame.
+
+Trombone (5 tests):
 
 - `f0Curve` matches klattsch's base pitch and reaches a +60 Hz glide.
 - Rendered pitch, by autocorrelation, is within 5% of the speech pitch.
@@ -437,6 +509,17 @@ screenshots, not by listening):
   generator didn't run.
 - No console errors. At 375 px wide there is no horizontal scroll.
 
+**In the browser, live formant mode** (Pink Trombone vowel sweep as input):
+
+- The face moved through distinct shapes:
+  - ah: jaw 0.85, read as AA at 750/1100 Hz;
+  - ee: width 0.89, jaw 0.42, read as IY at 290/2030 Hz;
+  - oo: rounding 1.00, width 0, read as UW at 315/750 Hz;
+  - eh: width 0.58, jaw 0.59, read as IH (its neighbour) at 500/2250 Hz;
+  - then back to ah.
+- The speaker scale settled at ×1.09. The vowel map showed the live dot and
+  trail moving between reference vowels. No console errors.
+
 **In the browser, layout, trombone and live mode**:
 
 - The new layout renders on all four pages. At 375 px wide, neither the babble
@@ -511,11 +594,25 @@ screenshots, not by listening):
 
 ## Known limitations
 
-- Live mode was only verified with the test signal, not a real microphone.
-  Mic levels vary widely, so *Sensitivity*, *Gate* and *Loudness range* may
-  need tuning per setup. Lip shape from the spectral centroid is a rough
-  guess: it confuses voice brightness with vowel shape, and sibilants read as
-  "wide". Analysis runs once per display frame, so a background tab stops it.
+- Live mode was only verified with synthetic voices (klattsch and Pink
+  Trombone), not a real microphone, which the desktop app's browser pane
+  blocks. Mic levels vary widely, so *Sensitivity*, *Gate* and *Loudness
+  range* may need tuning per setup. Analysis runs once per display frame, so
+  a background tab stops it.
+- Formant mode limits:
+  - **Rounding** is the weakest control (sentence r 0.27).
+  - **Very high voices** (above ~300 Hz) can still confuse F1 with a
+    harmonic.
+  - **eh** tends to read as its neighbour ih.
+  - **f** sometimes reads as sh at higher pitch.
+  - The **speaker scale** needs a second or two of varied vowels to settle;
+    a single held vowel can be explained by several scales.
+  - **Closed-lip detection** (m, n, b) follows the usual phonetics, but no
+    test voice reproduces a real nasal murmur's lower level. klattsch's and
+    Pink Trombone's "m" are as loud as their vowels. Expect it to need tuning
+    on a real voice.
+  - Other consonants (t, d, k, l, r …) aren't classified. Their mouth shape
+    follows loudness and the surrounding vowel.
 - The trombone renders the whole line before playing, like the other engines.
   It is not a live instrument, and it doesn't follow the microphone.
 

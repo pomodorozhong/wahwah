@@ -37,6 +37,19 @@ declare module 'klattsch' {
 
   export function compileString(input: string, opts?: CompileOptions): CompileResult;
 
+  export interface BankPhoneme {
+    F1: number;
+    F2: number;
+    F3: number;
+    glideTo?: { F1: number; F2: number; F3: number };
+    [key: string]: unknown;
+  }
+
+  export const banks: {
+    defaultName: string;
+    get(name: string): { name: string; phonemes: Record<string, BankPhoneme> } | undefined;
+  };
+
   export function renderToBuffer(opts: {
     sampleRate?: number;
     schedule: ScheduleEvent[];

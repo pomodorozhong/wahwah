@@ -86,10 +86,11 @@ describe('live mouth estimator', () => {
     expect(high.jawOpen).toBeGreaterThan(low.jawOpen * 2);
   });
 
-  it('reads dark sound as rounded and bright sound as wide (experimental lip shape)', () => {
+  it('brightness mode reads dark sound as rounded and bright sound as wide', () => {
     const lead = Array.from({ length: 20 }, () => tone(200, 0.0005));
-    const dark = run(new LiveMouthEstimator(), [...lead, ...Array.from({ length: 30 }, (_, j) => tone(450, 0.2, j * N))], true).at(-1)!;
-    const bright = run(new LiveMouthEstimator(), [...lead, ...Array.from({ length: 30 }, (_, j) => tone(2400, 0.2, j * N))], true).at(-1)!;
+    const centroid = () => new LiveMouthEstimator({ ...DEFAULT_LIVE, shapeMode: 'centroid' });
+    const dark = run(centroid(), [...lead, ...Array.from({ length: 30 }, (_, j) => tone(450, 0.2, j * N))], true).at(-1)!;
+    const bright = run(centroid(), [...lead, ...Array.from({ length: 30 }, (_, j) => tone(2400, 0.2, j * N))], true).at(-1)!;
     expect(dark.lipRound).toBeGreaterThan(0.6);
     expect(dark.lipWidth).toBeLessThan(0.1);
     expect(bright.lipWidth).toBeGreaterThan(0.6);

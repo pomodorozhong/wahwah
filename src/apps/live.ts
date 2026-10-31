@@ -1,7 +1,9 @@
 // Live playground: real-time microphone (or test signal) -> live voice
 // analysis -> puppet instructions -> face or debug puppet.
 
-import { DEFAULT_LIVE, LiveMouthEstimator, type LiveFrame } from '../live/estimator';
+import { DEFAULT_LIVE, LiveMouthEstimator, type LiveFrame, type ShapeMode } from '../live/estimator';
+import { REFERENCE_VOWELS } from '../live/vowels';
+import { renderSweep, PT_VOWELS } from '../live/ptVoice';
 import { NEUTRAL, type FaceControls } from '../puppet/controls';
 import { compilePerformance, renderPerformance, DEFAULT_VOICE } from '../voice/performance';
 import { moodVoice, textToBabble } from '../babble/generate';
@@ -23,7 +25,8 @@ renderShell(document.querySelector<HTMLDivElement>('#app')!, {
       `<label class="field">Input
         <select id="source">
           <option value="mic">Microphone</option>
-          <option value="test">Test signal (looped babble, played aloud)</option>
+          <option value="test">Test signal: babble sentence (klattsch, played aloud)</option>
+          <option value="sweep">Test signal: vowel sweep ah·ee·oo·eh (Pink Trombone, played aloud)</option>
         </select>
       </label>
       <label class="field" id="deviceField">Microphone device <select id="device"><option value="">Default</option></select></label>
@@ -37,7 +40,18 @@ renderShell(document.querySelector<HTMLDivElement>('#app')!, {
       ${slider('range', 'Loudness range to full open', 10, 50, 1, DEFAULT_LIVE.rangeDb)}
       ${slider('attack', 'Open time', 5, 120, 5, DEFAULT_LIVE.attackSeconds * 1000)}
       ${slider('release', 'Close time', 20, 300, 10, DEFAULT_LIVE.releaseSeconds * 1000)}
-      <label><input id="lipShape" type="checkbox" checked /> Estimate lip shape from the spectrum (experimental)</label>`,
+      <label class="field">Mouth shape from
+        <select id="shapeMode">
+          <option value="formants">Formants: vowels, s/sh/f, closed lips</option>
+          <option value="centroid">Brightness only (earlier method)</option>
+          <option value="off">Loudness only (jaw)</option>
+        </select>
+      </label>`,
+    ) +
+    section(
+      'Vowel map',
+      `<canvas id="vowelMap" class="vowel-map"></canvas>
+      <p class="hint">Your F1 (openness, down) and F2 (front, left) against the reference vowels, scaled to your voice. The dot is now; the trail is the last second.</p>`,
     ) +
     section(
       'Latency',
@@ -80,7 +94,7 @@ function readSettings(): void {
     rangeDb: num('range'),
     attackSeconds: num('attack') / 1000,
     releaseSeconds: num('release') / 1000,
-    lipShape: byId<HTMLInputElement>('lipShape').checked,
+    shapeMode: byId<HTMLSelectElement>('shapeMode').value as ShapeMode,
   };
   byId('sensitivityOut').textContent = `×${num('sensitivity').toFixed(2)}`;
   byId('gateOut').textContent = `${num('gate')} dB`;
@@ -89,10 +103,21 @@ function readSettings(): void {
   byId('releaseOut').textContent = `${num('release')} ms`;
 }
 
-function testSignal(ctx: AudioContext): AudioBufferSourceNode {
-  const script = textToBabble('Hello there! Testing, one two three. Can you see my mouth move? Oh, wonderful.', { seed: 9 });
-  const perf = compilePerformance(script.phonemes, moodVoice(DEFAULT_VOICE, script.mood));
-  const pcm = renderPerformance(perf, ctx.sampleRate) as Float32Array<ArrayBuffer>;
+function testSignal(ctx: AudioContext, kind: 'test' | 'sweep'): AudioBufferSourceNode {
+  let pcm: Float32Array<ArrayBuffer>;
+  if (kind === 'sweep') {
+    // Pink Trombone gliding between vowel shapes: a voice the analyzer was not tuned on.
+    const v = PT_VOWELS;
+    pcm = renderSweep(
+      [v.AA, v.IY, v.UW, v.EH, v.AA, v.UW, v.IY].flatMap((config) => [{ config, seconds: 0.55 }, { config: null, seconds: 0.12 }]),
+      ctx.sampleRate,
+      140,
+    ) as Float32Array<ArrayBuffer>;
+  } else {
+    const script = textToBabble('Hello there! Testing, one two three. Can you see my mouth move? Oh, wonderful.', { seed: 9 });
+    const perf = compilePerformance(script.phonemes, moodVoice(DEFAULT_VOICE, script.mood));
+    pcm = renderPerformance(perf, ctx.sampleRate) as Float32Array<ArrayBuffer>;
+  }
   const buffer = ctx.createBuffer(1, pcm.length + ctx.sampleRate, ctx.sampleRate); // 1 s gap between loops
   buffer.copyToChannel(pcm, 0);
   const src = ctx.createBufferSource();
@@ -129,7 +154,7 @@ async function start(): Promise<void> {
       nodes.push(src, monitor);
       void listDevices();
     } else {
-      const src = testSignal(ctx);
+      const src = testSignal(ctx, sourceEl.value as 'test' | 'sweep');
       src.connect(analyser);
       src.connect(ctx.destination);
       src.start();
@@ -201,12 +226,16 @@ function renderDiagnostics(): void {
   const f = lastFrame;
   const rows = running
     ? [
-        ['source', sourceEl.value === 'mic' ? 'microphone' : 'test signal'],
+        ['source', sourceEl.selectedOptions[0]?.textContent?.split(' (')[0] ?? sourceEl.value],
         ['level', f ? `${f.levelDb.toFixed(1)} dBFS` : '–'],
         ['noise floor', f ? `${f.floorDb.toFixed(1)} dBFS` : '–'],
         ['recent peak', f ? `${f.peakDb.toFixed(1)} dBFS` : '–'],
         ['opens above', f ? `${f.thresholdDb.toFixed(1)} dBFS` : '–'],
         ['voiced', f ? (f.voiced ? 'yes' : 'no') : '–'],
+        ['read as', f ? `${f.soundClass}${f.sound ? ` (${f.sound})` : ''}` : '–'],
+        ['periodicity', f ? `${f.periodicity.toFixed(2)}${f.pitchHz ? ` · ${f.pitchHz.toFixed(0)} Hz` : ''}` : '–'],
+        ['F1 / F2', f && f.f1 ? `${f.f1.toFixed(0)} / ${f.f2.toFixed(0)} Hz` : '–'],
+        ['speaker scale', f ? `×${f.speakerScale.toFixed(2)}` : '–'],
         ['centroid', f && f.centroidHz ? `${f.centroidHz.toFixed(0)} Hz` : '–'],
         ['estimator', view.puppetEnabled ? 'running' : 'off — puppet output disabled'],
       ]
@@ -253,6 +282,44 @@ function drawTimeline(now: number): void {
   g.fillText(`last ${HISTORY_SECONDS} s`, w - 70, 11);
 }
 
+const vowelTrail: { t: number; f1: number; f2: number }[] = [];
+const vowelMap = byId<HTMLCanvasElement>('vowelMap');
+
+/** F1/F2 chart in the usual vowel-chart orientation (front left, open down). */
+function drawVowelMap(t: number): void {
+  const { g, w, h } = fitCanvas(vowelMap);
+  const scale = lastFrame?.speakerScale ?? 1;
+  const [f2Lo, f2Hi, f1Lo, f1Hi] = [600 * scale, 2600 * scale, 220 * scale, 950 * scale];
+  const x = (f2: number) => w - ((Math.log(f2) - Math.log(f2Lo)) / (Math.log(f2Hi) - Math.log(f2Lo))) * (w - 24) - 12;
+  const y = (f1: number) => 10 + ((Math.log(f1) - Math.log(f1Lo)) / (Math.log(f1Hi) - Math.log(f1Lo))) * (h - 20);
+  g.font = '11px ui-monospace, monospace';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  for (const v of REFERENCE_VOWELS) {
+    g.fillStyle = v.code === lastFrame?.sound ? '#ff8a5c' : '#8a93a8';
+    g.fillText(v.code, x(v.f2 * scale), y(v.f1 * scale));
+  }
+  while (vowelTrail.length && vowelTrail[0].t < t - 1) vowelTrail.shift();
+  vowelTrail.forEach((p, i) => {
+    g.fillStyle = `rgba(126,224,129,${0.15 + (0.6 * i) / vowelTrail.length})`;
+    g.beginPath();
+    g.arc(x(p.f2), y(p.f1), 2.5, 0, Math.PI * 2);
+    g.fill();
+  });
+  const last = vowelTrail.at(-1);
+  if (last && t - last.t < 0.15) {
+    g.fillStyle = '#7ee081';
+    g.beginPath();
+    g.arc(x(last.f2), y(last.f1), 6, 0, Math.PI * 2);
+    g.fill();
+  }
+  g.fillStyle = '#4a5168';
+  g.textAlign = 'left';
+  g.fillText('front ← F2', 4, h - 6);
+  g.textAlign = 'right';
+  g.fillText('F1 ↓ open', w - 4, 8);
+}
+
 let last = performance.now();
 let lastPanel = 0;
 function frame(now: number): void {
@@ -271,6 +338,7 @@ function frame(now: number): void {
       lastFrame = estimator.process(timeBuf, specBuf, running.ctx.sampleRate, dt);
       estimatorRuns++;
       controls = lastFrame;
+      if (lastFrame.f1 && lastFrame.f2) vowelTrail.push({ t, f1: lastFrame.f1, f2: lastFrame.f2 });
     }
     frameDts.push(dt);
     if (frameDts.length > 60) frameDts.shift();
@@ -280,8 +348,9 @@ function frame(now: number): void {
     while (history.length && history[0].t < t - HISTORY_SECONDS) history.shift();
   }
   view.update(dt, controls);
-  view.showReadout(running ? (now - running.started) / 1000 : null, lastFrame ? (lastFrame.voiced ? 'voice' : 'quiet') : null, level);
+  view.showReadout(running ? (now - running.started) / 1000 : null, lastFrame ? (lastFrame.sound ?? (lastFrame.voiced ? 'voice' : 'quiet')) : null, level);
   drawTimeline(t);
+  drawVowelMap(t);
   if (now - lastPanel > 250) {
     lastPanel = now;
     renderLatency();
@@ -306,7 +375,7 @@ monitorEl.addEventListener('change', () => {
 view.puppetEl.addEventListener('change', () => {
   if (!view.puppetEnabled) view.host.relax();
 });
-for (const id of ['sensitivity', 'gate', 'range', 'attack', 'release', 'lipShape']) byId(id).addEventListener('input', readSettings);
+for (const id of ['sensitivity', 'gate', 'range', 'attack', 'release', 'shapeMode']) byId(id).addEventListener('input', readSettings);
 
 // Hook for automated browser checks; not part of the puppet interface.
 Object.assign(window, {
@@ -321,6 +390,7 @@ Object.assign(window, {
       view: view.view,
       motion: view.motion.current,
       latency: byId('latency').textContent,
+      vowelTrail: vowelTrail.length,
     }),
     start,
     stop,

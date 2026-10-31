@@ -16,5 +16,8 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
+    // pink-trombone-mod uses extensionless relative imports that plain Node ESM
+    // cannot resolve; let Vite transform it.
+    server: { deps: { inline: ['pink-trombone-mod'] } },
   },
 });
