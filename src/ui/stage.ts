@@ -29,7 +29,7 @@ export interface StageOptions {
   compile: () => Utterance;
   /** Called every frame with the playback time and active segment. */
   onFrame?: (time: number | null, segment: PerformanceSegment | null) => void;
-  /** Extra fields for the window.__mumble debug hook. */
+  /** Extra fields for the window.__wahwah debug hook. */
   debugState?: () => Record<string, unknown>;
 }
 
@@ -63,7 +63,7 @@ export class Stage {
       if (e.code === 'Escape') this.stop();
     });
 
-    Object.assign(window, { __mumble: this.debugHook() });
+    Object.assign(window, { __wahwah: this.debugHook() });
     requestAnimationFrame((now) => this.frame(now));
   }
 

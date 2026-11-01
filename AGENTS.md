@@ -1,8 +1,8 @@
 # Agents
 
-Mumble voice playgrounds: invented, stylized speech (klattsch, Babble Engine,
-a wah-wah trombone synth) with a host-agnostic 3D puppet control format, plus
-a live microphone mode. TypeScript + Vite + Three.js + Web Audio, managed with
+wahwah, the mumble voice playgrounds: invented, stylized speech (klattsch,
+Babble Engine, a wah-wah trombone synth) with a host-agnostic 3D puppet control
+format, plus a live microphone mode. TypeScript + Vite + Three.js + Web Audio, managed with
 npm. See `README.md` for features and decisions and `docs/` for development
 notes.
 

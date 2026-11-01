@@ -117,7 +117,9 @@ const monitorEl = byId<HTMLInputElement>('monitor');
 const startBtn = byId<HTMLButtonElement>('start');
 const stopBtn = byId<HTMLButtonElement>('stop');
 const shapeModeEl = byId<HTMLSelectElement>('shapeMode');
-const PROFILE_KEY = 'mumble.voiceProfile.v1';
+const PROFILE_KEY = 'wahwah.voiceProfile.v1';
+/** Where profiles were stored before the rename to wahwah. */
+const LEGACY_PROFILE_KEY = 'mumble.voiceProfile.v1';
 let profile: VoiceProfile | null = null;
 
 interface Running {
@@ -431,7 +433,7 @@ const escapeHtml = (t: string) => t.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(
 
 function loadStoredProfile(): void {
   try {
-    const text = localStorage.getItem(PROFILE_KEY);
+    const text = localStorage.getItem(PROFILE_KEY) ?? localStorage.getItem(LEGACY_PROFILE_KEY);
     if (text) applyProfile(parseProfile(text));
   } catch {
     // Missing, unreadable or outdated: start without a profile.
@@ -465,6 +467,7 @@ async function importProfile(file: File): Promise<void> {
 function forgetProfile(): void {
   try {
     localStorage.removeItem(PROFILE_KEY);
+    localStorage.removeItem(LEGACY_PROFILE_KEY);
   } catch {
     // Nothing stored.
   }
@@ -854,7 +857,7 @@ for (const id of ['sensitivity', 'gate', 'range', 'attack', 'release', 'smooth',
 
 // Hook for automated browser checks; not part of the puppet interface.
 Object.assign(window, {
-  __mumble: {
+  __wahwah: {
     state: () => ({
       running: !!running,
       source: sourceEl.value,

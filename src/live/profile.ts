@@ -83,7 +83,7 @@ export interface ProfileClass {
 }
 
 export interface VoiceProfile {
-  kind: 'mumble-voice-profile';
+  kind: 'wahwah-voice-profile';
   version: 1;
   createdAt: string;
   sampleRate: number;
@@ -167,7 +167,7 @@ export class Calibration {
     const rangeDb = Math.round(clamp(snr - gateDb + 3, 12, 45));
 
     const profile: VoiceProfile = {
-      kind: 'mumble-voice-profile',
+      kind: 'wahwah-voice-profile',
       version: 1,
       createdAt: new Date().toISOString(),
       sampleRate,
@@ -320,7 +320,9 @@ export function serializeProfile(p: VoiceProfile): string {
 /** Parse and sanity-check a saved profile; throws with a readable message. */
 export function parseProfile(text: string): VoiceProfile {
   const p = JSON.parse(text) as VoiceProfile;
-  if (p?.kind !== 'mumble-voice-profile' || p.version !== 1) throw new Error('Not a mumble voice profile (version 1).');
+  // Profiles saved before the rename to wahwah carry the old kind.
+  if ((p?.kind as string) === 'mumble-voice-profile') p.kind = 'wahwah-voice-profile';
+  if (p?.kind !== 'wahwah-voice-profile' || p.version !== 1) throw new Error('Not a wahwah voice profile (version 1).');
   if (!Array.isArray(p.classes) || p.mean?.length !== MFCC_COEFFS || p.std?.length !== MFCC_COEFFS) throw new Error('The profile is incomplete.');
   for (const c of p.classes) {
     if (!c.templates.every((t) => Array.isArray(t) && t.length === MFCC_COEFFS && t.every(Number.isFinite))) throw new Error(`Sound ${c.id} has bad data.`);

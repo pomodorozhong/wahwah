@@ -1,4 +1,4 @@
-# Mumble voice playgrounds
+# wahwah
 
 Prototypes for invented, stylized speech with an optional 3D puppet. Text or
 phonemes go in, [klattsch](https://github.com/tgies/klattsch) speaks them, and
@@ -512,7 +512,7 @@ These were delegated to the implementer. Each is a choice, not a requirement.
 | Coarticulation | Each sound has a *dominance*. Vowels, M/B/P and W hit their pose, while tongue consonants (T, K, …) mostly borrow the neighbouring vowel shape. | Without this, the mouth flaps shut on every consonant. |
 | Smoothing | Smoothstep between keyframes. 20 ms anticipation (the mouth moves slightly before the sound). Pauses relax to neutral. | Gives continuous motion and a natural lead. |
 | Stop/end | The host eases to neutral with an 80 ms time constant | Stop, natural end and puppet-off never leave an open mouth. |
-| Puppet off | The generator is skipped entirely. `__mumble.state().generatorRuns` counts its runs. | Proves voice works without the puppet module. |
+| Puppet off | The generator is skipped entirely. `__wahwah.state().generatorRuns` counts its runs. | Proves voice works without the puppet module. |
 | Presets | A phrase plus pitch, rate and voice size | So phrases are compared as written. |
 | Edits during playback | Stop and relax, then use the new settings on the next play | Prevents the text on screen from mismatching what is heard. |
 | Face | Procedural: a sphere head, eyes, brows and ears. The lips are a tube rebuilt each frame around an outline driven by the controls, with a dark mouth interior and upper teeth. | The brief makes the face optional to embellish. One rebuilt tube shows width, opening and pucker without a modelled rig. |
@@ -928,5 +928,5 @@ screenshots, not by listening):
 - Polyphonic klattsch input (`[voice=N]`) plays and animates voice 0 only.
 - Latency wasn't measured beyond the reported `baseLatency`/`outputLatency`.
   Rendering takes tens of milliseconds for preset-length phrases.
-- `window.__mumble` is a debug hook for automated checks, not part of the
+- `window.__wahwah` is a debug hook for automated checks, not part of the
   puppet interface.

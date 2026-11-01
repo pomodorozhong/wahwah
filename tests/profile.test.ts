@@ -154,8 +154,14 @@ describe('profile storage', () => {
   });
 
   it('rejects files that are not profiles', () => {
-    expect(() => parseProfile('{"kind":"something-else"}')).toThrow(/Not a mumble voice profile/);
+    expect(() => parseProfile('{"kind":"something-else"}')).toThrow(/Not a wahwah voice profile/);
     expect(() => parseProfile('not json')).toThrow();
+  });
+
+  it('accepts profiles saved under the old mumble-voice kind', SLOW, () => {
+    const legacy = JSON.parse(serializeProfile(calibrate(klattschVoice()))) as { kind: string };
+    legacy.kind = 'mumble-voice-profile';
+    expect(parseProfile(JSON.stringify(legacy)).kind).toBe('wahwah-voice-profile');
   });
 
   it('ignores the start of each step while the speaker begins the sound', () => {
