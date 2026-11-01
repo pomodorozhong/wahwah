@@ -308,7 +308,7 @@ function stop(): void {
   void running.ctx.close();
   running = null;
   lastFrame = null;
-  view.host.relax();
+  view.follower.relax();
   stopBtn.disabled = true;
   startBtn.textContent = '● Start';
 }
@@ -581,7 +581,7 @@ function stopPlayback(): void {
   }
   void playback.ctx.close();
   playback = null;
-  view.host.relax();
+  view.follower.relax();
   byId<HTMLButtonElement>('stopRec').disabled = true;
 }
 
@@ -844,7 +844,7 @@ monitorEl.addEventListener('change', () => {
   if (running?.monitor) running.monitor.gain.value = monitorEl.checked ? 1 : 0;
 });
 view.puppetEl.addEventListener('change', () => {
-  if (!view.puppetEnabled) view.host.relax();
+  if (!view.puppetEnabled) view.follower.relax();
   syncWorklet();
 });
 threadEl().addEventListener('change', () => {
@@ -859,7 +859,7 @@ Object.assign(window, {
       running: !!running,
       source: sourceEl.value,
       frame: lastFrame,
-      controls: { ...view.host.controls },
+      controls: { ...view.follower.controls },
       puppetEnabled: view.puppetEnabled,
       estimatorRuns,
       view: view.view,

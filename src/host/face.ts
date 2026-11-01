@@ -1,7 +1,10 @@
 // Preview host: a procedural Three.js face. It knows nothing about phonemes;
-// it only draws a mouth shape from MouthShape values (see adapter.ts).
+// it maps FaceControls to a MouthShape and draws that.
 
 import * as THREE from 'three';
+import type { FaceControls } from '../puppet/controls';
+import type { FaceHost } from './host';
+import { Blinker } from './mappings';
 
 /** Geometry-level mouth parameters, in head-radius units. */
 export interface MouthShape {
@@ -13,15 +16,27 @@ export interface MouthShape {
   cornerLift: number;
 }
 
+/** The preview rig's mapping from controls to mouth geometry. */
+export function controlsToMouth(c: FaceControls): MouthShape {
+  return {
+    halfWidth: 0.2 + 0.1 * c.lipWidth - 0.1 * c.lipRound,
+    upperOpen: 0.035 + 0.04 * c.jawOpen + 0.025 * c.lipRound,
+    lowerOpen: 0.035 + 0.2 * c.jawOpen + 0.03 * c.lipRound,
+    protrusion: 0.1 * c.lipRound,
+    lipThickness: 0.032 + 0.016 * c.lipRound,
+    cornerLift: 0.035 * c.lipWidth,
+  };
+}
+
 const SKIN = 0xf2b48c;
 const LIP = 0xc8565f;
 const MOUTH_INSIDE = 0x3a0d14;
 const OUTLINE_POINTS = 48;
 
-export class PreviewFace {
-  readonly renderer: THREE.WebGLRenderer;
-  private readonly scene = new THREE.Scene();
-  private readonly camera = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
+export class PreviewFace implements FaceHost {
+  readonly scene = new THREE.Scene();
+  readonly camera = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
+  readonly status = '';
   private readonly head = new THREE.Group();
   private readonly mouth = new THREE.Group();
   private readonly lips: THREE.Mesh;
@@ -29,17 +44,12 @@ export class PreviewFace {
   private readonly teeth: THREE.Mesh;
   private readonly eyes: THREE.Group[] = [];
   private readonly brows: THREE.Mesh[] = [];
-  private nextBlink = 2;
-  private blinkPhase = -1;
+  private readonly blinker = new Blinker();
   private elapsed = 0;
   /** Idle blinking and head sway; purely cosmetic. */
   idleMotion = true;
 
-  constructor(private readonly container: HTMLElement) {
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    container.appendChild(this.renderer.domElement);
-
+  constructor() {
     this.scene.background = new THREE.Color(0x1d2230);
     this.camera.position.set(0, 0, 6);
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0x445066, 1.6));
@@ -116,8 +126,11 @@ export class PreviewFace {
 
     this.scene.add(this.head);
     this.setMouth({ halfWidth: 0.22, upperOpen: 0.02, lowerOpen: 0.02, protrusion: 0, lipThickness: 0.035, cornerLift: 0 });
-    this.resize();
-    new ResizeObserver(() => this.resize()).observe(container);
+  }
+
+  setControls(c: FaceControls): void {
+    this.setMouth(controlsToMouth(c));
+    this.setBrowLift(c.jawOpen * 0.6);
   }
 
   /** Rebuild the lip tube and mouth cavity for a new shape. */
@@ -149,12 +162,12 @@ export class PreviewFace {
     this.teeth.position.set(0, shape.upperOpen - shape.lipThickness - 0.02, -0.02);
   }
 
-  /** Brow lift, 0-1. A small expressive extra driven by the host adapter. */
+  /** Brow lift, 0-1. A small expressive extra driven by the jaw. */
   setBrowLift(lift: number): void {
     for (const b of this.brows) b.position.y = 0.46 + 0.06 * lift;
   }
 
-  render(dtSeconds: number): void {
+  update(dtSeconds: number): void {
     this.elapsed += dtSeconds;
     if (this.idleMotion) {
       this.head.rotation.y = Math.sin(this.elapsed * 0.7) * 0.08;
@@ -164,28 +177,14 @@ export class PreviewFace {
       this.head.rotation.set(0, 0, 0);
       for (const e of this.eyes) e.scale.y = 1;
     }
-    this.renderer.render(this.scene, this.camera);
   }
 
   private updateBlink(dt: number): void {
-    if (this.blinkPhase < 0) {
-      this.nextBlink -= dt;
-      if (this.nextBlink <= 0) this.blinkPhase = 0;
-    } else {
-      this.blinkPhase += dt / 0.16;
-      if (this.blinkPhase >= 1) {
-        this.blinkPhase = -1;
-        this.nextBlink = 2 + Math.random() * 3;
-      }
-    }
-    const closed = this.blinkPhase < 0 ? 0 : Math.sin(this.blinkPhase * Math.PI);
+    const closed = this.blinker.update(dt);
     for (const e of this.eyes) e.scale.y = 1 - 0.9 * closed;
   }
 
-  private resize(): void {
-    const w = this.container.clientWidth || 1;
-    const h = this.container.clientHeight || 1;
-    this.renderer.setSize(w, h, false);
+  resize(w: number, h: number): void {
     this.camera.aspect = w / h;
     // Fit the head (about 3 units wide with ears, 3.2 tall) in both directions.
     const halfFov = THREE.MathUtils.degToRad(this.camera.fov / 2);

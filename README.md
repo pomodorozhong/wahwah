@@ -359,6 +359,40 @@ Space plays or replays from the start, and Esc stops. Any edit (preset, text,
 slider, puppet toggle) stops playback and relaxes the face. The next play uses
 the new settings.
 
+## Character models (VRM and Live2D)
+
+The *View* menu on every page switches the face: **Preview face** (the
+procedural one), **VRM model**, **Live2D model** or the debug puppet. All
+faces draw with one Three.js renderer and read the same three controls.
+
+Models are not in the repository; their licenses restrict redistribution.
+Put your own files in the git-ignored `public/models/` folder, and the
+*Model* menu lists them (it refreshes when files are added):
+
+```text
+public/models/
+  vrm/<name>.vrm                          VRM 0.x or 1.0 avatar
+  live2d/live2dcubismcore.min.js          Cubism Core (Cubism SDK for Web)
+  live2d/<model>/<model>.model3.json      a Live2D model folder
+```
+
+The *Model* menu can also open a `.vrm` file or a Live2D model folder from
+disk without copying it.
+
+- **VRM** ([three-vrm](https://github.com/pixiv/three-vrm)): the controls
+  blend into the five viseme expressions (`aa ih ou ee oh`): lip shape picks
+  the vowel family and the jaw picks its more open member. Idle motion uses
+  the `blink` expression, neck sway, look-at and spring bones.
+- **Live2D**: Cubism Core deforms the model and this project draws it in
+  Three.js, with stencil clipping masks. `jawOpen` drives the model's
+  LipSync group (usually `ParamMouthOpenY`) and `lipWidth − lipRound` drives
+  `ParamMouthForm`. Most models draw negative MouthForm as a frown, not a
+  pucker. Idle motion uses the model's `EyeBlink` group, `ParamBreath` and
+  `ParamAngleX/Y/Z`. Physics and `.motion3.json` motions are not supported.
+
+Get Cubism Core and free sample models from Live2D's website, and VRM models
+from VRoid Hub or VRoid Studio; check each model's license.
+
 ## Debug puppet
 
 Pick **Puppet view → Debug (instructions only)** on either page. The 3D face is

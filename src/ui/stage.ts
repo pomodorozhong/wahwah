@@ -70,7 +70,7 @@ export class Stage {
   /** Inputs changed: stop, relax the face, and rebuild. */
   invalidate(): void {
     this.player?.stop();
-    this.view.host.relax();
+    this.view.follower.relax();
     this.prepared = null;
     this.prepare();
   }
@@ -111,7 +111,7 @@ export class Stage {
   async play(): Promise<void> {
     if (!this.player) {
       this.player = new Player();
-      this.player.onEnded = () => this.view.host.relax();
+      this.player.onEnded = () => this.view.follower.relax();
       // Re-render only if the device runs at a different sample rate.
       if (this.prepared && this.prepared.sampleRate !== this.player.sampleRate) this.prepared = null;
     }
@@ -122,7 +122,7 @@ export class Stage {
 
   stop(): void {
     this.player?.stop();
-    this.view.host.relax();
+    this.view.follower.relax();
   }
 
   private renderDiagnostics(p: Prepared): void {
@@ -209,7 +209,7 @@ export class Stage {
         return {
           playing: player?.playing ?? false,
           time: player?.position() ?? null,
-          controls: { ...this.view.host.controls },
+          controls: { ...this.view.follower.controls },
           level: player?.level() ?? 0,
           puppetEnabled: this.view.puppetEnabled,
           generatorRuns: this.generatorRuns,
