@@ -58,3 +58,27 @@ this file covers how to work on the code without repeating mistakes.
   `data-for-engine`.
 - Spreading large sample arrays into `Math.max(...)` overflows the call
   stack; loop instead.
+
+## Face host gotchas
+
+- **Cubism Core 6 moved render orders** from `model.drawables.renderOrders`
+  to `model.renderOrders` (drawables, then offscreens). Reading the old field
+  crashed the frame loop, and ordering by `drawOrders` alone draws Hiyori's
+  eye whites over her irises because ties need the part hierarchy.
+  `live2d.ts` reads the model field, then the old one, then falls back to
+  sorting draw orders.
+- **Live2D meshes are 2D**, so Three.js cannot compute bounding spheres for
+  sorting. Each geometry gets an infinite sphere up front.
+- **Clipping masks use one stencil value per masked drawable** (cycling
+  1–255), so masks never need a stencil clear between draws. The shared
+  renderer is created with `stencil: true`.
+- **Model files are listed by a Vite plugin** (`virtual:local-models` in
+  `vite.config.ts`) that scans the git-ignored `public/models/`. Adding files
+  triggers a full reload in dev; a production build lists what was there at
+  build time.
+- **A host that throws inside `update()` stops the page's frame loop**, since
+  the stage schedules the next frame after rendering. Hosts catch their own
+  errors and report them through `status`.
+- The Hiyori free sample has only a "Body" hit area, so faces are framed from
+  drawables under parts named like Face/Eye/Mouth/Nose/Brow.
+

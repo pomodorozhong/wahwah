@@ -105,13 +105,13 @@ the target style, not against realism.
 
 ## Near-term work order
 
-1. **Host interface.** Split the procedural face out behind a small host
-   interface, so the view can switch faces.
-2. **VRM host.** Map mouth controls to VRM vowel expressions, plus blink,
-   head sway, look-at and spring bones.
-3. **Live2D host.** Draw Cubism Core meshes in Three.js with clipping masks;
-   map to `ParamMouthOpenY` and `ParamMouthForm`, and use the model's
-   `EyeBlink` group, breath and head angles.
+1. ~~**Host interface.**~~ Done: faces share a `FaceHost` interface and one
+   renderer.
+2. ~~**VRM host.**~~ Done: mouth controls map to VRM vowel expressions, plus
+   blink, neck sway, look-at and spring bones.
+3. ~~**Live2D host.**~~ Done: Cubism Core meshes drawn in Three.js with
+   clipping masks, mapped to the LipSync group and `ParamMouthForm`, with the
+   model's `EyeBlink` group, breath and head angles.
 4. **Compare faces.** Run all three on the same utterances and live input,
    and record what reads well.
 5. **Live mic on a real voice** (HANDOFF.md P-02), judged against the target
