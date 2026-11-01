@@ -140,8 +140,18 @@ export class Live2DFace implements FaceHost {
   }
 
   update(dtSeconds: number): void {
-    const l = this.loaded;
-    if (!l) return;
+    if (!this.loaded) return;
+    try {
+      this.step(dtSeconds);
+    } catch (e) {
+      // A broken model should show a message, not stop the page's frame loop.
+      this.status = `Live2D error: ${(e as Error).message}`;
+      this.unload();
+    }
+  }
+
+  private step(dtSeconds: number): void {
+    const l = this.loaded!;
     this.elapsed += dtSeconds;
     const t = this.elapsed;
     const idle = this.idleMotion;
@@ -193,6 +203,8 @@ export class Live2DFace implements FaceHost {
       g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(d.vertexPositions[i]), 2));
       g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(d.vertexUvs[i]), 2));
       g.setIndex(new THREE.BufferAttribute(new Uint16Array(d.indices[i]), 1));
+      // Positions are 2D, which Three.js cannot bound; it only needs a sphere for sorting.
+      g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), Infinity);
       geometries.push(g);
     }
     // Each masked drawable gets its own stencil value: its masks write it and
@@ -233,6 +245,7 @@ export class Live2DFace implements FaceHost {
   private syncMeshes(): void {
     const l = this.loaded!;
     const d = l.model.drawables;
+    const order = l.model.renderOrders ?? d.renderOrders ?? renderOrderFromDrawOrders(d.drawOrders);
     for (let i = 0; i < d.count; i++) {
       const dr = l.drawables[i];
       if (!dr) continue;
@@ -244,21 +257,29 @@ export class Live2DFace implements FaceHost {
       if (d.multiplyColors) (u.multiply.value as THREE.Vector3).fromArray(d.multiplyColors, i * 4);
       if (d.screenColors) (u.screen.value as THREE.Vector3).fromArray(d.screenColors, i * 4);
       // Masks draw just before the drawable they clip.
-      dr.mesh.renderOrder = d.renderOrders[i] * 2 + 1;
-      for (const m of dr.masks) m.renderOrder = d.renderOrders[i] * 2;
+      dr.mesh.renderOrder = order[i] * 2 + 1;
+      for (const m of dr.masks) m.renderOrder = order[i] * 2;
     }
     d.resetDynamicFlags();
   }
 
-  /** The head hit area's bounds, or the top of the model when it has none. */
+  /**
+   * Frame the face: the head hit area if the model has one, else the drawables
+   * under parts named like Face/Eye/Mouth, else the top of the model.
+   */
   private findFace(): { x: number; y: number; height: number } {
     const l = this.loaded!;
     const d = l.model.drawables;
-    const heads = l.settings.headDrawableIds.map((id) => d.ids.indexOf(id)).filter((i) => i >= 0);
     const all = bounds(d.vertexPositions, [...Array(d.count).keys()]);
-    const head = heads.length ? bounds(d.vertexPositions, heads) : null;
-    if (head && head.maxY > head.minY) {
-      return { x: (head.minX + head.maxX) / 2, y: (head.minY + head.maxY) / 2, height: (head.maxY - head.minY) * 1.5 };
+    const heads = l.settings.headDrawableIds.map((id) => d.ids.indexOf(id)).filter((i) => i >= 0);
+    const faceParts = d.parentPartIndices
+      ? [...Array(d.count).keys()].filter((i) => /face|eye|mouth|nose|brow/i.test(l.model.parts.ids[d.parentPartIndices![i]] ?? ''))
+      : [];
+    for (const which of [heads, faceParts]) {
+      const b = which.length ? bounds(d.vertexPositions, which) : null;
+      if (b && b.maxY > b.minY) {
+        return { x: (b.minX + b.maxX) / 2, y: (b.minY + b.maxY) / 2, height: (b.maxY - b.minY) * 1.6 };
+      }
     }
     const h = Math.min(all.maxY - all.minY, (all.maxX - all.minX) * 1.2) * 0.45;
     return { x: (all.minX + all.maxX) / 2, y: all.maxY - h / 2, height: h };
@@ -321,6 +342,15 @@ function maskMaterial(map: THREE.Texture, stencilRef: number): THREE.RawShaderMa
   m.stencilFunc = THREE.AlwaysStencilFunc;
   m.stencilZPass = THREE.ReplaceStencilOp;
   return m;
+}
+
+/** Rank of each drawable when sorted by draw order, ties by index (as Cubism does). */
+export function renderOrderFromDrawOrders(drawOrders: ArrayLike<number>): Int32Array {
+  const idx = Array.from({ length: drawOrders.length }, (_, i) => i);
+  idx.sort((a, b) => drawOrders[a] - drawOrders[b] || a - b);
+  const out = new Int32Array(drawOrders.length);
+  idx.forEach((drawable, rank) => (out[drawable] = rank));
+  return out;
 }
 
 function bounds(positions: Float32Array[], which: number[]) {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Blinker, controlsToLive2D, controlsToVrmVisemes, parseModel3 } from '../src/host/mappings';
+import { renderOrderFromDrawOrders } from '../src/host/live2d';
 
 const sum = (v: Record<string, number>) => Object.values(v).reduce((a, b) => a + b, 0);
 
@@ -77,5 +78,11 @@ describe('Blinker', () => {
     }
     expect(peak).toBeGreaterThan(0.99);
     expect(last).toBe(0);
+  });
+});
+
+describe('renderOrderFromDrawOrders', () => {
+  it('ranks drawables by draw order, ties by index', () => {
+    expect([...renderOrderFromDrawOrders([500, 200, 500, 100])]).toEqual([2, 1, 3, 0]);
   });
 });

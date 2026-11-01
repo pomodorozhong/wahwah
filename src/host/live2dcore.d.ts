@@ -17,13 +17,19 @@ declare namespace Live2DCubismCore {
       defaultValues: Float32Array;
       values: Float32Array;
     };
+    readonly parts: { count: number; ids: string[] };
+    /** Cubism Core 6: render order of drawables, then offscreens. */
+    readonly renderOrders?: Int32Array;
     readonly drawables: {
       count: number;
       ids: string[];
       constantFlags: Uint8Array;
       dynamicFlags: Uint8Array;
       textureIndices: Int32Array;
-      renderOrders: Int32Array;
+      /** Cubism Core 5 and earlier; Core 6 moved it to Model.renderOrders. */
+      renderOrders?: Int32Array;
+      drawOrders: Int32Array;
+      parentPartIndices?: Int32Array;
       opacities: Float32Array;
       maskCounts: Int32Array;
       masks: Int32Array[];
