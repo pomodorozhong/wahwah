@@ -1,0 +1,26 @@
+{
+  "name": "wahwah",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@pixiv/three-vrm": "^3.5.5",
+    "babble-engine": "github:wrongfloor-dev/babble-engine#c1d0571f40081a934777b3039d26658229ff5a33",
+    "klattsch": "^0.8.0",
+    "pink-trombone-mod": "^0.1.0",
+    "three": "^0.187.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.187.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  }
+}

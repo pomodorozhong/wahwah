@@ -1,0 +1,74 @@
+// Vowel space for live analysis: measured F1/F2 -> nearest reference vowels
+// -> a blend of their designed mouth poses (the same visemes the text
+// pipeline uses), with an adaptive speaker scale so higher voices (shorter
+// vocal tracts, formants ~10-30% higher) map onto the same vowels.
+
+import { banks } from 'klattsch';
+import { VISEMES } from '../puppet/visemes';
+import { lerpControls, NEUTRAL, type FaceControls } from '../puppet/controls';
+
+export interface ReferenceVowel {
+  code: string;
+  f1: number;
+  f2: number;
+  pose: FaceControls;
+}
+
+// Monophthongs plus the end points of rounded glides, from klattsch's
+// Klatt (1980) bank: an adult male reference (speaker scale 1).
+const CODES = ['AA', 'AE', 'AH', 'AO', 'EH', 'ER', 'IH', 'IY', 'UH', 'UW'];
+
+export const REFERENCE_VOWELS: ReferenceVowel[] = (() => {
+  const bank = banks.get(banks.defaultName)!.phonemes;
+  return CODES.map((code) => {
+    const p = bank[code];
+    // UW's steady target is its rounded glide end (320/900 Hz).
+    const t = code === 'UW' && p.glideTo ? { ...p, ...p.glideTo } : p;
+    return { code, f1: t.F1, f2: t.F2, pose: VISEMES[code].pose };
+  });
+})();
+
+/** Speaker scales tried: 1 = reference adult male; ~1.15 typical adult female; ~1.3 child. */
+export const SPEAKER_SCALES = Array.from({ length: 13 }, (_, i) => 0.85 + i * 0.05);
+
+// Log-frequency distance; F2 is a little more discriminating than F1.
+const SIGMA_F1 = 0.14;
+const SIGMA_F2 = 0.11;
+
+function distance(f1: number, f2: number, scale: number, v: ReferenceVowel): number {
+  const d1 = (Math.log(f1 / scale) - Math.log(v.f1)) / SIGMA_F1;
+  const d2 = (Math.log(f2 / scale) - Math.log(v.f2)) / SIGMA_F2;
+  return d1 * d1 + d2 * d2;
+}
+
+export interface VowelMatch {
+  /** Closest reference vowel. */
+  code: string;
+  /** Blended mouth pose of the closest vowels. */
+  pose: FaceControls;
+  /** Squared normalized distance to the closest vowel (lower is better). */
+  distance: number;
+}
+
+/** Soft nearest-vowel match at a given speaker scale. */
+export function matchVowel(f1: number, f2: number, scale: number): VowelMatch {
+  const ranked = REFERENCE_VOWELS.map((v) => ({ v, d: distance(f1, f2, scale, v) })).sort((a, b) => a.d - b.d);
+  let wsum = 0;
+  let pose: FaceControls = { ...NEUTRAL };
+  for (const { v, d } of ranked.slice(0, 3)) {
+    const w = Math.exp(-(d - ranked[0].d) / 2);
+    wsum += w;
+    pose = lerpControls(pose, v.pose, w / wsum); // running weighted mean
+  }
+  return { code: ranked[0].v.code, pose, distance: ranked[0].d };
+}
+
+/** The speaker scale that best explains these formants. */
+export function bestScale(f1: number, f2: number): number {
+  let best = { scale: 1, d: Infinity };
+  for (const scale of SPEAKER_SCALES) {
+    const d = Math.min(...REFERENCE_VOWELS.map((v) => distance(f1, f2, scale, v)));
+    if (d < best.d) best = { scale, d };
+  }
+  return best.scale;
+}
