@@ -21,9 +21,9 @@ goal is fictional voices, never realistic speech.
 
 ![Mouth poses for neutral, AA, IY, UW and M](docs/poses.jpg)
 
-The brief for this prototype is
-[`08-mumble-voice-generator-handoff.md`](08-mumble-voice-generator-handoff.md)
-(source: [rabbit-holes](https://github.com/pomodorozhong/rabbit-holes/blob/master/learning-notes/08-mumble-voice-generator-handoff.md)).
+Goals, direction and decisions are in [`docs/goals.md`](docs/goals.md). The
+original first-prototype brief is in
+[rabbit-holes](https://github.com/pomodorozhong/rabbit-holes/blob/master/learning-notes/08-mumble-voice-generator-handoff.md).
 
 ## Run it
 
