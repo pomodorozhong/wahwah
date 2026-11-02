@@ -39,7 +39,13 @@ export function renderShell(root: HTMLElement, opts: ShellOptions): void {
   root.innerHTML = `
     <main class="layout">
       <section class="stage">
-        <div id="face" class="face"><p id="faceStatus" class="face-status" hidden></p></div>
+        <div id="face" class="face"><p id="faceStatus" class="face-status" hidden></p>
+          <div id="cameraTools" class="camera-tools" hidden>
+            <span class="mouse-hint">Drag to rotate · Shift-drag to pan · Scroll to zoom</span>
+            <span class="touch-hint">Drag to rotate · Two fingers to pan or pinch</span>
+            <button type="button" id="resetView">Reset view</button>
+          </div>
+        </div>
         <div class="transport">
           <div class="buttons">${opts.transportHtml}</div>
           <div class="status"><span>time</span><b id="time">–</b><span>sound</span><b id="sound">–</b></div>
@@ -94,7 +100,7 @@ export class PuppetView {
   constructor() {
     const container = byId('face');
     this.renderer = new FaceRenderer(container);
-    this.renderer.setHost(this.face);
+    byId('resetView').addEventListener('click', () => this.host.navigation?.reset());
     this.debugPuppet = new DebugPuppet(container);
     this.puppetEl = byId('puppet');
     this.modelEl = byId('model');
@@ -136,7 +142,9 @@ export class PuppetView {
   private useHost(host: FaceHost): void {
     this.host = host;
     host.idleMotion = this.idle;
-    this.renderer.setHost(host);
+    const interactive = this.mode !== 'debug' && !!host.navigation;
+    byId('cameraTools').hidden = !interactive;
+    this.renderer.setHost(host, interactive);
   }
 
   private async vrmHost(): Promise<VrmFace> {

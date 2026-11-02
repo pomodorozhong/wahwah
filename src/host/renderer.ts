@@ -22,9 +22,11 @@ export class FaceRenderer {
     return this.renderer.domElement;
   }
 
-  setHost(host: FaceHost): void {
+  setHost(host: FaceHost, interactive: boolean): void {
+    if (this.host?.navigation?.domElement) this.host.navigation.disconnect();
     this.host = host;
     host.resize(this.width, this.height);
+    if (interactive) host.navigation?.connect(this.canvas);
   }
 
   render(dtSeconds: number): void {

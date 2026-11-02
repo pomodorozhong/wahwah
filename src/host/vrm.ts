@@ -7,6 +7,7 @@ import { VRMLoaderPlugin, VRMUtils, type VRM } from '@pixiv/three-vrm';
 import type { FaceControls } from '../puppet/controls';
 import type { FaceHost } from './host';
 import { Blinker, controlsToVrmVisemes } from './mappings';
+import { FaceNavigation } from './faceNavigation';
 
 /** Vertical extent of the framed face, in metres. */
 const FRAME_HEIGHT = 0.42;
@@ -14,6 +15,7 @@ const FRAME_HEIGHT = 0.42;
 export class VrmFace implements FaceHost {
   readonly scene = new THREE.Scene();
   readonly camera = new THREE.PerspectiveCamera(20, 1, 0.05, 20);
+  readonly navigation = new FaceNavigation(this.camera);
   idleMotion = true;
   status = 'Choose a VRM model.';
   private vrm: VRM | null = null;
@@ -56,7 +58,7 @@ export class VrmFace implements FaceHost {
       const head = vrm.humanoid.getNormalizedBoneNode('head');
       if (head) head.getWorldPosition(this.focus);
       this.focus.y += 0.06; // bone sits at the skull base; centre on the face
-      this.frame();
+      this.frame(this.focus);
       this.status = '';
     } catch (e) {
       if (id === this.loadId) this.status = `Could not load ${label}: ${(e as Error).message}`;
@@ -89,12 +91,11 @@ export class VrmFace implements FaceHost {
     this.frame();
   }
 
-  private frame(): void {
+  private frame(newCenter?: THREE.Vector3): void {
     const halfFov = THREE.MathUtils.degToRad(this.camera.fov / 2);
     const height = Math.max(FRAME_HEIGHT, (FRAME_HEIGHT * 0.9) / this.camera.aspect);
     const dist = height / 2 / Math.tan(halfFov);
-    this.camera.position.set(this.focus.x, this.focus.y, this.focus.z + dist);
-    this.camera.lookAt(this.focus);
+    this.navigation.frame(dist, newCenter);
     this.camera.updateProjectionMatrix();
   }
 }
