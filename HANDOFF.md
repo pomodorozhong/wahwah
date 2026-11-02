@@ -2,21 +2,15 @@
 
 ## In progress
 
-### feat/wahwah-prototype
+### codex/unified-voice-studio
 
-- Task: the whole wahwah prototype: playgrounds, live mic mode, VRM and Live2D faces from `docs/goals.md`'s work order, and the rename from mumble-voice to wahwah. No GitHub issue.
-- PR: https://github.com/pomodorozhong/wahwah/pull/1 into `main`, awaiting review and merge.
-- Code checkpoint: 527ad48
-- Repository: `pomodorozhong/wahwah` on GitHub, public. `main` is a single orphan commit (ec18d8b) holding only `README.md`, `AGENTS.md` and `docs/`; this branch's 20 earlier commits were rebuilt on top of it on 2026-11-01 with the same messages, authors and code (pre-rebuild tip kept locally as `backup/pre-rebuild`, 58263a9). Merging the PR also brings this `HANDOFF.md` into `main`; the user chose to keep it in the PR.
-- State: four playgrounds work. `/klattsch/` is phonemes to klattsch. `/babble/` is English to invented babble, with klattsch, wah-wah trombone and Babble Engine as sound engines. `/live/` is microphone to puppet, with formant, voice-profile and uLipSync-style modes, self-paced calibration, analysis on the audio thread, and the delay test. Every page's *View* menu switches between *Preview face*, *VRM model*, *Live2D model* and *Debug*, all driven by the same three controls and one Three.js renderer. The *Model* menu lists files in git-ignored `public/models/` and can open a `.vrm` file or Live2D folder from disk. Local models on this computer: `VRM1_Constraint_Twist_Sample.vrm` (three-vrm example, no license stated) and Live2D Hiyori free sample with Cubism Core 6.0.1; other computers need their own copies (see README "Character models"). The debug hook is `window.__wahwah`; voice profiles saved under the old mumble-voice kind or storage key still load. The user found the generated-voice puppet "quite good" and live mic still "awkward"; the live improvements since then are untested on the user's real voice.
-- Verification at b43f5ab (same code as 527ad48): `npm run typecheck`, `npm test` (157 passed) and `npm run build` passed. Browser pane: both models load on `/klattsch/` with open, spread and rounded mouths and playback driving them; home page and `/live/` load with no console errors; calibration flow, worklet at 187 analyses/s and the delay test were checked with demo, test and Pink Trombone voices. Not run: any real microphone (the desktop app's browser pane blocks mic access), and the faces at phone width.
-- Known gaps: no Live2D physics or `.motion3.json` playback (needs Cubism Framework); most Live2D models, Hiyori included, draw rounding as a narrower mouth, not a pucker; VRM framing is tuned only on one model. The package is still `"private": true` with no library entry point.
-- Next action: the user reviews and merges the PR, then tries `/live/` with a real mic in a normal browser: calibrate, compare *Your voice profile* and *uLipSync-style* (smoothness 50 vs ~20 ms), use *Delay test* at 0 ms vs *Match measured lag*, and compare the three faces. Their answer to "lag, jitter or wrong shapes?" and which face reads best picks the next task (see Ranked work). After the merge, delete `backup/pre-rebuild` and rename the local folder from `mumble-voice` to `wahwah`.
-- Avoid:
-  - Matching whole spectral envelopes against a Pink Trombone tract codebook: it did not transfer across voices.
-  - Mixing spectral darkness into lip rounding: it made Pink Trombone's "ee" look rounded.
-  - Expecting Rust/WASM to cut live delay: analysis is about 0.1–0.7 ms per frame.
-  - Comparing modes with misaligned windows: use window-end alignment, see `docs/development-notes.md`.
+- Task: Mustard Block / Writing Spread UI with all three inputs on one page. No linked issue.
+- Draft PR: https://github.com/pomodorozhong/wahwah/pull/4 into main, awaiting review. Publication was authorized and completed; P-07 is resolved.
+- Code checkpoint: bdea202 (after 2de2fc9), based on main at e275d48. Source is pushed. The earlier avatar-style and mouth experiments remain on the local backup branch.
+- State: the home page is Voice playground; the input selector switches text-to-babble, phonemes and live microphone without replacing the puppet or camera. Mode drafts and settings survive switching during the visit. The portrait and signal monitor remain visible while settings scroll. The final monitor uses Ink & Gold with teal width, cream jaw and gold round traces, with matching patterned legends and meters. The preview title and Reset view are inside the bottom of the square.
+- Verification: typecheck, 159 tests and production build passed. Chrome verified 60 responsive combinations, engine restoration after reload, legacy routing/history, preserved model/camera/drafts, audio/microphone cleanup (including pending permission), live demo and recorded playback. Physical microphone and touchscreen remain reviewer follow-ups.
+- Review server: port 5202, started from this PR worktree.
+- Next action: review the draft PR and local preview, then apply any review feedback before marking it ready. No open publication approvals for this branch.
 
 ## Ranked work
 
