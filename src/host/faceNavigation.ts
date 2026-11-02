@@ -10,14 +10,15 @@ export class FaceNavigation extends OrbitControls {
     this.rotateSpeed = 0.65;
   }
 
-  frame(distance: number, newCenter?: THREE.Vector3): void {
+  frame(distance: number, newCenter?: THREE.Vector3, direction?: THREE.Vector3): void {
     const previousDistance = this.homeDistance;
     this.homeDistance = distance;
     this.minDistance = distance * 0.35;
     this.maxDistance = distance * 3;
     if (newCenter) this.target0.copy(newCenter);
     this.position0.copy(this.target0);
-    this.position0.z += distance;
+    if (direction) this.position0.addScaledVector(direction, distance);
+    else this.position0.z += distance;
     if (!previousDistance || newCenter) {
       this.reset();
       return;

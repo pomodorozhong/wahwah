@@ -60,8 +60,8 @@ const voiceHtml =
     'Engine and delivery',
     `<label class="field">Sound engine
       <select id="engine">
-        <option value="klattsch">klattsch formant voice</option>
         <option value="trombone">Wah-wah trombone (muted brass)</option>
+        <option value="klattsch">klattsch formant voice</option>
         <option value="babble-engine">Babble Engine (its own babble and voices)</option>
       </select>
     </label>

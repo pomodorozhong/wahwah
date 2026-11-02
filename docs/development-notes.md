@@ -53,6 +53,16 @@ in Node. To inspect the production build in a browser, run
 
 ## Code structure gotchas
 
+- The default tofu model is shipped as `public/tofu/corner-cut.vrm`. After
+  changing its geometry or pigments in `scripts/tofu/`, run
+  `npm run build:tofu` and include the regenerated asset. Its VRM expressions
+  include standard vowels plus body, gaze, and brow controls; the playground
+  replaces the lower lip's fallback morph with a real jaw rotation.
+- To recreate the README images, start `npm run dev` and open
+  `/scripts/docs/tofu-images.html` for the 1100 × 200 mouth row, or add `?hero`
+  for the 720 × 720 portrait. Capture the top-left area at those dimensions.
+  The row uses the neutral pose and `VISEMES` entries for AA, IY, UW, and M,
+  with the independent body motion held still.
 - `pink-trombone-mod` has no package entry point and uses extensionless
   relative imports. Import `pink-trombone-mod/Synthesizer.js`; Vitest needs
   `server.deps.inline: ['pink-trombone-mod']` (see `vite.config.ts`).

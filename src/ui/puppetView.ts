@@ -61,7 +61,7 @@ export function renderShell(root: HTMLElement): void {
     { label: 'Script', body: '' },
     { label: 'Voice', body: '' },
     { label: 'Puppet', body: section('Appearance and motion', `<div class="view-opts">
-            <label>View <select id="view"><option value="face">Preview face</option><option value="vrm">VRM model</option><option value="live2d">Live2D model</option><option value="debug">Debug (instructions)</option></select></label>
+            <label>View <select id="view"><option value="tofu">Tofu cube</option><option value="face">Preview face</option><option value="vrm">VRM model</option><option value="live2d">Live2D model</option><option value="debug">Debug (instructions)</option></select></label>
             <label id="modelLabel" hidden>Model <select id="model"></select></label>
             <input id="vrmFile" type="file" accept=".vrm" hidden />
             <input id="live2dFolder" type="file" webkitdirectory hidden />
@@ -140,7 +140,7 @@ export function renderShell(root: HTMLElement): void {
   }
 }
 
-export type PuppetViewMode = 'face' | 'vrm' | 'live2d' | 'debug';
+export type PuppetViewMode = 'tofu' | 'face' | 'vrm' | 'live2d' | 'debug';
 type ModelMode = 'vrm' | 'live2d';
 
 const MODELS_URL = `${import.meta.env.BASE_URL}models/`;
@@ -156,6 +156,7 @@ export class PuppetView {
   private mode: PuppetViewMode = 'face';
   private host: FaceHost = this.face;
   private vrm: VrmFace | null = null;
+  private tofu: Promise<VrmFace> | null = null;
   private live2d: Live2DFace | null = null;
   private idle = true;
   private readonly modelEl: HTMLSelectElement;
@@ -180,7 +181,7 @@ export class PuppetView {
     this.modelEl.addEventListener('change', () => this.onModelPicked());
     byId<HTMLInputElement>('vrmFile').addEventListener('change', (e) => this.openVrmFile(e.target as HTMLInputElement));
     byId<HTMLInputElement>('live2dFolder').addEventListener('change', (e) => this.openLive2DFolder(e.target as HTMLInputElement));
-    void this.setMode('face');
+    void this.setMode('tofu');
   }
 
   get puppetEnabled(): boolean {
@@ -197,7 +198,10 @@ export class PuppetView {
     this.renderer.canvas.hidden = mode === 'debug';
     this.debugPuppet.visible = mode === 'debug';
     byId('modelLabel').hidden = mode !== 'vrm' && mode !== 'live2d';
-    if (mode === 'vrm' || mode === 'live2d') {
+    if (mode === 'tofu') {
+      const host = await this.tofuHost();
+      if (this.mode === mode) this.useHost(host);
+    } else if (mode === 'vrm' || mode === 'live2d') {
       this.fillModelList(mode);
       const host = mode === 'vrm' ? await this.vrmHost() : await this.live2dHost();
       if (this.mode !== mode) return;
@@ -221,6 +225,15 @@ export class PuppetView {
       this.vrm ??= new VrmFace();
     }
     return this.vrm;
+  }
+
+  private tofuHost(): Promise<VrmFace> {
+    this.tofu ??= import('../host/vrm').then(async ({ VrmFace }) => {
+      const host = new VrmFace();
+      await host.load(`${import.meta.env.BASE_URL}tofu/corner-cut.vrm`, 'Tofu cube', true);
+      return host;
+    });
+    return this.tofu;
   }
 
   private async live2dHost(): Promise<Live2DFace> {

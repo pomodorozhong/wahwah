@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>README tofu images</title>
+<style>
+* {box-sizing:border-box} html,body {margin:0;background:#1d2230} main {display:flex;width:1100px;height:200px} figure {width:220px;flex:none;margin:0} canvas {display:block;width:220px;height:145px} figcaption {height:55px;padding:6px 10px;color:#e9eaf1;font:15px/21px ui-monospace,monospace} small {display:block;color:#9399ad;font:12px/20px ui-monospace,monospace}
+</style>
+<main aria-label="Tofu mouth poses for neutral, AA, IY, UW and M"></main>
+<script type="module">
+import * as THREE from 'three';
+import {VrmFace} from '/src/host/vrm.ts';
+import {VISEMES} from '/src/puppet/visemes.ts';
+const hero=new URLSearchParams(location.search).has('hero');
+if(hero){
+  document.querySelector('main').style.cssText='width:720px;height:720px';
+  document.querySelector('main').setAttribute('aria-label','The default white tofu puppet speaking');
+}
+const poses=hero ? [['Tofu cube',{jawOpen:.65,lipWidth:.15,lipRound:0}]] : [['neutral',{jawOpen:0,lipWidth:0,lipRound:0}],...['AA','IY','UW','M'].map(name=>[name,VISEMES[name].pose])];
+for (const [name,controls] of poses) {
+  const host=new VrmFace();
+  host.idleMotion=false;
+  await host.load('/tofu/corner-cut.vrm','Tofu cube',true);
+  if(host.status)throw Error(host.status);
+  host.setControls(controls);
+  host.update(0);
+  // Isolate the mouth shape from the independent body performance.
+  if(!hero)host.scene.traverse(mesh=>{
+    for(const channel of ['drive','follow']){
+      const index=mesh.morphTargetDictionary?.[channel];
+      if(index!==undefined)mesh.morphTargetInfluences[index]=0;
+    }
+  });
+  const camera=hero ? host.camera : new THREE.OrthographicCamera(-.06,.06,.06*145/220,-.06*145/220,.01,2);
+  if(hero)host.resize(720,720);
+  else {
+    camera.position.set(0,1.360,.7);
+    camera.lookAt(0,1.360,.126);
+  }
+  const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+  renderer.setPixelRatio(2);
+  renderer.setSize(hero?720:220,hero?720:145);
+  renderer.domElement.setAttribute('role','img');
+  renderer.domElement.setAttribute('aria-label',name);
+  if(hero)renderer.domElement.style.cssText="width:720px;height:720px";
+  renderer.render(host.scene,camera);
+  const figure=document.createElement('figure'),caption=document.createElement('figcaption'),small=document.createElement('small');
+  caption.textContent=name;
+  small.textContent=`jaw ${controls.jawOpen} w ${controls.lipWidth} r ${controls.lipRound}`;
+  caption.append(small);figure.append(renderer.domElement);
+  if(!hero)figure.append(caption);
+  document.querySelector('main').append(figure);
+}
+document.title='Ready · README tofu images';
+</script>
+</html>

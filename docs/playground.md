@@ -10,7 +10,8 @@ In **Text to babble**, choose a sample or enter up to 500 characters of
 English. Play a question, then change its punctuation to a period and listen
 to the ending. The word highlight follows the line during playback.
 
-In **Voice**, klattsch and the wah-wah trombone share the same invented
+**Wah-wah trombone** is the default sound engine. In **Voice**, klattsch and
+the wah-wah trombone share the same invented
 syllables. Keep **Language style**, **Mood**, and **Seed** fixed to compare
 the two instruments. Change the seed to give familiar words new sounds. The
 syllable and stress guesses work best on ordinary English words.
@@ -62,6 +63,10 @@ physical microphone remains an open question.
 
 ## Load a character
 
+The playground starts with **Tofu cube**, the white, clipped-corner puppet.
+It follows the same mouth controls in text, phoneme, and microphone modes.
+Choose **Preview face** under **Puppet → View** to use the procedural face.
+
 Under **Puppet → View**, choose **VRM model** or **Live2D model**. In
 **Model**, open a local `.vrm` file or select a Live2D model folder containing
 its `.model3.json`, mesh, and textures. Include the Cubism Core runtime from
@@ -78,7 +83,7 @@ public/models/
   live2d/character/character.model3.json
 ```
 
-In the preview and VRM views, drag to orbit, Shift-drag or right-drag to pan,
+In the tofu, preview, and VRM views, drag to orbit, Shift-drag or right-drag to pan,
 and scroll to zoom. On touchscreens, drag with one finger to orbit or use two
 to pan and pinch. **Reset view** restores the initial framing.
 
