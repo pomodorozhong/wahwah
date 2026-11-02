@@ -10,7 +10,8 @@ In **Text to babble**, choose a sample or enter up to 500 characters of
 English. Play a question, then change its punctuation to a period and listen
 to the ending. The word highlight follows the line during playback.
 
-In **Voice**, klattsch and the wah-wah trombone share the same invented
+**Wah-wah trombone** is the default sound engine. In **Voice**, klattsch and
+the wah-wah trombone share the same invented
 syllables. Keep **Language style**, **Mood**, and **Seed** fixed to compare
 the two instruments. Change the seed to give familiar words new sounds. The
 syllable and stress guesses work best on ordinary English words.

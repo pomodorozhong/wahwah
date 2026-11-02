@@ -1,9 +1,9 @@
 # wahwah
 
-Type “Hello there! How are you today?” and a puppet speaks it in an invented
-language, keeping the rhythm of the greeting and the rise at the end of the
-question. Switch the voice to a muted trombone to hear the same line as a
-cartoon *wah-wah*. You can also drive the mouth with your microphone.
+Type “Hello there! How are you today?” and a white tofu puppet answers with
+a cartoon *wah-wah* voice. A muted trombone follows the rhythm of invented
+syllables and the rise at the end of a question. You can switch to synthetic
+speech or drive the mouth with your microphone.
 
 ![The default white tofu puppet with its mouth open mid-syllable](docs/face.jpg)
 
@@ -20,7 +20,7 @@ npm run dev
 
 Open the local URL Vite prints. In **Text to babble**, press **Play line** to
 hear the sample, then type a line of your own. Open **Voice → Sound engine**
-to compare klattsch, Wah-wah trombone, and Babble Engine.
+to compare Wah-wah trombone, klattsch, and Babble Engine.
 
 Use **Input mode** to try the same puppet with another source.
 
