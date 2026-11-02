@@ -365,6 +365,11 @@ The *View* menu on every page switches the face: **Preview face** (the
 procedural one), **VRM model**, **Live2D model** or the debug puppet. All
 faces draw with one Three.js renderer and read the same three controls.
 
+In the preview and VRM views, drag to orbit, Shift-drag or right-drag to pan,
+and scroll to zoom. On touchscreens, drag with one finger to orbit, move two
+fingers together to pan, or pinch to zoom. **Reset view** restores the original
+framing for the current viewport.
+
 Models are not in the repository; their licenses restrict redistribution.
 Put your own files in the git-ignored `public/models/` folder, and the
 *Model* menu lists them (it refreshes when files are added):

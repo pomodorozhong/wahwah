@@ -4,10 +4,12 @@
 
 import type * as THREE from 'three';
 import type { FaceControls } from '../puppet/controls';
+import type { FaceNavigation } from './faceNavigation';
 
 export interface FaceHost {
   readonly scene: THREE.Scene;
   readonly camera: THREE.Camera;
+  readonly navigation?: FaceNavigation;
   /** Idle blinking, breathing and head sway; purely cosmetic. */
   idleMotion: boolean;
   /** Empty when ready; otherwise a short message shown over the stage. */

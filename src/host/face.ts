@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import type { FaceControls } from '../puppet/controls';
 import type { FaceHost } from './host';
 import { Blinker } from './mappings';
+import { FaceNavigation } from './faceNavigation';
 
 /** Geometry-level mouth parameters, in head-radius units. */
 export interface MouthShape {
@@ -36,6 +37,7 @@ const OUTLINE_POINTS = 48;
 export class PreviewFace implements FaceHost {
   readonly scene = new THREE.Scene();
   readonly camera = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
+  readonly navigation = new FaceNavigation(this.camera);
   readonly status = '';
   private readonly head = new THREE.Group();
   private readonly mouth = new THREE.Group();
@@ -188,7 +190,7 @@ export class PreviewFace implements FaceHost {
     this.camera.aspect = w / h;
     // Fit the head (about 3 units wide with ears, 3.2 tall) in both directions.
     const halfFov = THREE.MathUtils.degToRad(this.camera.fov / 2);
-    this.camera.position.z = Math.max(3.2, 3 / this.camera.aspect) / (2 * Math.tan(halfFov)) + 0.6;
+    this.navigation.frame(Math.max(3.2, 3 / this.camera.aspect) / (2 * Math.tan(halfFov)) + 0.6);
     this.camera.updateProjectionMatrix();
   }
 }
