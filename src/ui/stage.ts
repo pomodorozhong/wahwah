@@ -7,6 +7,7 @@ import { generateFaceTrack, sampleFaceTrack } from '../puppet/generate';
 import type { FaceControlTrack, FaceControls } from '../puppet/controls';
 import { rmsEnvelope, syncReport, type SyncReport } from '../analysis';
 import { Player } from '../playback';
+import { beginMonitor, drawMonitorLegend, drawMonitorPlayhead, MONITOR_COLORS, MONITOR_SIGNALS } from './monitorTheme';
 import { PuppetView, byId, fitCanvas, renderMode } from './puppetView';
 
 export { byId, section } from './puppetView';
@@ -43,8 +44,6 @@ export interface StageOptions {
   /** Extra fields for the window.__wahwah debug hook. */
   debugState?: () => Record<string, unknown>;
 }
-
-const CONTROL_LINES: [keyof FaceControls, string][] = [['jawOpen', '#ff8a5c'], ['lipWidth', '#7ee081'], ['lipRound', '#d68cff']];
 
 export class Stage {
   private frameId = 0;
@@ -174,40 +173,55 @@ export class Stage {
 
   private drawTimeline(time: number | null): void {
     const { g, w, h } = fitCanvas(this.timeline);
+    const { top, bottom } = beginMonitor(g, w, h);
     const p = this.prepared;
     if (!p) return;
-    const dur = p.performance.durationSeconds || 1;
-    const x = (t: number) => (t / dur) * w;
-    g.font = '10px ui-monospace, monospace';
-    g.textBaseline = 'top';
-    for (const s of p.performance.segments) {
-      g.fillStyle = 'rgba(255,255,255,0.06)';
-      g.fillRect(x(s.startSeconds), 0, 1, h);
-      g.fillStyle = '#8a93a8';
-      g.fillText(s.phoneme ?? '·', x(s.startSeconds) + 2, 2);
-    }
+    const duration = p.performance.durationSeconds || 1;
+    const x = (t: number) => (t / duration) * w;
+    const height = bottom - top;
+
     const peak = Math.max(1e-6, ...p.envelope);
-    g.fillStyle = 'rgba(120,170,255,0.35)';
-    p.envelope.forEach((v, i) => {
-      const bh = (v / peak) * (h - 18);
-      g.fillRect(x(i * 0.01), h - bh, Math.max(1, x(0.01)), bh);
-    });
+    g.fillStyle = MONITOR_COLORS.fill;
+    g.beginPath();
+    g.moveTo(0, bottom);
+    p.envelope.forEach((v, i) => g.lineTo(x(i * 0.01), bottom - (v / peak) * height));
+    g.lineTo(Math.min(w, x(p.envelope.length * 0.01)), bottom);
+    g.closePath();
+    g.fill();
+
     if (p.track) {
-      for (const [k, color] of CONTROL_LINES) {
+      for (const [key, color, dash] of MONITOR_SIGNALS) {
         g.strokeStyle = color;
-        g.lineWidth = 1.5;
+        g.lineWidth = 1.8;
+        g.lineCap = 'round';
+        g.setLineDash([...dash]);
         g.beginPath();
-        p.track.samples.forEach((s, i) => {
-          const y = h - s[k] * (h - 18);
-          if (i === 0) g.moveTo(x(s.timeSeconds), y); else g.lineTo(x(s.timeSeconds), y);
+        p.track.samples.forEach((sample, i) => {
+          const y = bottom - sample[key] * height;
+          if (i === 0) g.moveTo(x(sample.timeSeconds), y);
+          else g.lineTo(x(sample.timeSeconds), y);
         });
         g.stroke();
       }
     }
-    if (time !== null) {
-      g.fillStyle = '#fff';
-      g.fillRect(x(time), 0, 1.5, h);
+
+    // Skip labels that cannot fit, especially when the phone plot is narrow.
+    g.setLineDash([]);
+    g.font = '10px ui-monospace, monospace';
+    g.textBaseline = 'top';
+    g.fillStyle = MONITOR_COLORS.labels;
+    let labelEnd = 0;
+    for (const segment of p.performance.segments) {
+      if (!segment.phoneme) continue;
+      const left = x(segment.startSeconds) + 3;
+      const right = left + g.measureText(segment.phoneme).width;
+      if (left >= labelEnd && right < w) {
+        g.fillText(segment.phoneme, left, 2);
+        labelEnd = right + 9;
+      }
     }
+    drawMonitorLegend(g, w, h);
+    if (time !== null) drawMonitorPlayhead(g, x(Math.max(0, time)), h);
   }
 
   private frame(now: number): void {

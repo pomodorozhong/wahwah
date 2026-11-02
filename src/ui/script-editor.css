@@ -108,3 +108,5 @@
   .word-preview { padding-top: 10px; }
   .word-preview h3 { margin-bottom: 7px; }
 }
+
+.word-preview .spoken .w.on small { color: inherit; }

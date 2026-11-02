@@ -73,7 +73,7 @@ export function renderShell(root: HTMLElement): void {
   root.innerHTML = `
     <main class="studio">
       <header class="mast">
-        <div class="mast-titles"><span class="brand"><svg class="brand-mark" width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><rect width="30" height="30" rx="8" fill="currentColor"/><path d="M7 13v5m5-10v15m6-18v17m5-13v9" fill="none" stroke="#f7ce4f" stroke-width="2.5" stroke-linecap="round"/></svg>wahwah</span><h1>Voice studio</h1></div>
+        <div class="mast-titles"><span class="brand"><svg class="brand-mark" width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><rect width="30" height="30" rx="8" fill="currentColor"/><path d="M7 13v5m5-10v15m6-18v17m5-13v9" fill="none" stroke="#f7ce4f" stroke-width="2.5" stroke-linecap="round"/></svg>wahwah</span><h1>Voice playground</h1></div>
         <label class="input-switch" for="inputMode">Input mode
           <select id="inputMode">
             <option value="babble">Text to babble</option>
@@ -92,12 +92,17 @@ export function renderShell(root: HTMLElement): void {
           <div class="status"><span>Elapsed <b id="time">–</b></span><span>Sound <b id="sound">–</b></span></div>
         </div>
         <section class="stage" aria-label="Puppet preview">
-          <div class="preview-head"><h2>Puppet preview</h2><div id="cameraTools" hidden>
-            <span class="camera-hint">Drag to rotate · Shift-drag to pan · Scroll to zoom</span>
-            <span class="touch-hint">Drag to rotate · Two fingers to pan or pinch</span>
-            <button type="button" id="resetView">Reset view</button>
-          </div></div>
-          <div id="face" class="face"><p id="faceStatus" class="face-status" hidden></p></div>
+          <div id="face" class="face">
+            <p id="faceStatus" class="face-status" hidden></p>
+            <div class="preview-head">
+              <h2><span class="preview-full">Puppet preview</span><span class="preview-short">Preview</span></h2>
+              <div id="cameraTools" hidden>
+                <span class="camera-hint">Drag to rotate · Shift-drag to pan · Scroll to zoom</span>
+                <span class="touch-hint">Drag to rotate · Two fingers to pan or pinch</span>
+                <button type="button" id="resetView">Reset view</button>
+              </div>
+            </div>
+          </div>
         </section>
       </div>
       <section class="playback-monitor" aria-label="Playback monitor">

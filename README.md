@@ -42,7 +42,7 @@ Open the printed URL (default `http://localhost:5173`). Choose **Text to babble*
 The three modes share a single stage, camera, puppet settings, and playback
 monitor. Switching modes stops the old audio input or playback. Your drafts
 and mode settings are kept during the visit. Links to `/babble/`, `/klattsch/`,
-and `/live/` open the corresponding mode in the studio.
+and `/live/` open the corresponding mode in the playground.
 
 Use **Play line** for generated speech, or **Start** for live input.
 The microphone starts only after you choose Start and allow microphone access.

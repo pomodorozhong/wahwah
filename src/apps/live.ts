@@ -16,6 +16,8 @@ import { NEUTRAL, type FaceControls } from '../puppet/controls';
 import { compilePerformance, renderPerformance, DEFAULT_VOICE } from '../voice/performance';
 import { moodVoice, textToBabble } from '../babble/generate';
 import { PuppetView, byId, fitCanvas, renderMode, disclosure, section } from '../ui/puppetView';
+import { rmsEnvelope } from '../analysis';
+import { MONITOR_SIGNALS, MONITOR_COLORS, beginMonitor, drawMonitorLegend, drawMonitorPlayhead } from '../ui/monitorTheme';
 
 const FFT = 1024; // short analysis window (~21 ms at 48 kHz)
 const BUFFER = 4096; // time-domain history; uLipSync-style mode uses the last 64 ms
@@ -514,6 +516,7 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
   let recorder: { node: AudioWorkletNode; sink: GainNode; chunks: Float32Array[]; sampleRate: number; startedMs: number } | null = null;
   let clip: RecordedClip | null = savedClip;
   let analysed: AnalysedRecording | null = null;
+  let clipEnvelope: number[] = [];
   let measuredLagMs = 0;
   let playback: { ctx: AudioContext; src: AudioBufferSourceNode; plan: PlaybackPlan; delayMs: number } | null = null;
   const audioDelayEl = () => byId<HTMLInputElement>('audioDelay');
@@ -577,6 +580,7 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
   function analyseClip(): void {
     if (!clip) return;
     analysed = analyseRecording(clip.pcm, clip.sampleRate, { ...estimator.settings }, profile, WORKLET_HOP);
+    clipEnvelope = rmsEnvelope(clip.pcm, clip.sampleRate);
     measuredLagMs = measureMouthLagMs(clip.pcm, analysed);
     byId<HTMLButtonElement>('matchLag').disabled = false;
     renderLagStatus();
@@ -710,43 +714,99 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
     byId('diag').innerHTML = rows.map(([k, v]) => `<div class="row"><span>${k}</span><b>${v}</b></div>`).join('');
   }
 
-  /**
-   * Scrolling history on a -90..0 dBFS scale: input level (blue), noise floor
-   * (grey dashes), opening threshold (white dashes), and the three controls.
-   */
+  /** Input history keeps its absolute dBFS scale so gate and floor stay meaningful. */
   function drawTimeline(now: number): void {
     const { g, w, h } = fitCanvas(timeline);
+    const { top, bottom } = beginMonitor(g, w, h);
+    const plotHeight = Math.max(0, bottom - top);
     const t0 = now - HISTORY_SECONDS;
     const x = (t: number) => ((t - t0) / HISTORY_SECONDS) * w;
-    const yDb = (db: number) => h - Math.min(1, Math.max(0, (db + 90) / 90)) * (h - 14);
-    g.fillStyle = 'rgba(120,170,255,0.35)';
-    for (const p of history) {
-      const y = yDb(p.levelDb);
-      g.fillRect(x(p.t), y, Math.max(1, w / (HISTORY_SECONDS * 60)), h - y);
+    const yDb = (db: number) => bottom - Math.min(1, Math.max(0, (db + 90) / 90)) * plotHeight;
+
+    if (history.length) {
+      g.beginPath();
+      g.moveTo(x(history[0].t), bottom);
+      for (const point of history) g.lineTo(x(point.t), yDb(point.levelDb));
+      g.lineTo(x(history[history.length - 1].t), bottom);
+      g.closePath();
+      g.fillStyle = MONITOR_COLORS.fill;
+      g.fill();
     }
-    g.setLineDash([4, 4]);
-    for (const [key, color] of [['floorDb', 'rgba(138,147,168,0.6)'], ['thresholdDb', 'rgba(255,255,255,0.6)']] as const) {
+    for (const [key, color, dash] of [
+      ['floorDb', MONITOR_COLORS.floor, [2, 4]],
+      ['thresholdDb', MONITOR_COLORS.threshold, [7, 4]],
+    ] as const) {
       g.strokeStyle = color;
       g.lineWidth = 1;
+      g.setLineDash([...dash]);
       g.beginPath();
-      history.forEach((p, i) => (i === 0 ? g.moveTo(x(p.t), yDb(p[key])) : g.lineTo(x(p.t), yDb(p[key]))));
-      g.stroke();
-    }
-    g.setLineDash([]);
-    g.fillStyle = '#8a93a8';
-    g.font = '10px ui-monospace, monospace';
-    if (w > 460) g.fillText('level · floor · opens-above (dB)   jaw · width · round', 4, 11);
-    for (const [k, color] of [['jawOpen', '#ff8a5c'], ['lipWidth', '#7ee081'], ['lipRound', '#d68cff']] as const) {
-      g.strokeStyle = color;
-      g.lineWidth = 1.5;
-      g.beginPath();
-      history.forEach((p, i) => {
-        const y = h - p.c[k] * (h - 14);
-        if (i === 0) g.moveTo(x(p.t), y); else g.lineTo(x(p.t), y);
+      history.forEach((point, i) => {
+        const y = yDb(point[key]);
+        if (i === 0) g.moveTo(x(point.t), y); else g.lineTo(x(point.t), y);
       });
       g.stroke();
     }
-    g.fillText(`last ${HISTORY_SECONDS} s`, w - 70, 11);
+    for (const [key, color, dash] of MONITOR_SIGNALS) {
+      g.strokeStyle = color;
+      g.lineWidth = 1.8;
+      g.lineCap = 'round';
+      g.setLineDash([...dash]);
+      g.beginPath();
+      history.forEach((point, i) => {
+        const y = bottom - point.c[key] * plotHeight;
+        if (i === 0) g.moveTo(x(point.t), y); else g.lineTo(x(point.t), y);
+      });
+      g.stroke();
+    }
+    g.setLineDash([]);
+    g.fillStyle = MONITOR_COLORS.labels;
+    g.font = '10px ui-monospace, monospace';
+    g.textBaseline = 'top';
+    g.textAlign = 'left';
+    if (w > 460) g.fillText('Input level · noise floor · opens above (dBFS)', 5, 3);
+    if (w > 90) g.fillText(`last ${HISTORY_SECONDS} s`, w - 70, 3);
+    drawMonitorLegend(g, w, h);
+  }
+
+  /** Draw the retained take against the same mouth clock used by delay-test playback. */
+  function drawRecordedTimeline(time: number): number {
+    const { g, w, h } = fitCanvas(timeline);
+    const { top, bottom } = beginMonitor(g, w, h);
+    if (!analysed || !playback) {
+      drawMonitorLegend(g, w, h);
+      return 0;
+    }
+    const delay = playback.delayMs / 1000;
+    const start = Math.min(0, delay);
+    const duration = Math.max(0.01, analysed.duration + Math.max(0, delay) - start);
+    const x = (t: number) => ((t - start) / duration) * w;
+    const plotHeight = Math.max(0, bottom - top);
+    const yLevel = (value: number) => bottom - Math.min(1, Math.max(0, (20 * Math.log10(Math.max(value, 1e-7)) + 90) / 90)) * plotHeight;
+    if (clipEnvelope.length) {
+      g.fillStyle = MONITOR_COLORS.fill;
+      g.beginPath();
+      g.moveTo(x(delay), bottom);
+      clipEnvelope.forEach((value, i) => g.lineTo(x(i * 0.01 + delay), yLevel(value)));
+      g.lineTo(x(clipEnvelope.length * 0.01 + delay), bottom);
+      g.closePath();
+      g.fill();
+    }
+    for (const [key, color, dash] of MONITOR_SIGNALS) {
+      g.strokeStyle = color;
+      g.lineWidth = 1.8;
+      g.lineCap = 'round';
+      g.setLineDash([...dash]);
+      g.beginPath();
+      analysed.frames.forEach((point, i) => {
+        const y = bottom - point[key] * plotHeight;
+        if (i === 0) g.moveTo(x(point.t), y); else g.lineTo(x(point.t), y);
+      });
+      g.stroke();
+    }
+    g.setLineDash([]);
+    drawMonitorPlayhead(g, x(time), h);
+    drawMonitorLegend(g, w, h);
+    return clipEnvelope[Math.floor((time - delay) / 0.01)] ?? 0;
   }
 
   const vowelTrail: { t: number; f1: number; f2: number }[] = [];
@@ -802,7 +862,8 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
     if (pb) {
       controls = pb.controls;
       view.update(dt, controls);
-      view.showReadout(pb.t, 'playback', 0);
+      const recordedLevel = drawRecordedTimeline(pb.t);
+      view.showReadout(pb.t, 'playback', recordedLevel);
       if (recorder && performance.now() - recorder.startedMs > MAX_RECORD_SECONDS * 1000) stopRecording();
       animationFrame = requestAnimationFrame(frame);
       return;

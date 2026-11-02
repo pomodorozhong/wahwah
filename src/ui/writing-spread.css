@@ -48,9 +48,16 @@
 .transport .status { display:flex; align-items:start; gap:clamp(10px,2vw,26px); margin:0; }
 .transport .status span { display:grid; gap:3px; text-transform:uppercase; font:10px/1.2 system-ui,sans-serif; letter-spacing:.08em; margin:0; }
 .transport .status b { color:var(--text); font:13px/1.3 ui-monospace,monospace; text-transform:none; letter-spacing:0; }
-.stage { grid-area:portrait; display:flex; flex-direction:column; width:min(100%, calc(100cqh - 46px)); gap:8px; }
-.preview-head { justify-content:space-between; gap:4px; min-height:32px; }
-.preview-head h2 { margin:0; font-size:16px; font-weight:700; letter-spacing:-.03em; }
+.stage { grid-area:portrait; display:flex; flex-direction:column; width:min(100%, 100cqh); gap:0; }
+.preview-head {
+  position:absolute; z-index:2; inset:auto 9px 9px; justify-content:space-between;
+  gap:8px; min-height:36px; padding:5px 9px;
+  background:#fff5d9ed; color:#29261e; border:1px solid #8c7744a8; border-radius:9px;
+  box-shadow:0 2px 8px #231d1412;
+}
+.preview-short { display:none; }
+.face-status { bottom:60px; }
+.preview-head h2 { margin:0; font-size:13px; font-weight:700; letter-spacing:-.03em; }
 #cameraTools { gap:9px; }
 #cameraTools[hidden] { display:none; }
 .camera-hint { color:#514320; font-size:11px; display:none; }
@@ -77,8 +84,8 @@
   .mast h1 { font-size:12px; }
   .layout { grid-template-columns:minmax(0,1fr) min(44vw,26dvh); grid-template-rows:auto minmax(0,1fr); grid-template-areas:'play portrait' 'editor editor'; gap:10px 12px; padding:10px 12px; }
   .workspace { border-bottom:1.5px solid #3c331f; border-radius:12px; }
-  .stage { width:100%; gap:4px; }
-  .preview-head { min-height:22px; }.preview-head h2 { font-size:12px; }
+  .stage { width:100%; gap:0; }
+  .preview-head { inset:auto 6px 6px; gap:4px; min-height:29px; padding:3px 6px; }.preview-head h2 { font-size:11px; }
   #resetView { font-size:11px; padding:3px 5px; }
   .transport { padding:0; border:0; margin:0; background:transparent; align-self:center; align-items:flex-start; gap:12px; }
   .transport .buttons { flex-direction:column; align-items:stretch; }
@@ -94,8 +101,8 @@
   .playback-monitor .timeline { height: 40px; }
   .mast { padding:4px var(--gutter); }.brand-mark { width:22px; height:22px; }
   .layout { padding:8px 14px; column-gap:18px; }
-  .stage { width:min(100%, calc(100cqh - 30px)); gap:3px; }
-  .preview-head { min-height:24px; }.preview-head h2 { font-size:13px; }
+  .stage { width:min(100%, 100cqh); gap:0; }
+  .preview-head { min-height:29px; padding:3px 6px; }.preview-head h2 { font-size:11px; }
   #resetView { padding:3px 6px; }
   .transport { padding:5px 9px; }.transport .buttons button { min-height:30px; }
   .group-switch { padding:4px; }.group-switch button { min-height:30px; padding:4px; }
@@ -109,4 +116,37 @@
   .mast h1 { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip-path:inset(50%); border:0; }
   .input-switch { min-width:0; font-size:12px; gap:5px; }
   .input-switch select { max-width: min(42vw, 145px); }
+}
+
+@container portrait (max-width:259px) {
+  .preview-full { display:none; }
+  .preview-short { display:inline; }
+  .preview-head { inset:auto 5px 5px; gap:4px; padding:3px 5px; min-height:28px; }
+  .preview-head h2 { font-size:10px; }
+  #resetView { font-size:10px; padding:3px 5px; }
+}
+
+/* Ink & Gold: one cool accent separates width from the warm audio envelope. */
+.playback-monitor {
+  --jaw:#fff2ca;
+  --width:#79b6ad;
+  --round:#e4ba55;
+  --level:#c8a03b;
+  --line:#655a3a;
+  background:#29271f;
+  color:#fff2ca;
+  border-top-color:#776538;
+  padding-block:10px;
+}
+.playback-monitor .meter span { color:#e4d7b4; }
+.playback-monitor .meter i { background:#5c5237; }
+.playback-monitor .meter em { border-radius:3px; }
+.playback-monitor .timeline { background:#302d24; border:1px solid #655a3a; height:86px; border-radius:6px; }
+@media (max-width:720px) and (orientation:portrait) {
+  .playback-monitor { padding-block:6px; }
+  .playback-monitor .timeline { height:70px; }
+}
+@media (max-height:490px) and (orientation:landscape) {
+  .playback-monitor { padding-block:4px; }
+  .playback-monitor .timeline { height:48px; }
 }
