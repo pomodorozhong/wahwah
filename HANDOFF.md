@@ -2,15 +2,12 @@
 
 ## In progress
 
-### codex/unified-voice-studio
+### codex/readme-cleanup
 
-- Task: Mustard Block / Writing Spread UI with all three inputs on one page. No linked issue.
-- Draft PR: https://github.com/pomodorozhong/wahwah/pull/4 into main, awaiting review. Publication was authorized and completed; P-07 is resolved.
-- Code checkpoint: bdea202 (after 2de2fc9), based on main at e275d48. Source is pushed. The earlier avatar-style and mouth experiments remain on the local backup branch.
-- State: the home page is Voice playground; the input selector switches text-to-babble, phonemes and live microphone without replacing the puppet or camera. Mode drafts and settings survive switching during the visit. The portrait and signal monitor remain visible while settings scroll. The final monitor uses Ink & Gold with teal width, cream jaw and gold round traces, with matching patterned legends and meters. The preview title and Reset view are inside the bottom of the square.
-- Verification: typecheck, 159 tests and production build passed. Chrome verified 60 responsive combinations, engine restoration after reload, legacy routing/history, preserved model/camera/drafts, audio/microphone cleanup (including pending permission), live demo and recorded playback. Physical microphone and touchscreen remain reviewer follow-ups.
-- Review server: port 5202, started from this PR worktree.
-- Next action: review the draft PR and local preview, then apply any review feedback before marking it ready. No open publication approvals for this branch.
+- Task: simplify the project README and consolidate durable guidance in the docs directory. No linked issue.
+- Documentation checkpoint: 89c4a1a, based on main at ef15434 (merged PR #4).
+- Verification: clean dependency install, typecheck, 159 tests, and production build passed. Local documentation links, images, and heading targets resolve. Opened the playground and started the greeting from the README quickstart. Physical microphone and external avatar loading were not exercised for this documentation change.
+- **P-09** Push this branch and open a ready PR into main titled "docs: simplify the README and organize the playground guides". The implementation plan was approved. The open-pr workflow requires approval of the finished branch and PR body before publication. Next action: await that approval.
 
 ## Ranked work
 

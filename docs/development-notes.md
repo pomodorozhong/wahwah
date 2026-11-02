@@ -1,8 +1,19 @@
 # Development notes
 
-Lasting pitfalls and workflow facts learned while building the playgrounds.
-The README covers features, decisions, verification and known limitations;
-this file covers how to work on the code without repeating mistakes.
+## Run the checks
+
+After installing dependencies, run these from the repository root:
+
+```sh
+npm run typecheck
+npm test
+npm run build
+```
+
+The tests exercise synthesis, mouth tracks, host mappings, and live analysis
+in Node. To inspect the production build in a browser, run
+`npm run preview`. For microphone checks, follow the
+[calibration and playback guide](playground.md#calibrate-a-microphone).
 
 ## Testing in the Claude desktop app's browser pane
 

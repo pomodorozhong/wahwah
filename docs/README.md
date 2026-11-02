@@ -1,9 +1,11 @@
-# Docs
+# wahwah documentation
 
-- [Project README](../README.md): playgrounds, how to run, module boundaries,
-  control format, decisions, verification and known limitations.
-- [Development notes](development-notes.md): testing pitfalls (browser pane,
-  hot reload), how live-mode quality is measured, and code-structure gotchas.
-- [Goals](goals.md): what the project is for, module boundaries, visual
-  direction, decisions, work order and open questions.
-- Images used by the README: [face.jpg](face.jpg), [poses.jpg](poses.jpg).
+Start with the [project README](../README.md) to run the playground locally.
+
+| I want to… | Read |
+| --- | --- |
+| Change the voice or load a character | [Playground guide](playground.md) |
+| Tune microphone response and lip sync | [Calibration](playground.md#calibrate-a-microphone) and [delay testing](playground.md#compare-timing-on-one-recording) |
+| Understand how audio drives a rig | [Architecture](architecture.md) |
+| Understand the visual direction and SDK plans | [Project goals and decisions](goals.md) |
+| Work on the code or evaluate a change | [Development notes](development-notes.md) |
