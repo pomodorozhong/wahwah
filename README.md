@@ -73,7 +73,10 @@ change settings. Below 860 px wide, the columns stack.
 
 - **Sound engine**:
   - *klattsch formant voice*: our text-to-babble (described below), spoken by
-    klattsch.
+    klattsch. *Trombone color* gives the vowels a muted brass sound while
+    keeping the same syllable timing and pitch bends. Both this engine and
+    the phoneme playground start at 75%. Above that, the wah-wah trombone
+    synth takes over the voiced sounds. Set it to 0% for the original voice.
   - *Wah-wah trombone*: the same text-to-babble, played on a muted trombone
     (see [Wah-wah trombone](#wah-wah-trombone)). Its extra controls are
     *Brassiness*, *Plunger wah* and *Transpose*.

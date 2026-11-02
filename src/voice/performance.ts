@@ -2,6 +2,7 @@
 // Nothing here depends on Three.js or the DOM, so it runs in Node tests too.
 
 import { compileString, renderToBuffer, type ScheduleEvent } from 'klattsch';
+import { DEFAULT_TROMBONE, renderTrombone } from '../engines/trombone';
 
 export interface VoiceSettings {
   /** Base pitch in Hz (klattsch `baseF0`). */
@@ -69,6 +70,33 @@ export interface SpeechPerformance extends Timeline {
   warnings: string[];
 }
 
+export const DEFAULT_BRASS_COLOR = 0.75;
+
+/** Change the resonances of voiced sounds on the compiled klattsch score. */
+function colorBrass(event: ScheduleEvent, amount: number): ScheduleEvent {
+  const t = event.target;
+  // Pauses, bursts and noise consonants keep their original articulation.
+  if (!t.voicing || t.isStop || !t.F1) return event;
+  const weight = amount * t.voicing;
+  const mix = (dry: number, brass: number) => dry + weight * (brass - dry);
+  // F1 rises as a vowel opens. Use that movement to sweep the mute above
+  // a broad lower resonance that carries the body of the horn.
+  const opening = Math.max(0, Math.min(1, (t.F1 - 200) / 600));
+  const bell = 360 + 1700 * opening;
+  // Broader resonances pass more energy; keep vowels level with consonants.
+  const level = 1 - 0.64 * weight;
+  return { ...event, target: {
+    ...t,
+    effort: mix(t.effort, 0.95),
+    F1: mix(t.F1, 1.7 * t.F0 + 75), BW1: mix(t.BW1, 250),
+    F2: mix(t.F2, bell), BW2: mix(t.BW2, bell * 0.26),
+    F3: mix(t.F3, bell * 1.85), BW3: mix(t.BW3, bell * 0.38),
+    A1: t.A1 * level * (1 - weight * 0.30),
+    A2: t.A2 * level,
+    A3: t.A3 * level * (1 - weight * 0.50),
+  } };
+}
+
 export function compilePerformance(source: string, settings: VoiceSettings): SpeechPerformance {
   const result = compileString(source, {
     baseF0: settings.pitchHz,
@@ -99,22 +127,60 @@ export function compilePerformance(source: string, settings: VoiceSettings): Spe
 }
 
 /** Render the whole utterance to mono samples. */
-export function renderPerformance(performance: SpeechPerformance, sampleRate: number): Float32Array {
+export function renderPerformance(performance: SpeechPerformance, sampleRate: number, brassColor = 0): Float32Array {
   if (performance.schedule.length === 0) return new Float32Array(0);
-  return renderToBuffer({
+  const speech = renderToBuffer({
     sampleRate,
-    schedule: performance.schedule,
+    schedule: brassColor > 0 ? performance.schedule.map(e => colorBrass(e, Math.min(1, brassColor))) : performance.schedule,
     totalMs: performance.durationSeconds * 1000,
   });
+  if (brassColor > DEFAULT_BRASS_COLOR) {
+    const amount = (Math.min(1, brassColor) - DEFAULT_BRASS_COLOR) / (1 - DEFAULT_BRASS_COLOR);
+    mixTrombone(performance, speech, sampleRate, amount);
+  }
+  return speech;
+}
+
+/** Hand voiced sounds to the horn, following each klattsch onset, closure and release. */
+function mixTrombone(performance: SpeechPerformance, speech: Float32Array, sampleRate: number, amount: number): void {
+  const horn = renderTrombone(performance, sampleRate, { ...DEFAULT_TROMBONE, transpose: 0 }, 'speech');
+  // Follow syllable loudness without imprinting individual pitch cycles on the horn.
+  const smoothing = 1 - Math.exp(-1 / (sampleRate * 0.012));
+  let voicePower = 0;
+  let hornPower = 0;
+  let blend = 0;
+  let targetBlend = 0;
+  let increment = 0;
+  let rampLeft = 0;
+  let next = 0;
+  const events = performance.schedule;
+  for (let i = 0; i < Math.min(speech.length, horn.length); i++) {
+    while (next < events.length && Math.floor(events[next].atMs * sampleRate / 1000) <= i) {
+      const { target, transitionMs } = events[next++];
+      targetBlend = target.isStop ? 0 : amount * (target.voicing ?? 0);
+      rampLeft = Math.max(1, Math.floor(transitionMs * sampleRate / 1000));
+      increment = (targetBlend - blend) / rampLeft;
+    }
+    if (rampLeft > 0) {
+      rampLeft--;
+      blend = rampLeft === 0 ? targetBlend : blend + increment;
+    }
+    const voice = speech[i];
+    const brass = horn[i];
+    voicePower += smoothing * (voice * voice - voicePower);
+    hornPower += smoothing * (brass * brass - hornPower);
+    const gain = Math.min(3.5, Math.sqrt(voicePower / Math.max(0.0016, hornPower)));
+    speech[i] = voice + blend * (Math.tanh(brass * gain) - voice);
+  }
 }
 
 /** Wrap a klattsch performance as a playable utterance. */
-export function klattschUtterance(performance: SpeechPerformance): Utterance {
+export function klattschUtterance(performance: SpeechPerformance, brassColor = 0): Utterance {
   return {
     engine: 'klattsch',
     timeline: performance,
     warnings: performance.warnings,
-    render: (sampleRate) => renderPerformance(performance, sampleRate),
+    render: (sampleRate) => renderPerformance(performance, sampleRate, brassColor),
   };
 }
 

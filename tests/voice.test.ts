@@ -20,6 +20,28 @@ describe('voice module', () => {
     expect(slow.durationSeconds).toBeGreaterThan(fast.durationSeconds);
   });
 
+  it.each([0.75, 1])('keeps the consonant, pause and voiced pitch at brass color %s', (color) => {
+    const sr = 24000;
+    const perf = compilePerformance('SH AA(+40) , UW', { ...DEFAULT_VOICE, msPerPhoneme: 300 });
+    const dry = renderPerformance(perf, sr);
+    const brass = renderPerformance(perf, sr, color);
+    const [, aa, pause, uw] = perf.segments;
+    expect(brass.length).toBe(dry.length);
+    const sample = (seconds: number) => Math.round(seconds * sr);
+    expect(brass.slice(0, sample(aa.startSeconds))).toEqual(dry.slice(0, sample(aa.startSeconds)));
+    expect(brass.slice(sample(pause.startSeconds + 0.06), sample(pause.endSeconds)).every(x => Math.abs(x) < 0.0001)).toBe(true);
+
+    const start = sample(uw.startSeconds + 0.12);
+    const rms = (value: (i: number) => number) => Math.sqrt(
+      Array.from({ length: sr / 10 }, (_, i) => value(start + i) ** 2).reduce((a, b) => a + b) / (sr / 10),
+    );
+    expect(rms(i => brass[i] - dry[i])).toBeGreaterThan(0.05);
+    // Both voices settle back to 120 Hz after the bend: one period at 24 kHz is 200 samples.
+    for (const audio of [dry, brass]) {
+      expect(rms(i => audio[i] - audio[i - 200])).toBeLessThan(rms(i => audio[i] - audio[i - 100]) * 0.2);
+    }
+  });
+
   it('keeps phoneme identity and timing in segments', () => {
     const perf = compilePerformance('M AA , IY', DEFAULT_VOICE);
     expect(perf.segments.map((s) => s.phoneme)).toEqual(['M', 'AA', null, 'IY']);

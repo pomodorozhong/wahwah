@@ -97,11 +97,27 @@ function noise(seed: number): () => number {
   };
 }
 
-export function renderTrombone(performance: SpeechPerformance, sampleRate: number, opts: TromboneOptions = DEFAULT_TROMBONE): Float32Array {
+export function renderTrombone(performance: SpeechPerformance, sampleRate: number, opts: TromboneOptions = DEFAULT_TROMBONE, phrasing: 'player' | 'speech' = 'player'): Float32Array {
   const total = Math.ceil(performance.durationSeconds * sampleRate);
   const out = new Float32Array(total);
   if (!total) return out;
   const f0 = f0Curve(performance.schedule, performance.durationSeconds);
+  if (phrasing === 'speech') {
+    // Use the score's vibrato directives on top of its pitch bends.
+    let phase = 0;
+    let nextEvent = 0;
+    let depth = 0;
+    let rate = 5;
+    for (let i = 0; i < f0.length; i++) {
+      while (nextEvent < performance.schedule.length && performance.schedule[nextEvent].atMs <= i * STEP * 1000) {
+        const target = performance.schedule[nextEvent++].target;
+        depth = target.vibratoDepth ?? depth;
+        rate = target.vibratoRate ?? rate;
+      }
+      f0[i] += depth * Math.sin(phase);
+      phase += 2 * Math.PI * rate * STEP;
+    }
+  }
   const { amp, open } = articulationCurves(performance, opts.wah);
   const shift = Math.pow(2, opts.transpose / 12);
   const maxHarmonics = 48;
@@ -121,8 +137,12 @@ export function renderTrombone(performance: SpeechPerformance, sampleRate: numbe
     const t = start / sampleRate;
     const ci = Math.min(f0.length - 1, Math.floor(t / STEP));
     // Portamento toward the speech contour, plus a lazy player's vibrato.
-    const targetPitch = f0[ci] * shift * (1 + 0.006 * Math.sin(TWO_PI * 5.2 * t));
-    pitch += (targetPitch - pitch) * (1 - Math.exp(-(block / sampleRate) / 0.03));
+    if (phrasing === 'player') {
+      const targetPitch = f0[ci] * shift * (1 + 0.006 * Math.sin(TWO_PI * 5.2 * t));
+      pitch += (targetPitch - pitch) * (1 - Math.exp(-(block / sampleRate) / 0.03));
+    } else {
+      pitch = f0[ci] * shift;
+    }
     const a = amp[ci];
     // Plunger: low-pass corner moves with openness; louder notes get brassier.
     const fc = 260 + 2600 * Math.pow(open[ci], 1.3) * (0.75 + 0.5 * a) * (0.6 + 0.8 * opts.brightness);

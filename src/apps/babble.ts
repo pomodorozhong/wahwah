@@ -3,7 +3,7 @@
 // klattsch or the wah-wah trombone with our own text-to-babble, or Babble
 // Engine end to end.
 
-import { compilePerformance, klattschUtterance, type Utterance, type VoiceSettings } from '../voice/performance';
+import { compilePerformance, DEFAULT_BRASS_COLOR, klattschUtterance, type Utterance, type VoiceSettings } from '../voice/performance';
 import { moodVoice, textToBabble, wordAtPhonemeOffset, type BabbleScript } from '../babble/generate';
 import { MOODS, STYLES } from '../babble/styles';
 import { tokenizeText } from '../babble/text';
@@ -23,7 +23,7 @@ const SAMPLES = [
 
 type EngineId = 'klattsch' | 'trombone' | 'babble-engine';
 const ENGINE_HINTS: Record<EngineId, string> = {
-  klattsch: 'klattsch formant synth speaks our invented syllables.',
+  klattsch: 'Trombone color starts with the original voice at 0%. Above 75%, a plunger-muted trombone takes over the voiced sounds and follows the same pitch bends.',
   trombone: 'A muted trombone plays our invented syllables: the plunger opens on vowels (wah) and closes on consonants, following the same pitch contour and the same timeline as the mouth.',
   'babble-engine': "Babble Engine invents and voices its own syllables. Mouth shapes come from its syllable letters, syllable ends from the audio's loudness.",
 };
@@ -70,7 +70,10 @@ const panelHtml =
     'Voice',
     `${slider('pitch', 'Pitch', 60, 300, 1, 130)}
     ${slider('rate', 'Speaking rate', 50, 200, 5, 95)}
-    <div data-for-engine="klattsch">${slider('scale', 'Voice size', 0.8, 1.3, 0.01, 1.05)}</div>
+    <div data-for-engine="klattsch" class="section-body">
+      ${slider('scale', 'Voice size', 0.8, 1.3, 0.01, 1.05)}
+      ${slider('brass', 'Trombone color', 0, 100, 5, DEFAULT_BRASS_COLOR * 100)}
+    </div>
     <div data-for-engine="trombone" class="section-body">
       ${slider('brightness', 'Brassiness', 0, 1, 0.05, DEFAULT_TROMBONE.brightness)}
       ${slider('wah', 'Plunger wah', 0.2, 1, 0.05, DEFAULT_TROMBONE.wah)}
@@ -135,7 +138,7 @@ function compile(): Utterance {
   if (engine === 'trombone') {
     return tromboneUtterance(perf, { brightness: num('brightness'), wah: num('wah'), transpose: num('transpose') });
   }
-  return klattschUtterance(perf);
+  return klattschUtterance(perf, num('brass') / 100);
 }
 
 const escapeHtml = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -184,6 +187,7 @@ function changed(): void {
   byId('pitchOut').textContent = `${num('pitch')} Hz`;
   byId('rateOut').textContent = `${num('rate')} ms/phoneme`;
   byId('scaleOut').textContent = `×${num('scale').toFixed(2)}`;
+  byId('brassOut').textContent = `${num('brass')}%`;
   byId('brightnessOut').textContent = num('brightness').toFixed(2);
   byId('wahOut').textContent = num('wah').toFixed(2);
   byId('transposeOut').textContent = `${num('transpose') > 0 ? '+' : ''}${num('transpose')} st`;
@@ -208,7 +212,7 @@ textEl.addEventListener('input', () => {
   sampleEl.value = i >= 0 ? String(i) : '';
   changed();
 });
-for (const id of ['style', 'beVoice', 'mood', 'seed', 'pitch', 'rate', 'scale', 'brightness', 'wah', 'transpose']) byId(id).addEventListener('input', changed);
+for (const id of ['style', 'beVoice', 'mood', 'seed', 'pitch', 'rate', 'scale', 'brass', 'brightness', 'wah', 'transpose']) byId(id).addEventListener('input', changed);
 byId('reroll').addEventListener('click', () => {
   seedEl.value = String(Math.floor(Math.random() * 100000));
   changed();

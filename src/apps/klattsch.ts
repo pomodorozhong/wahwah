@@ -1,6 +1,6 @@
 // klattsch playground: ARPABET phoneme input straight into klattsch.
 
-import { compilePerformance, klattschUtterance, type VoiceSettings } from '../voice/performance';
+import { compilePerformance, DEFAULT_BRASS_COLOR, klattschUtterance, type VoiceSettings } from '../voice/performance';
 import { PRESETS } from '../voice/presets';
 import { Stage, byId, section } from '../ui/stage';
 
@@ -24,13 +24,16 @@ const panelHtml =
     </label>
     <label class="field slider">Voice size <output id="scaleOut"></output>
       <input id="scale" type="range" min="0.8" max="1.3" step="0.01" />
+    </label>
+    <label class="field slider">Trombone color <output id="brassOut"></output>
+      <input id="brass" type="range" min="0" max="100" step="5" value="${DEFAULT_BRASS_COLOR * 100}" />
     </label>`,
   );
 
 const stage = new Stage(document.querySelector<HTMLDivElement>('#app')!, {
   title: 'klattsch playground',
   panelHtml,
-  compile: () => klattschUtterance(compilePerformance(phonemesEl.value, voiceSettings())),
+  compile: () => klattschUtterance(compilePerformance(phonemesEl.value, voiceSettings()), Number(brassEl.value) / 100),
 });
 
 const presetSel = byId<HTMLSelectElement>('preset');
@@ -38,6 +41,7 @@ const phonemesEl = byId<HTMLTextAreaElement>('phonemes');
 const pitchEl = byId<HTMLInputElement>('pitch');
 const rateEl = byId<HTMLInputElement>('rate');
 const scaleEl = byId<HTMLInputElement>('scale');
+const brassEl = byId<HTMLInputElement>('brass');
 
 function voiceSettings(): VoiceSettings {
   return { pitchHz: Number(pitchEl.value), msPerPhoneme: Number(rateEl.value), formantScale: Number(scaleEl.value) };
@@ -47,6 +51,7 @@ function updateSliderLabels(): void {
   byId('pitchOut').textContent = `${pitchEl.value} Hz`;
   byId('rateOut').textContent = `${rateEl.value} ms/phoneme`;
   byId('scaleOut').textContent = `×${Number(scaleEl.value).toFixed(2)}`;
+  byId('brassOut').textContent = `${brassEl.value}%`;
 }
 
 function changed(): void {
@@ -65,6 +70,6 @@ function loadPreset(id: string): void {
 }
 
 presetSel.addEventListener('change', () => loadPreset(presetSel.value));
-for (const el of [phonemesEl, pitchEl, rateEl, scaleEl]) el.addEventListener('input', changed);
+for (const el of [phonemesEl, pitchEl, rateEl, scaleEl, brassEl]) el.addEventListener('input', changed);
 
 loadPreset(PRESETS[0].id);
