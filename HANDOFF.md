@@ -4,28 +4,31 @@
 
 ### codex/default-tofu-model
 
-- Task: make the selected white, clipped-corner tofu cube the default puppet and update the README images. No linked issue or PR yet; the branch is unlinked and this PR will close no issues. Issue #6 is a separate line-boil experiment.
-- Code checkpoint: e49e8c7, based on main at 4b97a10 (merged PR #5). The old readme-cleanup P-09 request is obsolete because PR #5 merged.
-- State: the bundled model, generator, default-view integration, and current portrait/pose row are committed. The source model keeps the selected hinged mouth and body performance, with white shading, a thicker outline, larger eyes, and pale peach cheeks. All other views remain available. Only the selected model is shipped.
-- Verification: model regeneration is byte-identical; typecheck, 165 tests, production build, and diff whitespace checks pass. glTF structural validation has zero errors or warnings (the validator does not validate the VRM extension). The browser loads the VRM, renders the README images, plays generated speech, and switches views and input modes. Physical microphone input and external VRM/Live2D files were not exercised. The documentation-only checkpoint commit does not change runtime behavior.
+- Task: make the selected white, clipped-corner tofu cube the default puppet, update the README images, and default Text to babble to Wah-wah trombone. Ready PR [#7](https://github.com/pomodorozhong/wahwah/pull/7) is open into main. The branch is unlinked and the PR will close no issues. Issue #6 is a separate line-boil experiment.
+- Code checkpoint: fe736c1 (trombone default follow-up; original model feature e49e8c7), based on main at 4b97a10 (merged PR #5). The old readme-cleanup P-09 request is obsolete because PR #5 merged.
+- State: the original model update is awaiting PR review and merge. The trombone default and matching documentation are committed locally, awaiting P-12 publication approval. The bundled model, generator, default-view integration, and current portrait/pose row are committed and pushed. The source model keeps the selected hinged mouth and body performance, with white shading, a thicker outline, larger eyes, and pale peach cheeks. All other views remain available. Only the selected model is shipped.
+- Verification: the trombone follow-up passes typecheck, 165 tests, production build, and whitespace checks. Browser checks confirm the fresh-visit default, trombone playback, and an explicit klattsch URL override. The stale Vite server was restarted before browser verification. Original model verification: model regeneration is byte-identical; typecheck, 165 tests, production build, and diff whitespace checks pass. glTF structural validation has zero errors or warnings (the validator does not validate the VRM extension). The browser loads the VRM, renders the README images, plays generated speech, and switches views and input modes. Physical microphone input and external VRM/Live2D files were not exercised. The documentation-only checkpoint commit does not change runtime behavior.
 - Known limitation: M/B/P still reads as a small open smile rather than a sealed mouth. No mouth redesign is included.
-- Next action: obtain P-11 approval for the finished branch and exact body below, then push without force, open the ready PR, and verify its head, base, title, body, and closing issues.
+- Publication checkpoint: ea06c53 was approved in chat on 2026-11-03 and pushed without force. P-11 is resolved. PR #7 has the approved head, main base, exact title and body, ready status, and no closing issues. GitHub reports no check runs.
+- Next action: obtain P-12 approval, push the follow-up without force, update PR #7 to the exact title and body below, and verify the remote head, metadata, and check status. Merging requires a separate instruction.
 - **P-10** Optional issue draft, not filed: "Use the white tofu cube as the default puppet". Body: "Start the voice playground with the selected clipped-corner tofu model. Ship the white surface, thick ink border, larger eyes and pale peach blush, preserve the hinged mouth and body performance across inputs, and update the README images. Keep the other face hosts selectable and ship the model generator with tests." Why: the handoff working rules call for an issue draft on an unlinked work branch; filing an additional issue has not been requested. Blocks: nothing; the PR can be published without it.
-- **P-11** Push this branch and open a ready PR into main with the title and full body below. The feature work and README updates were explicitly requested in this chat. The open-pr skill requires approval of the finished branch and exact PR body before publication. No labels, reviewers, comments, or issue links are proposed. Blocks: publication only.
 
-PR title: **feat(puppet): use the white tofu cube as the default model**
+- **P-12** Push the committed trombone-default follow-up and its handoff checkpoint to the existing PR #7, keeping it ready for review, with the exact revised title and body below. The new behavior was explicitly requested in chat; the previous publication approval covered ea06c53 only. Why: the open-pr skill requires renewed approval when the branch changes. Blocks: publishing the new commit and updating PR metadata only. No labels, reviewers, comments, or issue links are proposed.
+
+PR title: **feat(playground): default to tofu puppet and wah-wah trombone**
 
 Proposed PR body:
 
 > ## What changed
 >
 > - Start the playground with a bundled white tofu cube: clipped corners, a thick ink outline, larger eyes, and soft peach cheeks.
+> - Default Text to babble to Wah-wah trombone while preserving explicit engine URLs and the visit's saved engine choice. Update the README and playground guide to describe the default voice.
 > - Drive its hinged mouth, shoulder roll, gaze, and brow accents from the existing face controls. Keep the procedural preview, external VRM, Live2D, and debug views available.
 > - Ship the model generator and regeneration command, add geometry and motion tests, and refresh the README portrait and neutral/AA/IY/UW/M image row. Include a browser capture page for reproducing the images.
 >
 > ## Why
 >
-> The selected stylized puppet should be the character visitors see when they open the playground. The same model now stays mounted across text, phoneme, and live input modes, and the README shows the default character.
+> The selected stylized puppet and muted trombone voice should be the first experience when visitors open the playground. The same model stays mounted across text, phoneme, and live input modes, and the README describes the default character and voice.
 >
 > ## Verification
 >
@@ -39,11 +42,11 @@ Proposed PR body:
 >
 > ### How to verify
 >
-> 1. Run `npm ci` and `npm run dev`. Open the playground and confirm the white tofu cube is the initial puppet. Play the greeting.
+> 1. Run `npm ci` and `npm run dev`. Open the playground and confirm the white tofu cube is the initial puppet and Voice → Sound engine selects Wah-wah trombone. Play the greeting. Visit `/?engine=klattsch` and confirm the explicit engine choice still works.
 > 2. Under Puppet, switch to Preview face and back to Tofu cube. Switch between text, phoneme, and live input modes; the selected cube should remain available.
 > 3. Compare the README portrait and five mouth poses with the capture page described in the development notes.
 >
-> Verified: generated playback, view and input-mode switching, production asset loading, and both README image renders in the browser.
+> Verified: fresh visits default to trombone, an explicit klattsch URL selects klattsch, generated playback, view and input-mode switching, production asset loading, and both README image renders in the browser.
 >
 > Reviewer follow-up: physical microphone input and external VRM/Live2D file loading were not exercised for this change.
 >
