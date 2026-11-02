@@ -7,6 +7,8 @@ cartoon *wah-wah*. You can also drive the mouth with your microphone.
 
 ![The built-in puppet with its mouth open mid-syllable](docs/face.jpg)
 
+![Mouth poses for neutral, AA, IY, UW and M](docs/poses.jpg)
+
 ## Run the playground
 
 With Node.js 24 or 26 and npm installed, run these commands from the repository directory.
