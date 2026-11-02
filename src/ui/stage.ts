@@ -7,9 +7,20 @@ import { generateFaceTrack, sampleFaceTrack } from '../puppet/generate';
 import type { FaceControlTrack, FaceControls } from '../puppet/controls';
 import { rmsEnvelope, syncReport, type SyncReport } from '../analysis';
 import { Player } from '../playback';
-import { PuppetView, byId, fitCanvas, renderShell } from './puppetView';
+import { PuppetView, byId, fitCanvas, renderMode } from './puppetView';
 
 export { byId, section } from './puppetView';
+
+/** Keep each generated mode's draft in memory while the user tries other inputs. */
+export function restoreDraft(root: HTMLElement, signal: AbortSignal, draft: Record<string, string>): void {
+  const fields = root.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+    ':is(#group-0, #group-1) :is(input, select, textarea)[id]',
+  );
+  for (const field of fields) if (field.id in draft) field.value = draft[field.id];
+  signal.addEventListener('abort', () => {
+    for (const field of fields) draft[field.id] = field.value;
+  }, { once: true });
+}
 
 export interface Prepared {
   engine: string;
@@ -22,9 +33,9 @@ export interface Prepared {
 }
 
 export interface StageOptions {
-  title: string;
   /** Page-specific panel content, usually built with section(). */
-  panelHtml: string;
+  inputHtml: string;
+  voiceHtml: string;
   /** Build the utterance from the page's current inputs, with any engine. */
   compile: () => Utterance;
   /** Called every frame with the playback time and active segment. */
@@ -36,35 +47,50 @@ export interface StageOptions {
 const CONTROL_LINES: [keyof FaceControls, string][] = [['jawOpen', '#ff8a5c'], ['lipWidth', '#7ee081'], ['lipRound', '#d68cff']];
 
 export class Stage {
-  readonly view: PuppetView;
+  private frameId = 0;
   private player: Player | null = null;
   private prepared: Prepared | null = null;
   private generatorRuns = 0;
   private playCount = 0;
   private readonly timeline: HTMLCanvasElement;
+  private readonly stopButton: HTMLButtonElement;
   private last = performance.now();
 
-  constructor(root: HTMLElement, private readonly opts: StageOptions) {
-    renderShell(root, {
-      title: opts.title,
-      panelHtml: opts.panelHtml,
-      transportHtml: '<button id="play" class="primary">▶ Play</button><button id="stop">■ Stop</button>',
+  constructor(root: HTMLElement, readonly view: PuppetView, private readonly signal: AbortSignal, private readonly opts: StageOptions) {
+    renderMode(root, {
+
+      inputHtml: opts.inputHtml,
+      voiceHtml: opts.voiceHtml,
+      transportHtml: '<button id="play" class="primary" title="Play line (Ctrl or Command + Enter)">▶ Play line</button><button id="stop" disabled title="Stop playback (Escape)">■ Stop</button>',
     });
-    this.view = new PuppetView();
     this.timeline = byId('timeline');
 
-    this.view.puppetEl.addEventListener('change', () => this.invalidate());
-    byId('play').addEventListener('click', () => void this.play());
-    byId('stop').addEventListener('click', () => this.stop());
+    this.view.puppetEl.addEventListener('change', () => this.invalidate(), { signal });
+    byId('play').addEventListener('click', () => void this.play(), { signal });
+    this.stopButton = byId<HTMLButtonElement>('stop');
+    this.stopButton.addEventListener('click', () => this.stop(), { signal });
     window.addEventListener('keydown', (e) => {
       const t = e.target;
+      if (e.isComposing) return;
+      if (e.code === 'Escape') { this.stop(); return; }
+      if (t instanceof HTMLTextAreaElement && e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        if (!e.repeat) void this.play();
+        return;
+      }
       if (t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement || (t instanceof HTMLInputElement && t.type !== 'range' && t.type !== 'checkbox')) return;
-      if (e.code === 'Space') { e.preventDefault(); void this.play(); }
-      if (e.code === 'Escape') this.stop();
-    });
+      if (e.code === 'Space' && !(t instanceof HTMLElement && t.closest('button, summary, a, input'))) { e.preventDefault(); void this.play(); }
+    }, { signal });
 
-    Object.assign(window, { __wahwah: this.debugHook() });
-    requestAnimationFrame((now) => this.frame(now));
+    const debug = this.debugHook();
+    Object.assign(window, { __wahwah: debug });
+    this.frameId = requestAnimationFrame((now) => this.frame(now));
+    signal.addEventListener('abort', () => {
+      cancelAnimationFrame(this.frameId);
+      this.player?.dispose();
+      this.view.follower.relax();
+      if (Reflect.get(window, '__wahwah') === debug) Reflect.deleteProperty(window, '__wahwah');
+    }, { once: true });
   }
 
   /** Inputs changed: stop, relax the face, and rebuild. */
@@ -109,6 +135,7 @@ export class Stage {
   }
 
   async play(): Promise<void> {
+    if (this.signal.aborted) return;
     if (!this.player) {
       this.player = new Player();
       this.player.onEnded = () => this.view.follower.relax();
@@ -117,7 +144,7 @@ export class Stage {
     }
     const p = this.prepare();
     await this.player.play(p.audio);
-    this.playCount++;
+    if (!this.signal.aborted && this.player.playing) this.playCount++;
   }
 
   stop(): void {
@@ -187,6 +214,7 @@ export class Stage {
     const dt = Math.min(0.1, (now - this.last) / 1000);
     this.last = now;
     const time = this.player?.position() ?? null;
+    if (this.stopButton.disabled !== (time === null)) this.stopButton.disabled = time === null;
     const p = this.prepared;
     let segment: PerformanceSegment | null = null;
     let controls: FaceControls | null = null;
@@ -198,7 +226,7 @@ export class Stage {
     this.view.showReadout(time, segment?.phoneme ?? null, this.player?.level() ?? 0);
     this.drawTimeline(time);
     this.opts.onFrame?.(time, segment);
-    requestAnimationFrame((n) => this.frame(n));
+    this.frameId = requestAnimationFrame((n) => this.frame(n));
   }
 
   // Hook for automated browser checks; not part of the puppet interface.

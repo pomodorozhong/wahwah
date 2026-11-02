@@ -1,0 +1,107 @@
+/* Keep each settings page in reading order and size its controls to the inspector. */
+.panel > :is(#group-1, #group-2, #group-3, #group-0:has(#source)) {
+  container: settings / inline-size;
+
+  .section {
+    padding: 1rem 0;
+    border-color: color-mix(in srgb, var(--line) 60%, transparent);
+  }
+
+  > .section:first-child { padding-block-start: 0; }
+  .section > h3 {
+    margin: 0;
+    color: var(--text);
+    font-family: inherit;
+    font-size: clamp(18px, 1.4vw, 23px);
+    font-weight: 750;
+    line-height: 1.15;
+    letter-spacing: -.035em;
+  }
+
+  .section-body {
+    min-inline-size: 0;
+    gap: 14px;
+    padding: 12px 0 0;
+  }
+
+  .section-body .section-body { padding: 0; }
+  .field, .view-opts label {
+    min-inline-size: 0;
+    gap: 5px;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  select, input[type='number'] {
+    width: 100%;
+    min-inline-size: 0;
+    min-block-size: 38px;
+    padding: 7px 10px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.3;
+  }
+
+  .pair { gap: 12px; }
+  .pair.seed { grid-template-columns: minmax(5rem, 8rem) auto; justify-content: start; }
+  .pair.seed button { min-block-size: 38px; }
+
+  .field.slider {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 8px;
+    row-gap: 1px;
+  }
+
+  .field.slider output {
+    background: #f8e7ae;
+    border-radius: 4px;
+    padding: 3px 6px;
+    color: var(--text);
+    font: 600 12px/1.2 ui-monospace, monospace;
+  }
+
+  input[type='range'] { width: 100%; min-height: 26px; margin: 0; cursor: pointer; }
+  input[type='checkbox'] { margin: 0; inline-size: 17px; block-size: 17px; flex: none; }
+  label:has(> input[type='checkbox']) {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    min-block-size: 32px;
+  }
+
+  .view-opts { gap: 10px 16px; align-items: start; }
+  .hint { max-inline-size: 62ch; color: var(--muted); font-size: 13px; }
+  summary { cursor: pointer; }
+  .profile-buttons { align-items: center; }
+  .profile-buttons :is(button, .file-button) { min-block-size: 36px; }
+  .profile-report:empty { display: none; }
+  :is(#diag, #latency) .row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--line) 45%, transparent);
+    font-size: 13px;
+    overflow-wrap: anywhere;
+  }
+  .row:last-child { border-bottom: 0; }
+  .row b { text-align: end; }
+}
+
+@container settings (min-width: 27rem) {
+  #group-2 .view-opts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  #group-2 .view-opts label:has(> :is(#view, #model)) { grid-column: 1 / -1; }
+}
+
+@container settings (max-width: 26.99rem) {
+  #group-1 .section-body:has(> .field.slider) {
+    display: flex;
+    flex-direction: column;
+  }
+}

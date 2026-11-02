@@ -2,20 +2,26 @@
 
 import { compilePerformance, DEFAULT_BRASS_COLOR, klattschUtterance, type VoiceSettings } from '../voice/performance';
 import { PRESETS } from '../voice/presets';
-import { Stage, byId, section } from '../ui/stage';
+import type { PuppetView } from '../ui/puppetView';
+import { Stage, byId, section, restoreDraft } from '../ui/stage';
 
-const panelHtml =
+const inputHtml = `
+  <section class="script-editor" aria-labelledby="phonemesTitle">
+    <div class="script-heading">
+      <h2 id="phonemesTitle"><label for="phonemes">Phonemes</label></h2>
+      <label class="sample-picker">Preset
+        <select id="preset"><option value="" disabled>Custom phrase</option>${PRESETS.map((p) => `<option value="${p.id}">${p.name}</option>`).join('')}</select>
+      </label>
+    </div>
+    <div class="writing-sheet">
+      <textarea id="phonemes" rows="4" spellcheck="false" placeholder="HH EH L OW" aria-describedby="phonemeFormat"></textarea>
+      <span id="phonemeFormat" class="sheet-meta">ARPABET · klattsch syntax</span>
+    </div>
+  </section>`;
+
+const voiceHtml =
   section(
-    'Phonemes',
-    `<label class="field">Preset
-      <select id="preset">${PRESETS.map((p) => `<option value="${p.id}">${p.name}</option>`).join('')}</select>
-    </label>
-    <label class="field">ARPABET, klattsch syntax
-      <textarea id="phonemes" rows="3" spellcheck="false"></textarea>
-    </label>`,
-  ) +
-  section(
-    'Voice',
+    'Voice settings',
     `<label class="field slider">Pitch <output id="pitchOut"></output>
       <input id="pitch" type="range" min="60" max="300" step="1" />
     </label>
@@ -30,46 +36,57 @@ const panelHtml =
     </label>`,
   );
 
-const stage = new Stage(document.querySelector<HTMLDivElement>('#app')!, {
-  title: 'klattsch playground',
-  panelHtml,
-  compile: () => klattschUtterance(compilePerformance(phonemesEl.value, voiceSettings()), Number(brassEl.value) / 100),
-});
+const draft: Record<string, string> = {};
 
-const presetSel = byId<HTMLSelectElement>('preset');
-const phonemesEl = byId<HTMLTextAreaElement>('phonemes');
-const pitchEl = byId<HTMLInputElement>('pitch');
-const rateEl = byId<HTMLInputElement>('rate');
-const scaleEl = byId<HTMLInputElement>('scale');
-const brassEl = byId<HTMLInputElement>('brass');
+export function mountKlattsch(root: HTMLElement, view: PuppetView, signal: AbortSignal): void {
+  const stage = new Stage(root, view, signal, {
 
-function voiceSettings(): VoiceSettings {
-  return { pitchHz: Number(pitchEl.value), msPerPhoneme: Number(rateEl.value), formantScale: Number(scaleEl.value) };
+    inputHtml,
+    voiceHtml,
+    compile: () => klattschUtterance(compilePerformance(phonemesEl.value, voiceSettings()), Number(brassEl.value) / 100),
+  });
+
+  const presetSel = byId<HTMLSelectElement>('preset');
+  const phonemesEl = byId<HTMLTextAreaElement>('phonemes');
+  const pitchEl = byId<HTMLInputElement>('pitch');
+  const rateEl = byId<HTMLInputElement>('rate');
+  const scaleEl = byId<HTMLInputElement>('scale');
+  const brassEl = byId<HTMLInputElement>('brass');
+
+  function voiceSettings(): VoiceSettings {
+    return { pitchHz: Number(pitchEl.value), msPerPhoneme: Number(rateEl.value), formantScale: Number(scaleEl.value) };
+  }
+
+  function updateSliderLabels(): void {
+    byId('pitchOut').textContent = `${pitchEl.value} Hz`;
+    byId('rateOut').textContent = `${rateEl.value} ms/phoneme`;
+    byId('scaleOut').textContent = `×${Number(scaleEl.value).toFixed(2)}`;
+    byId('brassOut').textContent = `${brassEl.value}%`;
+  }
+
+  function changed(): void {
+    updateSliderLabels();
+    stage.invalidate();
+  }
+
+  function loadPreset(id: string): void {
+    const p = PRESETS.find((x) => x.id === id) ?? PRESETS[0];
+    presetSel.value = p.id;
+    phonemesEl.value = p.phonemes;
+    pitchEl.value = String(p.voice.pitchHz);
+    rateEl.value = String(p.voice.msPerPhoneme);
+    scaleEl.value = String(p.voice.formantScale);
+    changed();
+  }
+
+  presetSel.addEventListener('change', () => loadPreset(presetSel.value), { signal });
+  phonemesEl.addEventListener('input', () => {
+    presetSel.value = '';
+    changed();
+  }, { signal });
+  for (const el of [pitchEl, rateEl, scaleEl, brassEl]) el.addEventListener('input', changed, { signal });
+
+  restoreDraft(root, signal, draft);
+  if ('phonemes' in draft) changed();
+  else loadPreset(PRESETS[0].id);
 }
-
-function updateSliderLabels(): void {
-  byId('pitchOut').textContent = `${pitchEl.value} Hz`;
-  byId('rateOut').textContent = `${rateEl.value} ms/phoneme`;
-  byId('scaleOut').textContent = `×${Number(scaleEl.value).toFixed(2)}`;
-  byId('brassOut').textContent = `${brassEl.value}%`;
-}
-
-function changed(): void {
-  updateSliderLabels();
-  stage.invalidate();
-}
-
-function loadPreset(id: string): void {
-  const p = PRESETS.find((x) => x.id === id) ?? PRESETS[0];
-  presetSel.value = p.id;
-  phonemesEl.value = p.phonemes;
-  pitchEl.value = String(p.voice.pitchHz);
-  rateEl.value = String(p.voice.msPerPhoneme);
-  scaleEl.value = String(p.voice.formantScale);
-  changed();
-}
-
-presetSel.addEventListener('change', () => loadPreset(presetSel.value));
-for (const el of [phonemesEl, pitchEl, rateEl, scaleEl, brassEl]) el.addEventListener('input', changed);
-
-loadPreset(PRESETS[0].id);

@@ -8,6 +8,8 @@ export class Player {
   private source: AudioBufferSourceNode | null = null;
   private startTime = 0;
   private duration = 0;
+  private generation = 0;
+  private disposed = false;
   private readonly meterBuf: Float32Array<ArrayBuffer>;
   onEnded: (() => void) | null = null;
 
@@ -28,8 +30,19 @@ export class Player {
   }
 
   async play(samples: Float32Array<ArrayBuffer>, leadSeconds = 0.03): Promise<void> {
+    if (this.disposed) return;
     this.stop();
-    if (this.ctx.state !== 'running') await this.ctx.resume();
+    const generation = this.generation;
+    if (this.ctx.state !== 'running') {
+      try {
+        await this.ctx.resume();
+      } catch (error) {
+        if (this.generation === generation) throw error;
+        return;
+      }
+      // A different play, stop or mode switch may have occurred during resume().
+      if (generation !== this.generation) return;
+    }
     const buffer = this.ctx.createBuffer(1, Math.max(1, samples.length), this.ctx.sampleRate);
     buffer.copyToChannel(samples, 0);
     const src = this.ctx.createBufferSource();
@@ -40,6 +53,7 @@ export class Player {
     src.onended = () => {
       if (this.source !== src) return;
       this.source = null;
+      src.disconnect();
       this.onEnded?.();
     };
     src.start(this.startTime);
@@ -47,6 +61,7 @@ export class Player {
   }
 
   stop(): void {
+    this.generation++;
     const src = this.source;
     if (!src) return;
     this.source = null;
@@ -57,6 +72,15 @@ export class Player {
       // Already stopped.
     }
     src.disconnect();
+  }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.stop();
+    this.onEnded = null;
+    this.analyser.disconnect();
+    if (this.ctx.state !== 'closed') void this.ctx.close();
   }
 
   /**

@@ -1,7 +1,10 @@
 // Page shell and the puppet view shared by every playground: the 3D face or
-// the debug puppet, the transport bar's puppet options, and the live meters.
+// the debug puppet, the input mode and puppet controls, and the live meters.
 
 import './style.css';
+import './writing-spread.css';
+import './settings.css';
+import './script-editor.css';
 import type { FaceControls } from '../puppet/controls';
 import { MotionTracker, type FaceMotion } from '../puppet/motion';
 import localModels from 'virtual:local-models';
@@ -14,11 +17,13 @@ import type { VrmFace } from '../host/vrm';
 import type { Live2DFace } from '../host/live2d';
 
 export interface ShellOptions {
-  title: string;
   /** Primary transport buttons (play/stop, start/stop mic). */
   transportHtml: string;
   /** Page-specific panel content, usually built with section(). */
-  panelHtml: string;
+  inputHtml: string;
+  voiceHtml: string;
+  inputLabel?: string;
+  analysisHtml?: string;
   /** Label for the fourth meter. */
   levelLabel?: string;
 }
@@ -27,50 +32,107 @@ export function byId<T extends HTMLElement = HTMLElement>(id: string): T {
   return document.getElementById(id) as T;
 }
 
-/** A collapsible panel section. */
-export function section(title: string, body: string, open = true): string {
-  return `<details class="section"${open ? ' open' : ''}><summary>${title}</summary><div class="section-body">${body}</div></details>`;
+export function section(title: string, body: string): string {
+  return `<section class="section"><h3>${title}</h3><div class="section-body">${body}</div></section>`;
+}
+
+export function disclosure(title: string, body: string): string {
+  return `<details class="section"><summary>${title}</summary><div class="section-body">${body}</div></details>`;
 }
 
 const meter = (id: string, label: string) =>
   `<div class="meter ${id}"><span>${label}</span><b id="${id}Val">0.00</b><i><em id="${id}Bar"></em></i></div>`;
 
-export function renderShell(root: HTMLElement, opts: ShellOptions): void {
-  root.innerHTML = `
-    <main class="layout">
-      <section class="stage">
-        <div id="face" class="face"><p id="faceStatus" class="face-status" hidden></p>
-          <div id="cameraTools" class="camera-tools" hidden>
-            <span class="mouse-hint">Drag to rotate · Shift-drag to pan · Scroll to zoom</span>
-            <span class="touch-hint">Drag to rotate · Two fingers to pan or pinch</span>
-            <button type="button" id="resetView">Reset view</button>
-          </div>
-        </div>
-        <div class="transport">
-          <div class="buttons">${opts.transportHtml}</div>
-          <div class="status"><span>time</span><b id="time">–</b><span>sound</span><b id="sound">–</b></div>
-          <div class="view-opts">
-            <label><input id="puppet" type="checkbox" checked /> Puppet output</label>
+/** Update the editor, transport and analysis for a new input while retaining the stage and rig. */
+export function renderMode(root: HTMLElement, opts: ShellOptions): void {
+  byId('group-0').innerHTML = opts.inputHtml + '<div id="calibrationTools"></div>';
+  byId('group-1').innerHTML = opts.voiceHtml;
+  byId('group-3').innerHTML = (opts.analysisHtml ?? '') + section('Diagnostics', '<div id="diag">–</div>');
+  byId('tab-0').textContent = opts.inputLabel ?? 'Script';
+  root.querySelector<HTMLElement>('.transport .buttons')!.innerHTML = opts.transportHtml;
+  root.querySelector<HTMLElement>('.meter.level span')!.textContent = opts.levelLabel ?? 'Output';
+  byId('warnings').hidden = true;
+  byId('warnings').textContent = '';
+  byId<HTMLButtonElement>('tab-0').click();
+}
+
+export function renderShell(root: HTMLElement): void {
+  const groups = [
+    { label: 'Script', body: '' },
+    { label: 'Voice', body: '' },
+    { label: 'Puppet', body: section('Appearance and motion', `<div class="view-opts">
             <label>View <select id="view"><option value="face">Preview face</option><option value="vrm">VRM model</option><option value="live2d">Live2D model</option><option value="debug">Debug (instructions)</option></select></label>
             <label id="modelLabel" hidden>Model <select id="model"></select></label>
             <input id="vrmFile" type="file" accept=".vrm" hidden />
             <input id="live2dFolder" type="file" webkitdirectory hidden />
+            <label><input id="puppet" type="checkbox" checked /> Puppet output</label>
             <label><input id="idle" type="checkbox" checked /> Idle motion</label>
-          </div>
+          </div>`) },
+    { label: 'Analysis', body: '' },
+  ];
+  root.innerHTML = `
+    <main class="studio">
+      <header class="mast">
+        <div class="mast-titles"><span class="brand"><svg class="brand-mark" width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><rect width="30" height="30" rx="8" fill="currentColor"/><path d="M7 13v5m5-10v15m6-18v17m5-13v9" fill="none" stroke="#f7ce4f" stroke-width="2.5" stroke-linecap="round"/></svg>wahwah</span><h1>Voice studio</h1></div>
+        <label class="input-switch" for="inputMode">Input mode
+          <select id="inputMode">
+            <option value="babble">Text to babble</option>
+            <option value="klattsch">Phoneme script</option>
+            <option value="live">Live microphone</option>
+          </select>
+        </label>
+      </header>
+      <div class="layout">
+        <section class="workspace" aria-label="Playground controls">
+          <nav class="group-switch" aria-label="Control groups" role="tablist">${groups.map((g,i) => `<button type="button" id="tab-${i}" role="tab" aria-controls="group-${i}" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}">${g.label}</button>`).join('')}</nav>
+          <div class="panel">${groups.map((g,i) => `<section id="group-${i}" role="tabpanel" aria-labelledby="tab-${i}" ${i ? 'hidden' : ''}>${g.body}</section>`).join('')}</div>
+          <p id="warnings" class="warnings" hidden></p>
+        </section>
+        <div class="transport"><div class="buttons"></div>
+          <div class="status"><span>Elapsed <b id="time">–</b></span><span>Sound <b id="sound">–</b></span></div>
         </div>
-        <div class="meters">
-          ${meter('jawOpen', 'jawOpen')}${meter('lipWidth', 'lipWidth')}${meter('lipRound', 'lipRound')}${meter('level', opts.levelLabel ?? 'output RMS')}
-        </div>
-        <canvas id="timeline" class="timeline"></canvas>
+        <section class="stage" aria-label="Puppet preview">
+          <div class="preview-head"><h2>Puppet preview</h2><div id="cameraTools" hidden>
+            <span class="camera-hint">Drag to rotate · Shift-drag to pan · Scroll to zoom</span>
+            <span class="touch-hint">Drag to rotate · Two fingers to pan or pinch</span>
+            <button type="button" id="resetView">Reset view</button>
+          </div></div>
+          <div id="face" class="face"><p id="faceStatus" class="face-status" hidden></p></div>
+        </section>
+      </div>
+      <section class="playback-monitor" aria-label="Playback monitor">
+        <div class="monitor-signals"><h2>Playback monitor</h2><div class="meters">
+          ${meter('jawOpen', 'Jaw')}${meter('lipWidth', 'Width')}${meter('lipRound', 'Round')}${meter('level', 'Output')}
+        </div></div>
+        <canvas id="timeline" class="timeline" aria-label="Playback timeline"></canvas>
       </section>
-      <aside class="panel">
-        <header><h1>${opts.title}</h1><nav class="nav"><a href="../">All playgrounds</a></nav></header>
-        ${opts.panelHtml}
-        <p id="warnings" class="warnings" hidden></p>
-        ${section('Diagnostics', '<div id="diag">–</div>', false)}
-      </aside>
-    </main>
-  `;
+    </main>`;
+  const panel = root.querySelector<HTMLElement>('.panel')!;
+  const buttons = Array.from(root.querySelectorAll<HTMLButtonElement>('.group-switch button'));
+  for (const button of buttons) {
+    button.addEventListener('click', () => {
+      for (const item of buttons) {
+        const selected = item === button;
+        item.setAttribute('aria-selected', String(selected));
+        item.tabIndex = selected ? 0 : -1;
+        byId(item.getAttribute('aria-controls')!).hidden = !selected;
+      }
+      panel.scrollTop = 0;
+    });
+    button.addEventListener('keydown', event => {
+      const at = buttons.indexOf(button);
+      const to = {
+        ArrowRight: (at + 1) % buttons.length,
+        ArrowLeft: (at + buttons.length - 1) % buttons.length,
+        Home: 0,
+        End: buttons.length - 1,
+      }[event.key];
+      if (to === undefined) return;
+      event.preventDefault();
+      buttons[to].focus();
+      buttons[to].click();
+    });
+  }
 }
 
 export type PuppetViewMode = 'face' | 'vrm' | 'live2d' | 'debug';
@@ -135,7 +197,8 @@ export class PuppetView {
       const host = mode === 'vrm' ? await this.vrmHost() : await this.live2dHost();
       if (this.mode !== mode) return;
       this.useHost(host);
-      if (host.status && this.picked[mode] && !this.loading.has(mode)) this.loadLocal(mode, this.picked[mode]);
+      const picked = this.picked[mode];
+      if (host.status && picked && !picked.startsWith('blob:') && !this.loading.has(mode)) this.loadLocal(mode, picked);
     } else this.useHost(this.face);
   }
 

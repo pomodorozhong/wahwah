@@ -21,7 +21,7 @@ export class CalibrationRunner {
   private lastFrameMs = 0;
   private lastStepKey = '';
 
-  constructor(container: HTMLElement, private readonly callbacks: CalibrationCallbacks, private readonly sampleRate: () => number) {
+  constructor(container: HTMLElement, private readonly callbacks: CalibrationCallbacks, private readonly sampleRate: () => number, signal: AbortSignal) {
     this.card = document.createElement('div');
     this.card.className = 'calib-card';
     this.card.hidden = true;
@@ -54,7 +54,7 @@ export class CalibrationRunner {
         this.act(phase === 'intro' ? 'begin' : phase === 'quiet-wait' ? 'quiet' : 'none');
       } else if (e.key === 'Escape') this.act('cancel');
       else if (e.key.toLowerCase() === 'r' && !(e.target instanceof HTMLInputElement)) this.act('redo');
-    });
+    }, { signal });
   }
 
   get running(): boolean {
