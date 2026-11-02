@@ -54,7 +54,7 @@ Each sample carries a time in seconds from playback start and an optional
 phoneme label. Hosts can interpolate between samples. Outside the track the
 mouth returns to neutral. [Control types and normalization](../src/puppet/controls.ts)
 
-![Preview mouth poses for neutral, AA, IY, UW and M](poses.jpg)
+![Tofu mouth poses for neutral, AA, IY, UW and M](poses.jpg)
 
 ## One stage, several faces
 
@@ -64,12 +64,13 @@ session while preserving the selected face and camera. [Studio](../src/apps/stud
 
 | View | How it uses the controls |
 | --- | --- |
+| Tofu cube (default) | Uses a bundled VRM with vowel shapes, a hinged lower lip, and separate body, gaze, and brow expressions. |
 | Preview face | Deforms a procedural mouth in Three.js. |
 | VRM | Blends the five vowel expressions `aa`, `ih`, `ou`, `ee`, and `oh`. Lip shape selects a vowel family and jaw opening selects its more open member. |
 | Live2D | Sends jaw opening to the model’s LipSync group and width minus rounding to `ParamMouthForm`. The resulting expression depends on the artwork. |
 | Debug | Draws the control values, velocity, and acceleration on a 2D canvas. |
 
-Hosts own cosmetic motion such as blinking and sway. The three character
-views share a Three.js renderer. The Live2D host draws Cubism Core meshes
+Hosts own cosmetic motion such as blinking and sway. All character views
+share a Three.js renderer. The Live2D host draws Cubism Core meshes
 with clipping masks and supports neither Cubism physics nor motion files.
 [Host mappings](../src/host/mappings.ts) · [Live2D renderer](../src/host/live2d.ts)

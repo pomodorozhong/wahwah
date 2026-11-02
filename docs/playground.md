@@ -62,6 +62,10 @@ physical microphone remains an open question.
 
 ## Load a character
 
+The playground starts with **Tofu cube**, the white, clipped-corner puppet.
+It follows the same mouth controls in text, phoneme, and microphone modes.
+Choose **Preview face** under **Puppet → View** to use the procedural face.
+
 Under **Puppet → View**, choose **VRM model** or **Live2D model**. In
 **Model**, open a local `.vrm` file or select a Live2D model folder containing
 its `.model3.json`, mesh, and textures. Include the Cubism Core runtime from
@@ -78,7 +82,7 @@ public/models/
   live2d/character/character.model3.json
 ```
 
-In the preview and VRM views, drag to orbit, Shift-drag or right-drag to pan,
+In the tofu, preview, and VRM views, drag to orbit, Shift-drag or right-drag to pan,
 and scroll to zoom. On touchscreens, drag with one finger to orbit or use two
 to pan and pinch. **Reset view** restores the initial framing.
 

@@ -5,9 +5,9 @@ language, keeping the rhythm of the greeting and the rise at the end of the
 question. Switch the voice to a muted trombone to hear the same line as a
 cartoon *wah-wah*. You can also drive the mouth with your microphone.
 
-![The built-in puppet with its mouth open mid-syllable](docs/face.jpg)
+![The default white tofu puppet with its mouth open mid-syllable](docs/face.jpg)
 
-![Mouth poses for neutral, AA, IY, UW and M](docs/poses.jpg)
+![Tofu mouth poses for neutral, AA, IY, UW and M](docs/poses.jpg)
 
 ## Run the playground
 
@@ -25,7 +25,7 @@ to compare klattsch, Wah-wah trombone, and Babble Engine.
 Use **Input mode** to try the same puppet with another source.
 
 - **Phoneme script** lets you write the sounds yourself. Try `M AA . IY . UW`
-  and watch the lips close, spread, and round.
+  and compare the small, open, wide, and rounded mouth shapes.
 - **Live microphone** follows your voice as you speak. Choose **Microphone** or
   **Demo voice** under **Input**, then press **Start**. Allow microphone
   access if you chose the mic.
