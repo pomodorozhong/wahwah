@@ -5,16 +5,16 @@ phonemes go in, [klattsch](https://github.com/tgies/klattsch) speaks them, and
 a procedural Three.js face moves its jaw and lips on the same timeline. The
 goal is fictional voices, never realistic speech.
 
-- **Babble playground** (`/babble/`): type English and hear invented gibberish
+- **Text to babble** (`/?mode=babble`): type English and hear invented gibberish
   that keeps its rhythm, stress, pauses and intonation, in the spirit of
   [Babble Engine](https://github.com/wrongfloor-dev/babble-engine). Three
   engines can speak it: klattsch, a **wah-wah muted trombone** (the
-  cartoon-teacher voice, `/babble/?engine=trombone`), or Babble Engine itself.
-- **Live mic playground** (`/live/`): talk into the microphone and the puppet
+  cartoon-teacher voice, `/?mode=babble&engine=trombone`), or Babble Engine itself.
+- **Live microphone** (`/?mode=live`): talk into the microphone and the puppet
   follows in real time, from live voice analysis, with latency readouts.
-- **klattsch playground** (`/klattsch/`): type ARPABET phonemes straight into
+- **Phoneme script** (`/?mode=klattsch`): type ARPABET phonemes straight into
   klattsch.
-- Every page has a **debug puppet** view that draws only the instructions:
+- Every mode has a **debug puppet** view that draws only the instructions:
   each control's value, its direction and speed, and the force pushing it.
 
 ![Face mid-utterance](docs/face.jpg)
@@ -37,29 +37,22 @@ npm install
 npm run dev
 ```
 
-Open the printed URL (default `http://localhost:5173`) and pick a playground:
+Open the printed URL (default `http://localhost:5173`). Choose **Text to babble**,
+**Phoneme script**, or **Live microphone** from **Input mode** in the header.
+The three modes share a single stage, camera, puppet settings, and playback
+monitor. Switching modes stops the old audio input or playback. Your drafts
+and mode settings are kept during the visit. Links to `/babble/`, `/klattsch/`,
+and `/live/` open the corresponding mode in the playground.
 
-- **Babble playground** (`/babble/`): English text in, babble out.
-- **Live mic playground** (`/live/`): microphone in, mouth motion out.
-- **klattsch playground** (`/klattsch/`): ARPABET phonemes straight into klattsch.
-
-Press **Play** or Space (or **Start** on the live page). Browsers start audio
-only after a click or key press, and the microphone only after you allow it.
+Use **Play line** for generated speech, or **Start** for live input.
+The microphone starts only after you choose Start and allow microphone access.
 
 ### Layout
 
-Every page uses the same layout:
-
-- **Left: the stage.** It holds the face (or debug puppet), a **transport bar**
-  with play/stop, time, active sound, *Puppet output*, *View* and *Idle
-  motion*, a row of **meters** (jawOpen, lipWidth, lipRound and the audio
-  level), and the **timeline**.
-- **Right: a panel** with collapsible sections (Text, Engine and character,
-  Voice, Diagnostics …).
-
-On desktop both columns stay pinned to the window height, and the panel
-scrolls on its own, so the face and transport are always visible while you
-change settings. Below 860 px wide, the columns stack.
+The editor, voice settings, puppet controls, and analysis each have a tab.
+On desktop the editor and playback controls sit on the left and the square
+puppet stays on the right. On phones the puppet and transport sit above the
+scrolling settings. The playback meters and timeline stay visible in each mode.
 
 | Command | What it does |
 | --- | --- |
