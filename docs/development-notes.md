@@ -5,10 +5,17 @@
 After installing dependencies, run these from the repository root:
 
 ```sh
+cargo fmt --check
+cargo clippy --all-targets -- -D warnings
+cargo test
 npm run typecheck
 npm test
 npm run build
 ```
+
+The npm commands, including `npm run dev`, first run `npm run build:wasm`. It
+writes the generated package to `src/wasm/`, which is ignored by Git. Keep the
+`wasm-bindgen-cli` version equal to the `wasm-bindgen` crate version.
 
 The tests exercise synthesis, mouth tracks, host mappings, and live analysis
 in Node. To inspect the production build in a browser, run
@@ -28,6 +35,10 @@ in Node. To inspect the production build in a browser, run
 - **Hot reload leaves stale console errors** from half-edited modules, often
   naming an export that no longer exists. Confirm in a fresh tab before
   treating a console error as real.
+- If a fresh tab still receives an old source module after an edit, restart
+  the project's Vite server before checking the behavior again. This occurred
+  while changing the default sound engine; reloading the page alone still
+  served the previous engine menu.
 - **The pane has its own dev server** on port 5180 (`.claude/launch.json`).
   The user's own `npm run dev` usually runs on 5173 or 5174.
 
@@ -63,6 +74,10 @@ in Node. To inspect the production build in a browser, run
   for the 720 × 720 portrait. Capture the top-left area at those dimensions.
   The row uses the neutral pose and `VISEMES` entries for AA, IY, UW, and M,
   with the independent body motion held still.
+- The current tofu M/B/P target is a small open smile rather than a sealed
+  mouth. The README pose row shows the actual output, including this limit.
+  A future closure correction should keep the AA, IY, and UW silhouettes
+  distinct and preserve the hinged lower lip.
 - `pink-trombone-mod` has no package entry point and uses extensionless
   relative imports. Import `pink-trombone-mod/Synthesizer.js`; Vitest needs
   `server.deps.inline: ['pink-trombone-mod']` (see `vite.config.ts`).
@@ -79,6 +94,55 @@ in Node. To inspect the production build in a browser, run
   `data-for-engine`.
 - Spreading large sample arrays into `Math.max(...)` overflows the call
   stack; loop instead.
+
+## Rust voices
+
+- `crates/wahwah-core` has no browser dependency. `crates/wahwah-wasm` is the
+  stateless boundary, and `src/voice/rustVoice.ts` adapts it to `Utterance`.
+- Text to babble and Phoneme script use Rust for the formant voice and
+  wah-wah trombone. Live mode and existing tests still use the TypeScript and
+  JavaScript path until the dependency cleanup in issue #10.
+- The Rust version is the new standard, so it is not compared with klattsch's
+  output. Its script language keeps phonemes, stress and pitch marks, pauses,
+  syllable groups, comments and pitch, rate, scale, vibrato, tremolo, aspiration,
+  tilt and effort directives. It drops klattsch's bank, engine and voice
+  sections, extended uppercase directives and homoglyph normalization.
+- A `p` pause directive is now a pause segment on the timeline. Timeline
+  source offsets are UTF-8 byte ranges, which match JavaScript positions for
+  the ASCII phoneme strings the playground generates.
+
+## Unified playground lifecycle and design
+
+- `src/apps/studio.ts` creates one shell and one `PuppetView` for the visit.
+  The input selector mounts babble, klattsch or live into that shell with an
+  `AbortSignal`. Keep the selected model, renderer and camera on the shared
+  view so switching inputs preserves the scene.
+- Each input owns its listeners, animation loops and audio resources. Abort
+  must also handle asynchronous work that finishes after the user switches
+  away: pending microphone permission, AudioWorklet setup and recording.
+  Stop returned microphone tracks and close unused audio contexts even when
+  setup did not finish. The browser tests cover these races with fake input;
+  physical microphone and touchscreen checks are still outstanding.
+- Input drafts and settings survive switching within a visit through
+  module-local state; this does not promise persistence across reloads.
+  Root URLs use `?mode=babble|klattsch|live`, with `engine` for babble's
+  selected engine. Legacy playground paths resolve to the same shell.
+- The approved design uses the Mustard Block colors and Writing Spread
+  layout: visible script, grouped settings, a persistent rounded square
+  puppet and a persistent playback monitor. The preview title and Reset
+  view sit inside the square's bottom edge. The product title is Voice
+  playground.
+- `src/ui/monitorTheme.ts` defines the shared plot palette and line styles:
+  cream solid jaw, teal dashed width, gold dotted rounding and a translucent
+  gold level envelope. Keep canvas plots, legends and CSS meters consistent.
+  These plots show audio level and face controls; live levels use dBFS.
+  Recorded playback draws the retained take against the mouth clock and
+  applies the selected delay to its audio envelope.
+- The merged UI deliberately excludes the later shader-style and mouth-mode
+  experiments. Their source and local model archives are on
+  `codex/backup-puppet-experiments-2026-11-02` at a5bbc48. Extract source onto
+  current main for each feature; do not merge the backup wholesale or publish
+  the local model archives.
 
 ## Face host gotchas
 

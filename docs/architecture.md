@@ -10,11 +10,13 @@ before playback. Live input estimates the controls as audio arrives.
    stress. A word, language style, and seed determine its invented syllables.
    Punctuation shapes the pitch contour and pauses. Phoneme scripts enter the
    pipeline directly. [Babble generator](../src/babble/generate.ts)
-2. klattsch compiles the phonemes into timed segments. Both its formant voice
-   and the muted trombone use that performance. Babble Engine supplies its
-   own syllables and start times, so its adapter infers mouth shapes from the
-   syllable letters and uses quiet gaps in the audio to estimate their ends.
-   [klattsch performance](../src/voice/performance.ts) · [Babble Engine adapter](../src/engines/babbleEngine.ts)
+2. A Rust core, compiled to WASM, turns the phonemes into a timed score using
+   klattsch's script language and synthesis design. Both its formant voice and
+   the muted trombone use that score. Babble Engine supplies its own syllables
+   and start times, so its adapter infers mouth shapes from the syllable letters
+   and uses quiet gaps in the audio to estimate their ends. Live mode's test
+   voices still use the JavaScript klattsch.
+   [Rust core](../crates/wahwah-core/src/lib.rs) · [Voice adapter](../src/voice/rustVoice.ts) · [Babble Engine adapter](../src/engines/babbleEngine.ts)
 3. Each engine supplies a timeline and a function to render audio at the
    device sample rate. With puppet output enabled, the generator turns the
    timeline into a face track. Vowels and visible closures such as M carry

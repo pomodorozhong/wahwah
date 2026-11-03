@@ -3,12 +3,13 @@
 // klattsch or the wah-wah trombone with our own text-to-babble, or Babble
 // Engine end to end.
 
-import { compilePerformance, DEFAULT_BRASS_COLOR, klattschUtterance, type Utterance, type VoiceSettings } from '../voice/performance';
+import { DEFAULT_BRASS_COLOR, type Utterance, type VoiceSettings } from '../voice/performance';
+import { formantUtterance, tromboneUtterance } from '../voice/rustVoice';
 import { moodVoice, textToBabble, wordAtPhonemeOffset, type BabbleScript } from '../babble/generate';
 import { MOODS, STYLES } from '../babble/styles';
 import { tokenizeText } from '../babble/text';
 import { BE_STYLES, babbleEngineUtterance, revealedIndex, type BabbleEngineUtterance } from '../engines/babbleEngine';
-import { DEFAULT_TROMBONE, tromboneUtterance } from '../engines/trombone';
+import { DEFAULT_TROMBONE } from '../engines/trombone';
 import type { PuppetView } from '../ui/puppetView';
 import { Stage, byId, section, restoreDraft } from '../ui/stage';
 import type { Mood as BeMood, StyleId as BeStyleId } from 'babble-engine';
@@ -149,11 +150,11 @@ export function mountBabble(root: HTMLElement, view: PuppetView, signal: AbortSi
     spoken = { kind: 'script', script };
     renderWords(script.words.map((w) => ({ text: w.text, sub: w.spelled })));
     byId('babbleOut').textContent = script.phonemes || '–';
-    const perf = compilePerformance(script.phonemes, moodVoice(baseVoice(), script.mood));
+    const voice = moodVoice(baseVoice(), script.mood);
     if (engine === 'trombone') {
-      return tromboneUtterance(perf, { brightness: num('brightness'), wah: num('wah'), transpose: num('transpose') });
+      return tromboneUtterance(script.phonemes, voice, { brightness: num('brightness'), wah: num('wah'), transpose: num('transpose') });
     }
-    return klattschUtterance(perf, num('brass') / 100);
+    return formantUtterance(script.phonemes, voice, num('brass') / 100);
   }
 
   const escapeHtml = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);

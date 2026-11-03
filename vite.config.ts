@@ -53,6 +53,8 @@ function localModels(): Plugin {
 
 export default defineConfig({
   plugins: [localModels()],
+  // Lets tests load the WASM voices as a data URL; Node can't fetch a file URL.
+  assetsInclude: ['**/*.wasm'],
   build: {
     // Three.js alone is ~550 kB minified; one chunk is fine for a local prototype.
     chunkSizeWarningLimit: 800,
