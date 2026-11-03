@@ -2,22 +2,22 @@
 
 ## In progress
 
-### codex/rust-wasm-port
+### feat/rust-performance
 
-- Task: first of six PRs for [issue #10](https://github.com/pomodorozhong/wahwah/issues/10), which holds the agreed end state and PR order. This PR moves the klattsch formant voice, Wah-wah trombone and Trombone color to Rust/WASM behind the existing `Utterance` interface. The branch stays unlinked because this PR doesn't resolve the issue.
-- PR: not opened; it needs publish approval.
-- Code checkpoint: f2b0c8e, based on main at a292fb6.
-- State: Text to babble and Phoneme script use Rust for both voices. Text-to-babble, the mouth track, Babble Engine, Live2D and live mode are unchanged, and live mode and the older tests still use JS klattsch.
-- Toolchain: Homebrew `rustup`, pinned to Rust 1.99.1, and `wasm-bindgen-cli` 0.2.130 from cargo. `scripts/build-wasm.mjs` finds them without shell profile changes. No PATH change was made on this machine.
-- Verification: see the PR draft. The user has not yet judged the sound by ear.
-- Decisions: live mode was tested by the user and ships unlabeled; live analysis stays in TypeScript; the Rust voices are not compared with JS output; wahwah will use MIT, added with the Pages PR. See issue #10.
+- Task: second of six PRs for [issue #10](https://github.com/pomodorozhong/wahwah/issues/10), which holds the agreed end state and PR order. Move text-to-babble and mouth track generation to Rust, so one call returns audio and mouth movement together, and share mouth pose data with live mode's TypeScript. The branch stays unlinked because this PR doesn't resolve the issue.
+- PR: none yet.
+- Code checkpoint: 9913759 on main, the merged [PR #14](https://github.com/pomodorozhong/wahwah/pull/14). No source work has started on this branch.
+- State: the klattsch formant voice, Wah-wah trombone and Trombone color run in Rust/WASM. Text-to-babble, the mouth track, Babble Engine, Live2D and live mode are still TypeScript and JavaScript. Rust keeps its own copy of the trombone's vowel shapes until this PR's shared data replaces it.
+- Toolchain: Homebrew `rustup`, pinned to Rust 1.99.1, and `wasm-bindgen-cli` 0.2.130 from cargo. `scripts/build-wasm.mjs` finds them without shell profile changes. Running `cargo` directly needs `/opt/homebrew/opt/rustup/bin` and `~/.cargo/bin` on PATH; no shell profile was changed.
+- Verification: PR #14 passed the checks in `AGENTS.md` and the user accepted the voices by ear. Nothing has been run on this branch yet. Physical microphone input and the README's Rust setup on a clean machine were not exercised for PR #14.
+- Avoid: making live analysis wait on WASM. `src/live/analysisWorklet.ts` reaches `VISEMES` and klattsch's `banks` on the audio thread, so pose data needs a form both Rust and TypeScript can read at build time.
 - Preserved local work: codex/backup-puppet-experiments-2026-11-02 at 4442a8c (source checkpoint a5bbc48) remains a local-only backup with model ZIPs; restore there using bash restore-models.sh, then unzip -o wahwah-experiment-models.zip -d public. Never merge that snapshot wholesale or publish its local model archives. codex/square-puppet-studio and its dirty draft worktree remain untouched, as do the detached navigation, unified-UI and prototype worktrees.
 - Known limitation: the default tofu M/B/P mouth target stays slightly open; see [bug #12](https://github.com/pomodorozhong/wahwah/issues/12).
-- Next action: obtain approval for the PR, open it, then start PR 2 (Rust performance) after it merges.
+- Next action: plan PR 2 with the `open-pr` skill and get approval for that plan before building.
 
 ## Ranked work
 
-1. [#10 Port the selected voice core to Rust/WASM and deploy the VRM playground](https://github.com/pomodorozhong/wahwah/issues/10), in the six PRs listed on the issue; do this before the following capabilities.
+1. [#10 Port the selected voice core to Rust/WASM and deploy the VRM playground](https://github.com/pomodorozhong/wahwah/issues/10), in the six PRs listed on the issue; PR 1 merged as [#14](https://github.com/pomodorozhong/wahwah/pull/14), and PR 2 is next. Do this before the following capabilities.
 2. Add multilingual invented-speech input, including Chinese and mixed-language text, with a general Unicode fallback and language-specific rhythm improvements.
 3. Add deterministic viewer-to-character voice profiles for Twitch, with stable account identity, a versioned mapping and saved overrides.
 4. Add configurable fixed-duration output with synchronized audio and mouth timing; decide exact duration versus a maximum when designing this feature.
