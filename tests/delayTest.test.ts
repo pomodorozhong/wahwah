@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { analyseRecording, measureMouthLagMs, mouthAt, planPlayback } from '../src/live/delayTest';
 import { DEFAULT_LIVE } from '../src/live/estimator';
 import { DEFAULT_VOICE, compilePerformance, renderPerformance } from '../src/voice/performance';
-import { textToBabble } from '../src/babble/generate';
+import { generateMumble } from '../src/mumble/generate';
 import { calibrate, klattschVoice, roomNoise } from './helpers/calibrate';
 
 const SR = 48000;
 const SLOW = { timeout: 60000 };
 const speech = () => {
-  const a = renderPerformance(compilePerformance(textToBabble('Hello there! How are you today? I can see the moon.', { seed: 3 }).phonemes, DEFAULT_VOICE), SR);
+  const a = renderPerformance(compilePerformance(generateMumble('Hello there! How are you today? I can see the moon.', { seed: 3 }).phonemes, DEFAULT_VOICE), SR);
   const n = roomNoise(a.length / SR, 0.002);
   return a.map((v, i) => v + n[i]);
 };

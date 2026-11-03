@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_VOICE, compilePerformance } from '../src/voice/performance';
 import { DEFAULT_TROMBONE, articulationCurves, f0Curve, renderTrombone, tromboneUtterance } from '../src/engines/trombone';
-import { textToBabble, moodVoice } from '../src/babble/generate';
+import { generateMumble, moodVoice } from '../src/mumble/generate';
 import { generateFaceTrack } from '../src/puppet/generate';
 import { rmsEnvelope, syncReport } from '../src/analysis';
 
@@ -78,7 +78,7 @@ describe('wah-wah trombone engine', () => {
   });
 
   it('renders deterministic, audible, normalized audio whose loudness the jaw follows', () => {
-    const script = textToBabble('Hello class. Please open your books to page forty two.', { seed: 4 });
+    const script = generateMumble('Hello class. Please open your books to page forty two.', { seed: 4 });
     const perf = compilePerformance(script.phonemes, moodVoice(DEFAULT_VOICE, script.mood));
     const u = tromboneUtterance(perf);
     const a = u.render(SR);

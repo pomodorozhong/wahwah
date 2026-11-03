@@ -1,13 +1,10 @@
-// Babble playground: English text in, invented gibberish out (Babble Engine
-// direction), mouthed by the puppet face. Three sound engines can speak it:
-// klattsch or the wah-wah trombone with our own text-to-babble, or Babble
-// Engine end to end.
-
-import { DEFAULT_BRASS_COLOR, type Utterance, type VoiceSettings } from '../voice/performance';
-import { formantUtterance, tromboneUtterance } from '../voice/rustVoice';
-import { moodVoice, textToBabble, wordAtPhonemeOffset, type BabbleScript } from '../babble/generate';
-import { MOODS, STYLES } from '../babble/styles';
-import { tokenizeText } from '../babble/text';
+// Mumble playground: ordinary text becomes invented speech, audio and mouth
+// movement in Rust. Babble Engine remains until the instrument rewrite.
+import { DEFAULT_BRASS_COLOR, type RenderedUtterance, type Utterance, type VoiceSettings } from '../voice/performance';
+import { renderMumble } from '../voice/rustVoice';
+import { wordAtPhonemeOffset, type MumbleScript } from '../mumble/generate';
+import { MOODS, STYLES } from '../mumble/styles';
+import { tokenizeText } from '../mumble/text';
 import { BE_STYLES, babbleEngineUtterance, revealedIndex, type BabbleEngineUtterance } from '../engines/babbleEngine';
 import { DEFAULT_TROMBONE } from '../engines/trombone';
 import type { PuppetView } from '../ui/puppetView';
@@ -91,15 +88,15 @@ const voiceHtml =
       ${slider('wah', 'Plunger wah', 0.2, 1, 0.05, DEFAULT_TROMBONE.wah)}
       ${slider('transpose', 'Transpose', -12, 12, 1, DEFAULT_TROMBONE.transpose)}
     </div>
-    <details><summary class="hint">Generated klattsch phonemes</summary><code id="babbleOut" class="babble-out"></code></details>`,
+    <details><summary class="hint">Generated klattsch phonemes</summary><code id="mumbleOut" class="mumble-out"></code></details>`,
   )}</div>`;
 
 type Spoken =
-  | { kind: 'script'; script: BabbleScript }
+  | { kind: 'script'; script: MumbleScript }
   | { kind: 'babble-engine'; utterance: BabbleEngineUtterance; words: { text: string; start: number; end: number }[] };
 const draft: Record<string, string> = {};
 
-export function mountBabble(root: HTMLElement, view: PuppetView, signal: AbortSignal): void {
+export function mountMumble(root: HTMLElement, view: PuppetView, signal: AbortSignal): void {
   let spoken: Spoken | null = null;
 
   const stage = new Stage(root, view, signal, {
@@ -109,7 +106,7 @@ export function mountBabble(root: HTMLElement, view: PuppetView, signal: AbortSi
     compile,
     onFrame: (time, segment) => highlight(activeWordIndex(time, segment)),
     debugState: () => ({
-      babble:
+      mumble:
         spoken?.kind === 'script'
           ? { phonemes: spoken.script.phonemes, words: spoken.script.words.map((w) => [w.text, w.spelled]) }
           : spoken && { syllables: spoken.utterance.syllables.map((s) => s.text), segments: spoken.utterance.timeline.segments.length },
@@ -131,7 +128,7 @@ export function mountBabble(root: HTMLElement, view: PuppetView, signal: AbortSi
     return { pitchHz: num('pitch'), msPerPhoneme: num('rate'), formantScale: num('scale') };
   }
 
-  function compile(): Utterance {
+  function compile(sampleRate: number, puppet: boolean): Utterance | RenderedUtterance {
     const seed = Number(seedEl.value) || 0;
     const engine = engineEl.value as EngineId;
     if (engine === 'babble-engine') {
@@ -140,26 +137,26 @@ export function mountBabble(root: HTMLElement, view: PuppetView, signal: AbortSi
         voice: beVoiceEl.value || undefined,
         mood: moodEl.value as BeMood,
         seed,
-      });
+      }, sampleRate);
       const words = tokenizeText(textEl.value).flatMap((t) => (t.kind === 'word' ? [{ text: t.text, start: t.start, end: t.end }] : []));
       spoken = { kind: 'babble-engine', utterance, words };
       renderWords(words.map((w) => ({ text: w.text, sub: '' })));
       return utterance;
     }
-    const script = textToBabble(textEl.value, { seed, styleId: styleEl.value, moodId: moodEl.value });
+    const performance = renderMumble(textEl.value, { seed, styleId: styleEl.value, moodId: moodEl.value }, baseVoice(), sampleRate,
+      engine === 'trombone'
+        ? { engine: 'trombone', trombone: { brightness: num('brightness'), wah: num('wah'), transpose: num('transpose') } }
+        : { engine: 'formant', brassColor: num('brass') / 100 }, puppet);
+    const script = performance.script;
     spoken = { kind: 'script', script };
-    renderWords(script.words.map((w) => ({ text: w.text, sub: w.spelled })));
-    byId('babbleOut').textContent = script.phonemes || '–';
-    const voice = moodVoice(baseVoice(), script.mood);
-    if (engine === 'trombone') {
-      return tromboneUtterance(script.phonemes, voice, { brightness: num('brightness'), wah: num('wah'), transpose: num('transpose') });
-    }
-    return formantUtterance(script.phonemes, voice, num('brass') / 100);
+    renderWords(script.words.map(w => ({ text: w.text, sub: w.spelled })));
+    byId('mumbleOut').textContent = script.phonemes || '–';
+    return performance;
   }
 
   const escapeHtml = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 
-  /** Show each English word, with its babble underneath when known. */
+  /** Show each English word, with its Mumble spelling underneath when known. */
   function renderWords(words: { text: string; sub: string }[]): void {
     byId('spoken').innerHTML = words.length
       ? words.map((w, i) => `<span class="w" data-i="${i}"><b>${escapeHtml(w.text)}</b>${w.sub ? `<small>${escapeHtml(w.sub)}</small>` : ''}</span>`).join(' ')

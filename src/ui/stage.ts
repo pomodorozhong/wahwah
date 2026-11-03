@@ -2,7 +2,7 @@
 // puppet view from its face-control track. Each playground page supplies its
 // own panel and a compile() callback that returns an Utterance from any engine.
 
-import { segmentAt, type PerformanceSegment, type Timeline, type Utterance } from '../voice/performance';
+import { segmentAt, type PerformanceSegment, type RenderedUtterance, type Timeline, type Utterance } from '../voice/performance';
 import { generateFaceTrack, sampleFaceTrack } from '../puppet/generate';
 import type { FaceControlTrack, FaceControls } from '../puppet/controls';
 import { rmsEnvelope, syncReport, type SyncReport } from '../analysis';
@@ -38,7 +38,7 @@ export interface StageOptions {
   inputHtml: string;
   voiceHtml: string;
   /** Build the utterance from the page's current inputs, with any engine. */
-  compile: () => Utterance;
+  compile: (sampleRate: number, puppet: boolean) => Utterance | RenderedUtterance;
   /** Called every frame with the playback time and active segment. */
   onFrame?: (time: number | null, segment: PerformanceSegment | null) => void;
   /** Extra fields for the window.__wahwah debug hook. */
@@ -107,13 +107,14 @@ export class Stage {
   prepare(): Prepared {
     if (this.prepared) return this.prepared;
     const sampleRate = this.player?.sampleRate ?? 48000;
-    const utterance = this.opts.compile();
+    const utterance = this.opts.compile(sampleRate, this.view.puppetEnabled);
     const performance = utterance.timeline;
-    const audio = utterance.render(sampleRate) as Float32Array<ArrayBuffer>;
+    const legacy = 'render' in utterance;
+    const audio = (legacy ? utterance.render(sampleRate) : utterance.audio) as Float32Array<ArrayBuffer>;
     // Puppet disabled means the instruction generator does not run at all.
     let track: FaceControlTrack | null = null;
     if (this.view.puppetEnabled) {
-      track = generateFaceTrack(performance);
+      track = legacy ? generateFaceTrack(performance) : utterance.track;
       this.generatorRuns++;
     }
     const p: Prepared = {

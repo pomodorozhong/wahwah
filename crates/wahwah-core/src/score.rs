@@ -86,7 +86,8 @@ pub struct Event {
 }
 
 /// One audible sound or pause. Source offsets are UTF-8 byte ranges.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Segment {
     /// ARPABET code, or `None` for a pause.
     pub phoneme: Option<String>,

@@ -27,7 +27,7 @@ npm ci
 npm run dev
 ```
 
-Open the local URL Vite prints. In **Text to babble**, press **Play line** to
+Open the local URL Vite prints. In **Text to mumble**, press **Play line** to
 hear the sample, then type a line of your own. Open **Voice → Sound engine**
 to compare Wah-wah trombone, klattsch, and Babble Engine.
 

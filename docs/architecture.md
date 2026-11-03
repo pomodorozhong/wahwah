@@ -6,10 +6,10 @@ before playback. Live input estimates the controls as audio arrives.
 
 ## Generated speech
 
-1. In text mode, the babble generator guesses English syllable counts and
+1. In text mode, Rust's Mumble generator guesses English syllable counts and
    stress. A word, language style, and seed determine its invented syllables.
    Punctuation shapes the pitch contour and pauses. Phoneme scripts enter the
-   pipeline directly. [Babble generator](../src/babble/generate.ts)
+   pipeline directly. [Mumble generator](../crates/wahwah-core/src/mumble.rs)
 2. A Rust core, compiled to WASM, turns the phonemes into a timed score using
    klattsch's script language and synthesis design. Both its formant voice and
    the muted trombone use that score. Babble Engine supplies its own syllables
@@ -17,12 +17,17 @@ before playback. Live input estimates the controls as audio arrives.
    and uses quiet gaps in the audio to estimate their ends. Live mode's test
    voices still use the JavaScript klattsch.
    [Rust core](../crates/wahwah-core/src/lib.rs) · [Voice adapter](../src/voice/rustVoice.ts) · [Babble Engine adapter](../src/engines/babbleEngine.ts)
-3. Each engine supplies a timeline and a function to render audio at the
-   device sample rate. With puppet output enabled, the generator turns the
-   timeline into a face track. Vowels and visible closures such as M carry
+3. One WASM call compiles the Rust score and returns audio at the device
+   sample rate, its timeline, and an optional face track. With puppet output
+   disabled, the track generator does not run. Babble Engine temporarily uses
+   the legacy TypeScript track generator until its instrument rewrite.
+   Vowels and visible closures such as M carry
    more weight than consonants formed mainly with the tongue. Blending
    neighbouring poses keeps the jaw from closing on every consonant.
-   [Track generator](../src/puppet/generate.ts) · [Mouth poses](../src/puppet/visemes.ts)
+   Rust's track generator, the trombone's plunger and TypeScript live analysis
+   read the same mouth-pose data. The live audio thread imports it directly,
+   without loading WASM.
+   [Track generator](../crates/wahwah-core/src/mouth.rs) · [Shared mouth poses](../data/mouth-poses.json)
 4. The player schedules the rendered buffer on the Web Audio clock. The face
    samples its track at the time audible at the speakers, using the output
    timestamp when available. Longer lines take longer to prepare because the

@@ -7,7 +7,7 @@ import { renderSweep, renderTract, PT_VOWELS } from '../src/live/ptVoice';
 import { magnitudeSpectrumDb } from '../src/live/features';
 import { DEFAULT_VOICE, compilePerformance, renderPerformance } from '../src/voice/performance';
 import { generateFaceTrack, sampleFaceTrack } from '../src/puppet/generate';
-import { textToBabble } from '../src/babble/generate';
+import { generateMumble } from '../src/mumble/generate';
 import { pearson } from '../src/analysis';
 import { VISEMES } from '../src/puppet/visemes';
 
@@ -133,7 +133,7 @@ describe('live mouth shapes (formant mode)', () => {
     // same rendered sentence, for an adult-male-like and a smaller voice.
     const cases = ['Hello there! How are you today?', 'I can see the moon, she said. Oh wow!'].flatMap((t) =>
       [1, 1.15].map((scale) => {
-        const s = textToBabble(t, { seed: 3 });
+        const s = generateMumble(t, { seed: 3 });
         const perf = compilePerformance(s.phonemes, { ...DEFAULT_VOICE, formantScale: scale, pitchHz: scale > 1 ? 200 : 120 });
         return { audio: renderPerformance(perf, SR), track: generateFaceTrack(perf) };
       }),
@@ -151,7 +151,7 @@ describe('live mouth shapes (formant mode)', () => {
   });
 
   it('adapts its speaker scale toward a smaller voice over a sentence', () => {
-    const s = textToBabble('Hello there! How are you today? I can see the moon.', { seed: 3 });
+    const s = generateMumble('Hello there! How are you today? I can see the moon.', { seed: 3 });
     const small = runLive(renderPerformance(compilePerformance(s.phonemes, { ...DEFAULT_VOICE, formantScale: 1.25, pitchHz: 220 }), SR));
     const big = runLive(renderPerformance(compilePerformance(s.phonemes, { ...DEFAULT_VOICE, formantScale: 1, pitchHz: 110 }), SR));
     expect(small.at(-1)!.speakerScale).toBeGreaterThan(big.at(-1)!.speakerScale);

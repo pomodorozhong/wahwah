@@ -1,9 +1,22 @@
-//! The browser boundary. Calls are stateless, so JavaScript never owns a Rust
-//! object it would have to free.
+//! Stateless browser boundary: one render call returns a complete performance.
+//! Rust uses UTF-8 byte ranges; JavaScript receives UTF-16 string positions.
 
 use serde::{Deserialize, Serialize};
-use wahwah_core::{Score, ScoreOptions, TromboneOptions, compile_score};
+use wahwah_core::{
+    ScoreOptions, TromboneOptions, Voice, compile_score,
+    mouth::TrackOptions,
+    mumble::{self, MumbleOptions, MumbleScript, TextToken},
+    render_performance,
+};
 use wasm_bindgen::prelude::*;
+
+fn to_js(value: &impl Serialize) -> Result<JsValue, JsError> {
+    Ok(value.serialize(
+        &serde_wasm_bindgen::Serializer::new()
+            .serialize_missing_as_null(true)
+            .serialize_maps_as_objects(true),
+    )?)
+}
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -17,6 +30,45 @@ struct VoiceSettings {
     tilt: Option<f64>,
 }
 
+impl VoiceSettings {
+    fn score_options(self) -> Result<ScoreOptions, JsError> {
+        if !self.pitch_hz.is_finite()
+            || self.pitch_hz <= 0.0
+            || !self.ms_per_phoneme.is_finite()
+            || self.ms_per_phoneme <= 0.0
+            || !self.formant_scale.is_finite()
+            || self.formant_scale <= 0.0
+        {
+            return Err(JsError::new(
+                "Pitch, phoneme duration and formant scale must be finite and positive",
+            ));
+        }
+        let defaults = ScoreOptions::default();
+        let result = ScoreOptions {
+            base_f0: self.pitch_hz,
+            rate: self.ms_per_phoneme,
+            scale: self.formant_scale,
+            vibrato_depth: self.vibrato_depth.unwrap_or(defaults.vibrato_depth),
+            aspiration: self.aspiration.unwrap_or(defaults.aspiration),
+            effort: self.effort.unwrap_or(defaults.effort),
+            tilt: self.tilt.unwrap_or(defaults.tilt),
+            ..defaults
+        };
+        if [
+            result.vibrato_depth,
+            result.aspiration,
+            result.effort,
+            result.tilt,
+        ]
+        .iter()
+        .any(|v| !v.is_finite())
+        {
+            return Err(JsError::new("Voice expression values must be finite"));
+        }
+        Ok(result)
+    }
+}
+
 #[derive(Deserialize)]
 struct TromboneSettings {
     brightness: f64,
@@ -24,97 +76,149 @@ struct TromboneSettings {
     transpose: f64,
 }
 
-#[derive(Serialize)]
+#[derive(Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum Input {
+    Mumble,
+    Phonemes,
+}
+#[derive(Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum Engine {
+    Formant,
+    Trombone,
+}
+
+#[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct Segment<'a> {
-    phoneme: Option<&'a str>,
-    start_seconds: f64,
-    end_seconds: f64,
-    src_start: usize,
-    src_end: usize,
+struct RenderOptions {
+    input: Input,
+    engine: Engine,
+    #[serde(default)]
+    mumble: MumbleOptions,
+    brass_color: Option<f64>,
+    trombone: Option<TromboneSettings>,
+    puppet: bool,
 }
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct Timeline<'a> {
-    duration_seconds: f64,
-    segments: Vec<Segment<'a>>,
-    warnings: &'a [String],
+fn js_offset(source: &str, byte: usize) -> usize {
+    source[..byte].encode_utf16().count()
 }
 
-fn score(source: &str, settings: JsValue) -> Result<Score, JsError> {
-    let settings: VoiceSettings = serde_wasm_bindgen::from_value(settings)?;
-    let defaults = ScoreOptions::default();
-    Ok(compile_score(
-        source,
-        &ScoreOptions {
-            base_f0: settings.pitch_hz,
-            rate: settings.ms_per_phoneme,
-            scale: settings.formant_scale,
-            vibrato_depth: settings.vibrato_depth.unwrap_or(defaults.vibrato_depth),
-            aspiration: settings.aspiration.unwrap_or(defaults.aspiration),
-            effort: settings.effort.unwrap_or(defaults.effort),
-            tilt: settings.tilt.unwrap_or(defaults.tilt),
-            ..defaults
-        },
-    ))
+fn script_offsets(source: &str, script: &mut MumbleScript) {
+    for word in &mut script.words {
+        word.src_start = js_offset(source, word.src_start);
+        word.src_end = js_offset(source, word.src_end);
+        word.out_start = js_offset(&script.phonemes, word.out_start);
+        word.out_end = js_offset(&script.phonemes, word.out_end);
+    }
 }
 
-/// Compile a phoneme script to its timeline. Offsets are UTF-8 byte ranges.
-#[wasm_bindgen]
-pub fn compile(source: &str, settings: JsValue) -> Result<JsValue, JsError> {
-    let score = score(source, settings)?;
-    let timeline = Timeline {
-        duration_seconds: score.duration_seconds(),
-        segments: score
-            .segments
-            .iter()
-            .map(|s| Segment {
-                phoneme: s.phoneme.as_deref(),
-                start_seconds: s.start_seconds,
-                end_seconds: s.end_seconds,
-                src_start: s.src_start,
-                src_end: s.src_end,
-            })
-            .collect(),
-        warnings: &score.warnings,
-    };
-    Ok(serde_wasm_bindgen::to_value(&timeline)?)
+/// Generate a script without audio, for legacy live-demo synthesis until the
+/// dependency-cleanup step moves that synthesis to WASM as well.
+#[wasm_bindgen(js_name = generateMumble)]
+pub fn generate_mumble(source: &str, options: JsValue) -> Result<JsValue, JsError> {
+    let mut script = mumble::generate_mumble(source, &serde_wasm_bindgen::from_value(options)?);
+    script_offsets(source, &mut script);
+    to_js(&script)
 }
 
-/// Render the formant voice with an amount of Trombone color from 0 to 1.
-#[wasm_bindgen(js_name = renderFormant)]
-pub fn render_formant(
-    source: &str,
-    settings: JsValue,
-    sample_rate: f64,
-    brass_color: f64,
-) -> Result<Vec<f32>, JsError> {
-    let score = score(source, settings)?;
-    Ok(wahwah_core::render_formant(
-        &score,
-        sample_rate,
-        brass_color,
-    ))
+#[wasm_bindgen(js_name = countSyllables)]
+pub fn count_syllables(word: &str) -> usize {
+    mumble::count_syllables(word)
+}
+#[wasm_bindgen(js_name = stressIndex)]
+pub fn stress_index(word: &str, syllables: usize) -> i32 {
+    mumble::stress_index(word, syllables).map_or(-1, |i| i as i32)
+}
+#[wasm_bindgen(js_name = tokenizeText)]
+pub fn tokenize_text(source: &str) -> Result<JsValue, JsError> {
+    let mut tokens = mumble::tokenize_text(source);
+    for token in &mut tokens {
+        if let TextToken::Word { start, end, .. } = token {
+            *start = js_offset(source, *start);
+            *end = js_offset(source, *end);
+        }
+    }
+    to_js(&tokens)
 }
 
-/// Render the wah-wah trombone.
-#[wasm_bindgen(js_name = renderTrombone)]
-pub fn render_trombone(
+#[wasm_bindgen(js_name = renderPerformance)]
+pub fn render(
     source: &str,
     settings: JsValue,
     sample_rate: f64,
     options: JsValue,
-) -> Result<Vec<f32>, JsError> {
-    let score = score(source, settings)?;
-    let options: TromboneSettings = serde_wasm_bindgen::from_value(options)?;
-    Ok(wahwah_core::render_trombone(
+) -> Result<JsValue, JsError> {
+    if !sample_rate.is_finite() || !(8000.0..=192000.0).contains(&sample_rate) {
+        return Err(JsError::new(
+            "Sample rate must be between 8000 and 192000 Hz",
+        ));
+    }
+    let base = serde_wasm_bindgen::from_value::<VoiceSettings>(settings)?.score_options()?;
+    let options: RenderOptions = serde_wasm_bindgen::from_value(options)?;
+    let mut script = match options.input {
+        Input::Mumble => Some(mumble::generate_mumble(source, &options.mumble)),
+        Input::Phonemes => None,
+    };
+    let phonemes = script.as_ref().map_or(source, |s| &s.phonemes);
+    let voice_settings = script
+        .as_ref()
+        .map_or_else(|| base.clone(), |s| s.mood.voice(&base));
+    let score = compile_score(phonemes, &voice_settings);
+    let voice = match options.engine {
+        Engine::Formant => {
+            let color = options.brass_color.unwrap_or(0.0);
+            if !color.is_finite() {
+                return Err(JsError::new("Trombone color must be finite"));
+            }
+            Voice::Formant {
+                brass_color: color.clamp(0.0, 1.0),
+            }
+        }
+        Engine::Trombone => {
+            let defaults = TromboneOptions::default();
+            let settings = options.trombone.map_or(defaults, |s| TromboneOptions {
+                brightness: s.brightness,
+                wah: s.wah,
+                transpose: s.transpose,
+            });
+            if [settings.brightness, settings.wah, settings.transpose]
+                .iter()
+                .any(|v| !v.is_finite())
+            {
+                return Err(JsError::new("Trombone settings must be finite"));
+            }
+            Voice::Trombone(settings)
+        }
+    };
+    let track_options = TrackOptions::default();
+    let mut performance = render_performance(
         &score,
         sample_rate,
-        &TromboneOptions {
-            brightness: options.brightness,
-            wah: options.wah,
-            transpose: options.transpose,
-        },
-    ))
+        &voice,
+        options.puppet.then_some(&track_options),
+    );
+    for segment in &mut performance.timeline.segments {
+        segment.src_start = js_offset(phonemes, segment.src_start);
+        segment.src_end = js_offset(phonemes, segment.src_end);
+    }
+    if let Some(script) = &mut script {
+        script_offsets(source, script);
+    }
+    #[derive(Serialize)]
+    struct ResultMetadata<'a> {
+        #[serde(flatten)]
+        performance: &'a wahwah_core::Performance,
+        script: &'a Option<MumbleScript>,
+    }
+    let result = to_js(&ResultMetadata {
+        performance: &performance,
+        script: &script,
+    })?;
+    // Transfer samples as a typed array, without serializing one JS number per sample.
+    let audio = js_sys::Float32Array::from(performance.audio.as_slice());
+    js_sys::Reflect::set(&result, &JsValue::from_str("audio"), &audio)
+        .map_err(|_| JsError::new("Could not attach performance audio"))?;
+    Ok(result)
 }

@@ -90,7 +90,7 @@ in Node. To inspect the production build in a browser, run
   (`magnitudeSpectrumDb`) rather than reading the AnalyserNode spectrum, so
   page, worklet, calibration and tests all see identical features.
 - Three.js sets a `data-engine` attribute on its canvas. Don't use
-  `[data-engine]` selectors for page controls; the babble page uses
+  `[data-engine]` selectors for page controls; the Mumble page uses
   `data-for-engine`.
 - Spreading large sample arrays into `Math.max(...)` overflows the call
   stack; loop instead.
@@ -98,23 +98,35 @@ in Node. To inspect the production build in a browser, run
 ## Rust voices
 
 - `crates/wahwah-core` has no browser dependency. `crates/wahwah-wasm` is the
-  stateless boundary, and `src/voice/rustVoice.ts` adapts it to `Utterance`.
-- Text to babble and Phoneme script use Rust for the formant voice and
-  wah-wah trombone. Live mode and existing tests still use the TypeScript and
-  JavaScript path until the dependency cleanup in issue #10.
+  stateless boundary, and `src/voice/rustVoice.ts` requests a complete
+  `RenderedUtterance`: typed audio, timeline, warnings and optional mouth track.
+- Text to mumble and Phoneme script use Rust for Mumble generation, the formant
+  voice, wah-wah trombone and mouth tracks. The live demo uses Rust to generate
+  its Mumble script, with legacy JavaScript synthesis until the dependency
+  cleanup in issue #10. Babble Engine still uses its own generator and audio,
+  with a TypeScript mouth track.
+- `data/mouth-poses.json` supplies Rust's mouth generator and trombone plunger
+  and TypeScript's live analysis. `data/mumble-presets.json` supplies Rust's
+  sound inventories and moods and TypeScript's UI options. Rust embeds these
+  files at compile time; TypeScript imports them synchronously, so the live
+  audio worklet has no WASM dependency.
 - The Rust version is the new standard, so it is not compared with klattsch's
   output. Its script language keeps phonemes, stress and pitch marks, pauses,
   syllable groups, comments and pitch, rate, scale, vibrato, tremolo, aspiration,
   tilt and effort directives. It drops klattsch's bank, engine and voice
   sections, extended uppercase directives and homoglyph normalization.
-- A `p` pause directive is now a pause segment on the timeline. Timeline
-  source offsets are UTF-8 byte ranges, which match JavaScript positions for
-  the ASCII phoneme strings the playground generates.
+- A `p` pause directive is a pause segment on the timeline. Core source offsets
+  are UTF-8 byte ranges. The WASM boundary converts timeline and Mumble word
+  offsets to UTF-16 positions, including after emoji and smart punctuation.
+- Vitest's setup file initializes the actual WASM binary before tests import
+  Mumble generation. Legacy JavaScript synthesis and track tests remain until
+  their scheduled cleanup; the complete-performance tests exercise Rust audio
+  and Rust tracks together.
 
 ## Unified playground lifecycle and design
 
 - `src/apps/studio.ts` creates one shell and one `PuppetView` for the visit.
-  The input selector mounts babble, klattsch or live into that shell with an
+  The input selector mounts mumble, klattsch or live into that shell with an
   `AbortSignal`. Keep the selected model, renderer and camera on the shared
   view so switching inputs preserves the scene.
 - Each input owns its listeners, animation loops and audio resources. Abort
@@ -125,8 +137,9 @@ in Node. To inspect the production build in a browser, run
   physical microphone and touchscreen checks are still outstanding.
 - Input drafts and settings survive switching within a visit through
   module-local state; this does not promise persistence across reloads.
-  Root URLs use `?mode=babble|klattsch|live`, with `engine` for babble's
-  selected engine. Legacy playground paths resolve to the same shell.
+  Root URLs use `?mode=mumble|klattsch|live`, with `engine` for Mumble's
+  selected engine. Legacy playground paths resolve to the same shell;
+  `/babble/` and `?mode=babble` still select Mumble.
 - The approved design uses the Mustard Block colors and Writing Spread
   layout: visible script, grouped settings, a persistent rounded square
   puppet and a persistent playback monitor. The preview title and Reset

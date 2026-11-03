@@ -1,0 +1,349 @@
+{
+  "visemes": {
+    "AA": {
+      "pose": {
+        "jawOpen": 0.9,
+        "lipWidth": 0.3,
+        "lipRound": 0
+      },
+      "dominance": 1
+    },
+    "AE": {
+      "pose": {
+        "jawOpen": 0.75,
+        "lipWidth": 0.6,
+        "lipRound": 0
+      },
+      "dominance": 1
+    },
+    "AH": {
+      "pose": {
+        "jawOpen": 0.6,
+        "lipWidth": 0.3,
+        "lipRound": 0
+      },
+      "dominance": 1
+    },
+    "AO": {
+      "pose": {
+        "jawOpen": 0.7,
+        "lipWidth": 0.1,
+        "lipRound": 0.5
+      },
+      "dominance": 1
+    },
+    "EH": {
+      "pose": {
+        "jawOpen": 0.5,
+        "lipWidth": 0.55,
+        "lipRound": 0
+      },
+      "dominance": 1
+    },
+    "ER": {
+      "pose": {
+        "jawOpen": 0.35,
+        "lipWidth": 0.15,
+        "lipRound": 0.45
+      },
+      "dominance": 1
+    },
+    "IH": {
+      "pose": {
+        "jawOpen": 0.3,
+        "lipWidth": 0.6,
+        "lipRound": 0
+      },
+      "dominance": 1
+    },
+    "IY": {
+      "pose": {
+        "jawOpen": 0.2,
+        "lipWidth": 0.9,
+        "lipRound": 0
+      },
+      "dominance": 1
+    },
+    "UH": {
+      "pose": {
+        "jawOpen": 0.3,
+        "lipWidth": 0.1,
+        "lipRound": 0.6
+      },
+      "dominance": 1
+    },
+    "UW": {
+      "pose": {
+        "jawOpen": 0.18,
+        "lipWidth": 0,
+        "lipRound": 1
+      },
+      "dominance": 1
+    },
+    "AY": {
+      "pose": {
+        "jawOpen": 0.9,
+        "lipWidth": 0.3,
+        "lipRound": 0
+      },
+      "glideTo": {
+        "jawOpen": 0.25,
+        "lipWidth": 0.8,
+        "lipRound": 0
+      },
+      "dominance": 1
+    },
+    "AW": {
+      "pose": {
+        "jawOpen": 0.9,
+        "lipWidth": 0.3,
+        "lipRound": 0
+      },
+      "glideTo": {
+        "jawOpen": 0.2,
+        "lipWidth": 0,
+        "lipRound": 0.9
+      },
+      "dominance": 1
+    },
+    "EY": {
+      "pose": {
+        "jawOpen": 0.5,
+        "lipWidth": 0.55,
+        "lipRound": 0
+      },
+      "glideTo": {
+        "jawOpen": 0.22,
+        "lipWidth": 0.85,
+        "lipRound": 0
+      },
+      "dominance": 1
+    },
+    "OW": {
+      "pose": {
+        "jawOpen": 0.55,
+        "lipWidth": 0.05,
+        "lipRound": 0.7
+      },
+      "glideTo": {
+        "jawOpen": 0.25,
+        "lipWidth": 0,
+        "lipRound": 0.95
+      },
+      "dominance": 1
+    },
+    "OY": {
+      "pose": {
+        "jawOpen": 0.7,
+        "lipWidth": 0.1,
+        "lipRound": 0.5
+      },
+      "glideTo": {
+        "jawOpen": 0.25,
+        "lipWidth": 0.8,
+        "lipRound": 0
+      },
+      "dominance": 1
+    },
+    "M": {
+      "pose": {
+        "jawOpen": 0,
+        "lipWidth": 0.2,
+        "lipRound": 0
+      },
+      "dominance": 1
+    },
+    "B": {
+      "pose": {
+        "jawOpen": 0,
+        "lipWidth": 0.2,
+        "lipRound": 0
+      },
+      "dominance": 1
+    },
+    "P": {
+      "pose": {
+        "jawOpen": 0,
+        "lipWidth": 0.2,
+        "lipRound": 0
+      },
+      "dominance": 1
+    },
+    "F": {
+      "pose": {
+        "jawOpen": 0.08,
+        "lipWidth": 0.35,
+        "lipRound": 0
+      },
+      "dominance": 0.9
+    },
+    "V": {
+      "pose": {
+        "jawOpen": 0.08,
+        "lipWidth": 0.35,
+        "lipRound": 0
+      },
+      "dominance": 0.9
+    },
+    "W": {
+      "pose": {
+        "jawOpen": 0.12,
+        "lipWidth": 0,
+        "lipRound": 0.95
+      },
+      "dominance": 1
+    },
+    "SH": {
+      "pose": {
+        "jawOpen": 0.15,
+        "lipWidth": 0.1,
+        "lipRound": 0.6
+      },
+      "dominance": 0.8
+    },
+    "ZH": {
+      "pose": {
+        "jawOpen": 0.15,
+        "lipWidth": 0.1,
+        "lipRound": 0.6
+      },
+      "dominance": 0.8
+    },
+    "CH": {
+      "pose": {
+        "jawOpen": 0.15,
+        "lipWidth": 0.1,
+        "lipRound": 0.6
+      },
+      "dominance": 0.8
+    },
+    "JH": {
+      "pose": {
+        "jawOpen": 0.15,
+        "lipWidth": 0.1,
+        "lipRound": 0.6
+      },
+      "dominance": 0.8
+    },
+    "R": {
+      "pose": {
+        "jawOpen": 0.2,
+        "lipWidth": 0.05,
+        "lipRound": 0.5
+      },
+      "dominance": 0.6
+    },
+    "S": {
+      "pose": {
+        "jawOpen": 0.1,
+        "lipWidth": 0.6,
+        "lipRound": 0
+      },
+      "dominance": 0.5
+    },
+    "Z": {
+      "pose": {
+        "jawOpen": 0.1,
+        "lipWidth": 0.6,
+        "lipRound": 0
+      },
+      "dominance": 0.5
+    },
+    "TH": {
+      "pose": {
+        "jawOpen": 0.2,
+        "lipWidth": 0.4,
+        "lipRound": 0
+      },
+      "dominance": 0.5
+    },
+    "DH": {
+      "pose": {
+        "jawOpen": 0.2,
+        "lipWidth": 0.4,
+        "lipRound": 0
+      },
+      "dominance": 0.5
+    },
+    "T": {
+      "pose": {
+        "jawOpen": 0.22,
+        "lipWidth": 0.4,
+        "lipRound": 0
+      },
+      "dominance": 0.4
+    },
+    "D": {
+      "pose": {
+        "jawOpen": 0.22,
+        "lipWidth": 0.4,
+        "lipRound": 0
+      },
+      "dominance": 0.4
+    },
+    "N": {
+      "pose": {
+        "jawOpen": 0.22,
+        "lipWidth": 0.4,
+        "lipRound": 0
+      },
+      "dominance": 0.4
+    },
+    "L": {
+      "pose": {
+        "jawOpen": 0.3,
+        "lipWidth": 0.35,
+        "lipRound": 0
+      },
+      "dominance": 0.4
+    },
+    "Y": {
+      "pose": {
+        "jawOpen": 0.15,
+        "lipWidth": 0.7,
+        "lipRound": 0
+      },
+      "dominance": 0.6
+    },
+    "K": {
+      "pose": {
+        "jawOpen": 0.3,
+        "lipWidth": 0.3,
+        "lipRound": 0
+      },
+      "dominance": 0.3
+    },
+    "G": {
+      "pose": {
+        "jawOpen": 0.3,
+        "lipWidth": 0.3,
+        "lipRound": 0
+      },
+      "dominance": 0.3
+    },
+    "NG": {
+      "pose": {
+        "jawOpen": 0.3,
+        "lipWidth": 0.3,
+        "lipRound": 0
+      },
+      "dominance": 0.3
+    },
+    "HH": {
+      "pose": {
+        "jawOpen": 0.45,
+        "lipWidth": 0.3,
+        "lipRound": 0
+      },
+      "dominance": 0.2
+    }
+  },
+  "unknown": {
+    "pose": {
+      "jawOpen": 0.3,
+      "lipWidth": 0.3,
+      "lipRound": 0
+    },
+    "dominance": 0.3
+  }
+}

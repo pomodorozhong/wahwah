@@ -3,6 +3,7 @@
 
 import { compileString, renderToBuffer, type ScheduleEvent } from 'klattsch';
 import { DEFAULT_TROMBONE, renderTrombone } from '../engines/trombone';
+import type { FaceControlTrack } from '../puppet/controls';
 
 export interface VoiceSettings {
   /** Base pitch in Hz (klattsch `baseF0`). */
@@ -56,6 +57,15 @@ export interface Utterance {
   timeline: Timeline;
   warnings: string[];
   render(sampleRate: number): Float32Array;
+}
+
+/** A complete Rust performance, rendered once at the playback sample rate. */
+export interface RenderedUtterance {
+  engine: string;
+  timeline: Timeline;
+  warnings: string[];
+  audio: Float32Array;
+  track: FaceControlTrack | null;
 }
 
 /**

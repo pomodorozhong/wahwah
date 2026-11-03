@@ -14,7 +14,7 @@ import { analyseRecording, measureMouthLagMs, mouthAt, planPlayback, type Analys
 import { magnitudeSpectrumDb } from '../live/features';
 import { NEUTRAL, type FaceControls } from '../puppet/controls';
 import { compilePerformance, renderPerformance, DEFAULT_VOICE } from '../voice/performance';
-import { moodVoice, textToBabble } from '../babble/generate';
+import { moodVoice, generateMumble } from '../mumble/generate';
 import { PuppetView, byId, fitCanvas, renderMode, disclosure, section } from '../ui/puppetView';
 import { rmsEnvelope } from '../analysis';
 import { MONITOR_SIGNALS, MONITOR_COLORS, beginMonitor, drawMonitorLegend, drawMonitorPlayhead } from '../ui/monitorTheme';
@@ -46,7 +46,7 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
         `<label class="field">Input
           <select id="source">
             <option value="mic">Microphone</option>
-            <option value="test">Test signal: babble sentence (klattsch, played aloud)</option>
+            <option value="test">Test signal: Mumble sentence (klattsch, played aloud)</option>
             <option value="sweep">Test signal: vowel sweep ah·ee·oo·eh (Pink Trombone, played aloud)</option>
             <option value="demo">Demo voice: a synthetic speaker who also answers the calibration prompts</option>
           </select>
@@ -215,7 +215,7 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
   function testSignal(ctx: AudioContext, kind: 'test' | 'sweep' | 'demo'): AudioBufferSourceNode {
     let pcm: Float32Array<ArrayBuffer>;
     if (kind === 'demo') {
-      const script = textToBabble('Hi! I am the demo voice. Watch my mouth: ah, ee, ooh. So soft, so sweet!', { seed: 5 });
+      const script = generateMumble('Hi! I am the demo voice. Watch my mouth: ah, ee, ooh. So soft, so sweet!', { seed: 5 });
       pcm = renderPerformance(compilePerformance(script.phonemes, moodVoice(DEMO_VOICE, script.mood)), ctx.sampleRate) as Float32Array<ArrayBuffer>;
     } else if (kind === 'sweep') {
       // Pink Trombone gliding between vowel shapes: a voice the analyzer was not tuned on.
@@ -226,7 +226,7 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
         140,
       ) as Float32Array<ArrayBuffer>;
     } else {
-      const script = textToBabble('Hello there! Testing, one two three. Can you see my mouth move? Oh, wonderful.', { seed: 9 });
+      const script = generateMumble('Hello there! Testing, one two three. Can you see my mouth move? Oh, wonderful.', { seed: 9 });
       const perf = compilePerformance(script.phonemes, moodVoice(DEFAULT_VOICE, script.mood));
       pcm = renderPerformance(perf, ctx.sampleRate) as Float32Array<ArrayBuffer>;
     }

@@ -63,11 +63,13 @@ export default defineConfig({
         home: resolve(import.meta.dirname, 'index.html'),
         klattsch: resolve(import.meta.dirname, 'klattsch/index.html'),
         babble: resolve(import.meta.dirname, 'babble/index.html'),
+        mumble: resolve(import.meta.dirname, 'mumble/index.html'),
         live: resolve(import.meta.dirname, 'live/index.html'),
       },
     },
   },
   test: {
+    setupFiles: ['tests/setup.ts'],
     environment: 'node',
     // pink-trombone-mod uses extensionless relative imports that plain Node ESM
     // cannot resolve; let Vite transform it.
