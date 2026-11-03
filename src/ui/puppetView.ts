@@ -76,7 +76,7 @@ export function renderShell(root: HTMLElement): void {
         <div class="mast-titles"><span class="brand"><svg class="brand-mark" width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><rect width="30" height="30" rx="8" fill="currentColor"/><path d="M7 13v5m5-10v15m6-18v17m5-13v9" fill="none" stroke="#f7ce4f" stroke-width="2.5" stroke-linecap="round"/></svg>wahwah</span><h1>Voice playground</h1></div>
         <label class="input-switch" for="inputMode">Input mode
           <select id="inputMode">
-            <option value="babble">Text to babble</option>
+            <option value="mumble">Text to mumble</option>
             <option value="klattsch">Phoneme script</option>
             <option value="live">Live microphone</option>
           </select>

@@ -1,24 +1,30 @@
 // Each input mounts into the same workspace. The stage and its selected rig live
 // for the whole visit; switching inputs ends that input's session synchronously.
 import { byId, PuppetView, renderShell } from '../ui/puppetView';
-import { mountBabble } from './babble';
+import { mountMumble } from './mumble';
 import { mountKlattsch } from './klattsch';
 import { mountLive } from './live';
 import { loadVoices } from '../voice/rustVoice';
 
-const modes = { babble: mountBabble, klattsch: mountKlattsch, live: mountLive };
+const modes = { mumble: mountMumble, klattsch: mountKlattsch, live: mountLive };
 type Mode = keyof typeof modes;
 
 function isMode(value: string | null): value is Mode {
-  return value === 'babble' || value === 'klattsch' || value === 'live';
+  return value === 'mumble' || value === 'klattsch' || value === 'live';
 }
 
 const base = new URL(import.meta.env.BASE_URL, location.origin);
 const url = new URL(location.href);
-const legacy = url.pathname.slice(base.pathname.length).replace(/(?:\/index\.html|\/)?$/, '');
+const oldPath = url.pathname.slice(base.pathname.length).replace(/(?:\/index\.html|\/)?$/, '');
+const legacy = oldPath === 'babble' ? 'mumble' : oldPath;
 if (isMode(legacy)) {
   url.pathname = base.pathname;
   url.searchParams.set('mode', legacy);
+  history.replaceState(null, '', url);
+}
+
+if (url.searchParams.get('mode') === 'babble') {
+  url.searchParams.set('mode', 'mumble');
   history.replaceState(null, '', url);
 }
 
@@ -38,8 +44,8 @@ let session: AbortController | undefined;
 
 function applyLocation(): void {
   const params = new URLSearchParams(location.search);
-  const requested = params.get('mode');
-  const next = isMode(requested) ? requested : 'babble';
+  const requested = params.get('mode') === 'babble' ? 'mumble' : params.get('mode');
+  const next = isMode(requested) ? requested : 'mumble';
   if (next !== active) {
     session?.abort();
     session = new AbortController();
@@ -47,7 +53,7 @@ function applyLocation(): void {
     selector.value = next;
     view.follower.relax();
     modes[next](root, view, session.signal);
-  } else if (next === 'babble') {
+  } else if (next === 'mumble') {
     const engine = byId<HTMLSelectElement>('engine');
     const selected = params.get('engine');
     if (selected && selected !== engine.value && [...engine.options].some(option => option.value === selected)) {

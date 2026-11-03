@@ -4,9 +4,9 @@ The **Input mode** menu changes what drives the puppet. Switching modes stops
 playback or capture. Your character, framing, and script drafts stay with you
 during the visit.
 
-## Shape a babble voice
+## Shape a Mumble voice
 
-In **Text to babble**, choose a sample or enter up to 500 characters of
+In **Text to mumble**, choose a sample or enter up to 500 characters of
 English. Play a question, then change its punctuation to a period and listen
 to the ending. The word highlight follows the line during playback.
 

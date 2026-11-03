@@ -7,7 +7,7 @@ import { magnitudeSpectrumDb } from '../src/live/features';
 import { DEFAULT_VOICE, compilePerformance, renderPerformance } from '../src/voice/performance';
 import { renderSweep, PT_VOWELS } from '../src/live/ptVoice';
 import { generateFaceTrack, sampleFaceTrack } from '../src/puppet/generate';
-import { textToBabble } from '../src/babble/generate';
+import { generateMumble } from '../src/mumble/generate';
 import { pearson } from '../src/analysis';
 
 const SLOW = { timeout: 60000 };
@@ -84,7 +84,7 @@ describe('voice profile calibration', () => {
     const score = (mode: 'formants' | 'profile') => {
       const acc = { jawOpen: 0, lipWidth: 0, lipRound: 0 };
       for (const t of texts) {
-        const perf = compilePerformance(textToBabble(t, { seed: 3 }).phonemes, { ...DEFAULT_VOICE, formantScale: scale, pitchHz: pitch });
+        const perf = compilePerformance(generateMumble(t, { seed: 3 }).phonemes, { ...DEFAULT_VOICE, formantScale: scale, pitchHz: pitch });
         const fr = runLive(renderPerformance(perf, SR), mode, 0.3, profile);
         const track = generateFaceTrack(perf);
         const ref = fr.map((_, i) => sampleFaceTrack(track, i * DT + N / SR));

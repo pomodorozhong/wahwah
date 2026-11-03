@@ -8,7 +8,7 @@ import { parseProfile, serializeProfile } from '../src/live/profile';
 import { DEFAULT_VOICE, compilePerformance, renderPerformance } from '../src/voice/performance';
 import { renderSweep, PT_VOWELS } from '../src/live/ptVoice';
 import { generateFaceTrack, sampleFaceTrack } from '../src/puppet/generate';
-import { textToBabble } from '../src/babble/generate';
+import { generateMumble } from '../src/mumble/generate';
 import { pearson } from '../src/analysis';
 
 const SLOW = { timeout: 120000 };
@@ -110,7 +110,7 @@ describe('uLipSync-style live mode', () => {
       let r = 0;
       let jerk = 0;
       for (const t of texts) {
-        const perf = compilePerformance(textToBabble(t, { seed: 3 }).phonemes, { ...DEFAULT_VOICE, formantScale: 1.15, pitchHz: 200 });
+        const perf = compilePerformance(generateMumble(t, { seed: 3 }).phonemes, { ...DEFAULT_VOICE, formantScale: 1.15, pitchHz: 200 });
         const raw = renderPerformance(perf, SR);
         const noise = roomNoise(raw.length / SR, 0.002);
         const audio = raw.map((v, i) => v + noise[i]);

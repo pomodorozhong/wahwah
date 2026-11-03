@@ -38,23 +38,17 @@ pub(crate) enum Phrasing {
     Speech,
 }
 
-/// Mouth (jaw open, lip round) for a vowel. Only the trombone's plunger reads
-/// these; the puppet's poses are separate for now.
+/// The horn and puppet read the same vowel poses.
 fn vowel_shape(code: &str) -> Option<(f64, f64)> {
-    Some(match code {
-        "AA" | "AY" | "AW" => (0.9, 0.0),
-        "AE" => (0.75, 0.0),
-        "AH" => (0.6, 0.0),
-        "AO" | "OY" => (0.7, 0.5),
-        "EH" | "EY" => (0.5, 0.0),
-        "ER" => (0.35, 0.45),
-        "IH" => (0.3, 0.0),
-        "IY" => (0.2, 0.0),
-        "UH" => (0.3, 0.6),
-        "UW" => (0.18, 1.0),
-        "OW" => (0.55, 0.7),
-        _ => return None,
-    })
+    if ![
+        "AA", "AE", "AH", "AO", "AW", "AY", "EH", "ER", "EY", "IH", "IY", "OW", "OY", "UH", "UW",
+    ]
+    .contains(&code)
+    {
+        return None;
+    }
+    let pose = crate::mouth::viseme(code).pose;
+    Some((pose.jaw_open, pose.lip_round))
 }
 
 fn f0_curve(events: &[Event], duration: f64) -> Vec<f64> {

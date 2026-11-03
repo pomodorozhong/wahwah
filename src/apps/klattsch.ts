@@ -1,7 +1,7 @@
 // klattsch playground: ARPABET phoneme input straight into klattsch.
 
 import { DEFAULT_BRASS_COLOR, type VoiceSettings } from '../voice/performance';
-import { formantUtterance } from '../voice/rustVoice';
+import { renderPhonemes } from '../voice/rustVoice';
 import { PRESETS } from '../voice/presets';
 import type { PuppetView } from '../ui/puppetView';
 import { Stage, byId, section, restoreDraft } from '../ui/stage';
@@ -44,7 +44,8 @@ export function mountKlattsch(root: HTMLElement, view: PuppetView, signal: Abort
 
     inputHtml,
     voiceHtml,
-    compile: () => formantUtterance(phonemesEl.value, voiceSettings(), Number(brassEl.value) / 100),
+    compile: (sampleRate, puppet) => renderPhonemes(phonemesEl.value, voiceSettings(), sampleRate,
+      { engine: 'formant', brassColor: Number(brassEl.value) / 100 }, puppet),
   });
 
   const presetSel = byId<HTMLSelectElement>('preset');

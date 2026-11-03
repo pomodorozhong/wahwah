@@ -1,42 +1,34 @@
-// Voice adapter: the Rust voices behind the playground's Utterance interface.
-// Rust holds no state between calls, so each utterance keeps its script and
-// settings and passes them again to render at the device sample rate.
-
-import init, { compile, renderFormant, renderTrombone } from '../wasm/wahwah_wasm';
+// One WASM render compiles one score and returns audio, timing and mouth movement.
+import init, { renderPerformance } from '../wasm/wahwah_wasm';
+import { mumbleOptions, type MumbleOptions, type MumbleScript } from '../mumble/generate';
 import type { TromboneOptions } from '../engines/trombone';
-import type { Timeline, Utterance, VoiceSettings } from './performance';
-
-interface CompiledTimeline extends Timeline {
-  warnings: string[];
-}
+import type { RenderedUtterance, VoiceSettings } from './performance';
 
 let loading: Promise<unknown> | undefined;
-
-/** Load the WASM module. Call once before creating voices. */
 export function loadVoices(): Promise<unknown> {
   loading ??= init();
   return loading;
 }
 
-const compileTimeline = (phonemes: string, settings: VoiceSettings) => compile(phonemes, settings) as CompiledTimeline;
+export type RustVoice =
+  | { engine: 'formant'; brassColor: number }
+  | { engine: 'trombone'; trombone: TromboneOptions };
 
-/** The klattsch formant voice with an amount of Trombone color from 0 to 1. */
-export function formantUtterance(phonemes: string, settings: VoiceSettings, brassColor: number): Utterance {
-  const timeline = compileTimeline(phonemes, settings);
-  return {
-    engine: 'klattsch',
-    timeline,
-    warnings: timeline.warnings,
-    render: (sampleRate) => renderFormant(phonemes, settings, sampleRate, brassColor),
-  };
+export interface MumblePerformance extends RenderedUtterance {
+  script: MumbleScript;
 }
 
-export function tromboneUtterance(phonemes: string, settings: VoiceSettings, options: TromboneOptions): Utterance {
-  const timeline = compileTimeline(phonemes, settings);
-  return {
-    engine: 'Wah-wah trombone',
-    timeline,
-    warnings: timeline.warnings,
-    render: (sampleRate) => renderTrombone(phonemes, settings, sampleRate, options),
-  };
+function render(source: string, settings: VoiceSettings, sampleRate: number, voice: RustVoice, puppet: boolean,
+  input: 'mumble' | 'phonemes', mumble?: MumbleOptions): RenderedUtterance {
+  const result = renderPerformance(source, settings, sampleRate, { ...voice, input, ...(mumble ? { mumble } : {}), puppet }) as RenderedUtterance;
+  return { ...result, engine: voice.engine === 'formant' ? 'klattsch' : 'Wah-wah trombone' };
+}
+
+export function renderPhonemes(source: string, settings: VoiceSettings, sampleRate: number, voice: RustVoice, puppet = true): RenderedUtterance {
+  return render(source, settings, sampleRate, voice, puppet, 'phonemes');
+}
+
+export function renderMumble(text: string, options: MumbleOptions, settings: VoiceSettings, sampleRate: number,
+  voice: RustVoice, puppet = true): MumblePerformance {
+  return render(text, settings, sampleRate, voice, puppet, 'mumble', mumbleOptions(options)) as MumblePerformance;
 }
