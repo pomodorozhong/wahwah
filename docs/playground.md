@@ -20,8 +20,18 @@ syllable and stress guesses work best on ordinary English words.
   voice size. Set **Trombone color** to zero to hear the plain voice.
 - **Wah-wah trombone** plays the syllables as brass notes. Increase
   **Plunger wah** to exaggerate how the mute opens on vowels.
-- **Babble Engine** generates its own syllables. Choose a style and voice to
-  hear how it interprets the same text.
+- **Muted Horn** and **Trombone (Talking Instruments)** play sliding brass
+  notes with a mute that opens and closes on each note. Talking Instruments'
+  Trombone has its own low, wobbly phrasing, separate from Wah-wah trombone.
+- **Ooh Choir** blends three soft voices on pentatonic pitches.
+- **Kazoo** gives the notes a buzzing membrane and a nasal resonance.
+
+The four Talking Instruments choices turn text into their own note score,
+with a separate mouth movement for each note, including several notes inside
+one word. Use **Pitch**, **Speaking speed**, **Expression**, and **Brightness**
+to shape them. **Mood** and **Seed** also affect their phrasing. Their controls
+remember edits when you switch between voices during the visit. Language style
+applies to the klattsch and Wah-wah trombone syllable generator.
 
 ## Write a phoneme script
 

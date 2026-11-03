@@ -1,0 +1,6 @@
+[
+  { "id": "muted-horn", "name": "Muted Horn", "pitchHz": 330, "speed": 1, "expression": 0.7, "brightness": 0.55 },
+  { "id": "talking-trombone", "name": "Trombone (Talking Instruments)", "pitchHz": 140, "speed": 0.9, "expression": 0.7, "brightness": 0.45 },
+  { "id": "ooh-choir", "name": "Ooh Choir", "pitchHz": 262, "speed": 0.9, "expression": 0.5, "brightness": 0.45 },
+  { "id": "kazoo", "name": "Kazoo", "pitchHz": 300, "speed": 1, "expression": 0.75, "brightness": 0.6 }
+]

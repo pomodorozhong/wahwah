@@ -1,15 +1,13 @@
 // Mumble playground: ordinary text becomes invented speech, audio and mouth
-// movement in Rust. Babble Engine remains until the instrument rewrite.
-import { DEFAULT_BRASS_COLOR, type RenderedUtterance, type Utterance, type VoiceSettings } from '../voice/performance';
-import { renderMumble } from '../voice/rustVoice';
+// movement in Rust. Talking Instruments use their own explicit note score.
+import { DEFAULT_BRASS_COLOR, type RenderedUtterance, type VoiceSettings } from '../voice/performance';
+import { renderMumble, renderInstrument, type InstrumentPerformance } from '../voice/rustVoice';
 import { wordAtPhonemeOffset, type MumbleScript } from '../mumble/generate';
 import { MOODS, STYLES } from '../mumble/styles';
-import { tokenizeText } from '../mumble/text';
-import { BE_STYLES, babbleEngineUtterance, revealedIndex, type BabbleEngineUtterance } from '../engines/babbleEngine';
+import { INSTRUMENTS, isInstrument, type InstrumentId } from '../voice/instruments';
 import { DEFAULT_TROMBONE } from '../engines/trombone';
 import type { PuppetView } from '../ui/puppetView';
 import { Stage, byId, section, restoreDraft } from '../ui/stage';
-import type { Mood as BeMood, StyleId as BeStyleId } from 'babble-engine';
 
 const SAMPLES = [
   { name: 'A greeting', text: 'Hello there! How are you today?' },
@@ -20,15 +18,15 @@ const SAMPLES = [
   { name: 'Morning class', text: 'Good morning, class. Please open your books to page forty two. Who can tell me the answer?' },
 ];
 
-type EngineId = 'klattsch' | 'trombone' | 'babble-engine';
+type EngineId = 'klattsch' | 'trombone' | InstrumentId;
 const ENGINE_HINTS: Record<EngineId, string> = {
   klattsch: 'Trombone color starts with the original voice at 0%. Above 75%, a plunger-muted trombone takes over the voiced sounds and follows the same pitch bends.',
   trombone: 'A muted trombone plays our invented syllables: the plunger opens on vowels (wah) and closes on consonants, following the same pitch contour and the same timeline as the mouth.',
-  'babble-engine': "Babble Engine invents and voices its own syllables. Mouth shapes come from its syllable letters, syllable ends from the audio's loudness.",
+  'muted-horn': 'Bright muted brass with a plunger wah and sliding speech-like notes.',
+  'talking-trombone': 'Talking Instruments’ low, wobbly brass voice, with its own note phrasing.',
+  'ooh-choir': 'Three soft ooh voices sing notes snapped to a pentatonic scale.',
+  kazoo: 'A hummed tune through a buzzing membrane, with a nasal resonance.',
 };
-
-// Babble Engine styles that speak the text (Bloopa Doopa ignores it).
-const BE_TEXT_STYLES = BE_STYLES.filter((s) => s.id !== 'vemmo');
 
 const options = (items: readonly { id: string; name: string }[]) =>
   items.map((x) => `<option value="${x.id}">${x.name}</option>`).join('');
@@ -60,24 +58,22 @@ const voiceHtml =
       <select id="engine">
         <option value="trombone">Wah-wah trombone (muted brass)</option>
         <option value="klattsch">klattsch formant voice</option>
-        <option value="babble-engine">Babble Engine (its own babble and voices)</option>
+        ${options(INSTRUMENTS)}
       </select>
     </label>
     <p class="hint" id="engineHint"></p>
     <div class="pair">
       <label class="field" data-for-engine="klattsch trombone">Language style <select id="style">${options(STYLES)}</select></label>
-      <label class="field" data-for-engine="babble-engine">Style <select id="beStyle">${options(BE_TEXT_STYLES)}</select></label>
       <label class="field">Mood <select id="mood">${options(MOODS)}</select></label>
     </div>
-    <label class="field" data-for-engine="babble-engine">Voice <select id="beVoice"></select></label>
     <div class="pair seed">
       <label class="field">Seed <input id="seed" type="number" min="0" step="1" value="1" /></label>
       <button id="reroll" type="button">New seed</button>
     </div>`,
   ) +
-  `<div data-for-engine="klattsch trombone">${section(
+  `${section(
     'Voice settings',
-    `${slider('pitch', 'Pitch', 60, 300, 1, 130)}
+    `<div data-for-engine="klattsch trombone">${slider('pitch', 'Pitch', 60, 300, 1, 130)}
     ${slider('rate', 'Speaking rate', 50, 200, 5, 95)}
     <div data-for-engine="klattsch" class="section-body">
       ${slider('scale', 'Voice size', 0.8, 1.3, 0.01, 1.05)}
@@ -88,13 +84,22 @@ const voiceHtml =
       ${slider('wah', 'Plunger wah', 0.2, 1, 0.05, DEFAULT_TROMBONE.wah)}
       ${slider('transpose', 'Transpose', -12, 12, 1, DEFAULT_TROMBONE.transpose)}
     </div>
-    <details><summary class="hint">Generated klattsch phonemes</summary><code id="mumbleOut" class="mumble-out"></code></details>`,
-  )}</div>`;
+    </div>
+    <div data-for-engine="muted-horn talking-trombone ooh-choir kazoo">
+      ${slider('instrumentPitch', 'Pitch', 60, 600, 1, 330)}
+      ${slider('instrumentSpeed', 'Speaking speed', 0.5, 2, 0.05, 1)}
+      ${slider('instrumentExpression', 'Expression', 0, 1, 0.05, 0.7)}
+      ${slider('instrumentBrightness', 'Brightness', 0, 1, 0.05, 0.55)}
+    </div>
+    <details data-for-engine="klattsch trombone"><summary class="hint">Generated klattsch phonemes</summary><code id="mumbleOut" class="mumble-out"></code></details>`,
+  )}`;
 
 type Spoken =
   | { kind: 'script'; script: MumbleScript }
-  | { kind: 'babble-engine'; utterance: BabbleEngineUtterance; words: { text: string; start: number; end: number }[] };
+  | { kind: 'instrument'; performance: InstrumentPerformance; words: { text: string; start: number; end: number }[] };
 const draft: Record<string, string> = {};
+const instrumentDrafts: Record<string, string[]> = {};
+const instrumentFields = ['instrumentPitch', 'instrumentSpeed', 'instrumentExpression', 'instrumentBrightness'];
 
 export function mountMumble(root: HTMLElement, view: PuppetView, signal: AbortSignal): void {
   let spoken: Spoken | null = null;
@@ -109,7 +114,7 @@ export function mountMumble(root: HTMLElement, view: PuppetView, signal: AbortSi
       mumble:
         spoken?.kind === 'script'
           ? { phonemes: spoken.script.phonemes, words: spoken.script.words.map((w) => [w.text, w.spelled]) }
-          : spoken && { syllables: spoken.utterance.syllables.map((s) => s.text), segments: spoken.utterance.timeline.segments.length },
+          : spoken && { notes: spoken.performance.notes, segments: spoken.performance.timeline.segments.length },
       spokenWord: activeWord,
     }),
   });
@@ -118,8 +123,6 @@ export function mountMumble(root: HTMLElement, view: PuppetView, signal: AbortSi
   const sampleEl = byId<HTMLSelectElement>('sample');
   const textEl = byId<HTMLTextAreaElement>('text');
   const styleEl = byId<HTMLSelectElement>('style');
-  const beStyleEl = byId<HTMLSelectElement>('beStyle');
-  const beVoiceEl = byId<HTMLSelectElement>('beVoice');
   const moodEl = byId<HTMLSelectElement>('mood');
   const seedEl = byId<HTMLInputElement>('seed');
   const num = (id: string) => Number(byId<HTMLInputElement>(id).value);
@@ -128,20 +131,19 @@ export function mountMumble(root: HTMLElement, view: PuppetView, signal: AbortSi
     return { pitchHz: num('pitch'), msPerPhoneme: num('rate'), formantScale: num('scale') };
   }
 
-  function compile(sampleRate: number, puppet: boolean): Utterance | RenderedUtterance {
+  function compile(sampleRate: number, puppet: boolean): RenderedUtterance {
     const seed = Number(seedEl.value) || 0;
     const engine = engineEl.value as EngineId;
-    if (engine === 'babble-engine') {
-      const utterance = babbleEngineUtterance(textEl.value, {
-        style: beStyleEl.value as BeStyleId,
-        voice: beVoiceEl.value || undefined,
-        mood: moodEl.value as BeMood,
-        seed,
-      }, sampleRate);
-      const words = tokenizeText(textEl.value).flatMap((t) => (t.kind === 'word' ? [{ text: t.text, start: t.start, end: t.end }] : []));
-      spoken = { kind: 'babble-engine', utterance, words };
-      renderWords(words.map((w) => ({ text: w.text, sub: '' })));
-      return utterance;
+    if (isInstrument(engine)) {
+      const performance = renderInstrument(textEl.value, {
+        instrument: engine, pitchHz: num('instrumentPitch'), speed: num('instrumentSpeed'),
+        expression: num('instrumentExpression'), brightness: num('instrumentBrightness'), seed, moodId: moodEl.value,
+      }, sampleRate, puppet);
+      const ranges = new Map(performance.notes.map(n => [n.srcStart, n.srcEnd]));
+      const words = [...ranges].map(([start, end]) => ({ text: textEl.value.slice(start, end), start, end }));
+      spoken = { kind: 'instrument', performance, words };
+      renderWords(words.map(w => ({ text: w.text, sub: '' })));
+      return performance;
     }
     const performance = renderMumble(textEl.value, { seed, styleId: styleEl.value, moodId: moodEl.value }, baseVoice(), sampleRate,
       engine === 'trombone'
@@ -163,17 +165,14 @@ export function mountMumble(root: HTMLElement, view: PuppetView, signal: AbortSi
       : '<span class="empty">Your words will appear here.</span>';
   }
 
-  function activeWordIndex(time: number | null, segment: { srcStart: number } | null): number | null {
-    if (!spoken || time === null) return null;
+  function activeWordIndex(time: number | null, segment: { srcStart: number; phoneme: string | null } | null): number | null {
+    if (!spoken || time === null || !segment?.phoneme) return null;
     if (spoken.kind === 'script') {
       const w = segment && wordAtPhonemeOffset(spoken.script, segment.srcStart);
       return w ? spoken.script.words.indexOf(w) : null;
     }
-    // Babble Engine reveals text character by character; light the word being revealed.
-    const ch = revealedIndex(spoken.utterance.reveal, time);
-    if (ch < 0 || time > spoken.utterance.timeline.durationSeconds) return null;
-    const i = spoken.words.findIndex((w) => ch < w.end);
-    return i >= 0 && ch >= spoken.words[i].start - 1 ? i : null;
+    const index = spoken.words.findIndex(w => segment.srcStart >= w.start && segment.srcStart < w.end);
+    return index >= 0 ? index : null;
   }
 
   let activeWord: string | null = null;
@@ -182,11 +181,6 @@ export function mountMumble(root: HTMLElement, view: PuppetView, signal: AbortSi
     if (key === activeWord) return;
     activeWord = key;
     for (const el of byId('spoken').querySelectorAll<HTMLElement>('.w')) el.classList.toggle('on', el.dataset.i === key);
-  }
-
-  function fillVoices(): void {
-    const style = BE_TEXT_STYLES.find((s) => s.id === beStyleEl.value) ?? BE_TEXT_STYLES[0];
-    beVoiceEl.innerHTML = style.voices.map((v) => `<option value="${v.id}">${v.name} — ${escapeHtml(v.description)}</option>`).join('');
   }
 
   function showEngineControls(): void {
@@ -204,11 +198,23 @@ export function mountMumble(root: HTMLElement, view: PuppetView, signal: AbortSi
     byId('brassOut').textContent = `${num('brass')}%`;
     byId('brightnessOut').textContent = num('brightness').toFixed(2);
     byId('wahOut').textContent = num('wah').toFixed(2);
+    byId('instrumentPitchOut').textContent = `${num('instrumentPitch')} Hz`;
+    byId('instrumentSpeedOut').textContent = `×${num('instrumentSpeed').toFixed(2)}`;
+    byId('instrumentExpressionOut').textContent = `${Math.round(num('instrumentExpression') * 100)}%`;
+    byId('instrumentBrightnessOut').textContent = `${Math.round(num('instrumentBrightness') * 100)}%`;
     byId('transposeOut').textContent = `${num('transpose') > 0 ? '+' : ''}${num('transpose')} st`;
     stage.invalidate();
   }
 
+  let lastEngine = '';
   function applyEngine(): void {
+    if (isInstrument(lastEngine)) instrumentDrafts[lastEngine] = instrumentFields.map(id => byId<HTMLInputElement>(id).value);
+    if (isInstrument(engineEl.value) && engineEl.value !== lastEngine) {
+      const preset = INSTRUMENTS.find(p => p.id === engineEl.value)!;
+      const values = instrumentDrafts[engineEl.value] ?? [preset.pitchHz, preset.speed, preset.expression, preset.brightness].map(String);
+      instrumentFields.forEach((id, i) => { byId<HTMLInputElement>(id).value = values[i]; });
+    }
+    lastEngine = engineEl.value;
     const url = new URL(location.href);
     if (url.searchParams.get('engine') !== engineEl.value) {
       url.searchParams.set('engine', engineEl.value);
@@ -219,10 +225,6 @@ export function mountMumble(root: HTMLElement, view: PuppetView, signal: AbortSi
   }
 
   engineEl.addEventListener('change', applyEngine, { signal });
-  beStyleEl.addEventListener('change', () => {
-    fillVoices();
-    changed();
-  }, { signal });
   sampleEl.addEventListener('change', () => {
     if (sampleEl.value === '') return;
     textEl.value = SAMPLES[Number(sampleEl.value)].text;
@@ -233,7 +235,7 @@ export function mountMumble(root: HTMLElement, view: PuppetView, signal: AbortSi
     sampleEl.value = i >= 0 ? String(i) : '';
     changed();
   }, { signal });
-  for (const id of ['style', 'beVoice', 'mood', 'seed', 'pitch', 'rate', 'scale', 'brass', 'brightness', 'wah', 'transpose']) byId(id).addEventListener('input', changed, { signal });
+  for (const id of ['style', 'instrumentPitch', 'instrumentSpeed', 'instrumentExpression', 'instrumentBrightness', 'mood', 'seed', 'pitch', 'rate', 'scale', 'brass', 'brightness', 'wah', 'transpose']) byId(id).addEventListener('input', changed, { signal });
   byId('reroll').addEventListener('click', () => {
     seedEl.value = String(Math.floor(Math.random() * 100000));
     changed();
@@ -245,7 +247,8 @@ export function mountMumble(root: HTMLElement, view: PuppetView, signal: AbortSi
   restoreDraft(root, signal, draft);
   const requested = new URLSearchParams(location.search).get('engine');
   if (requested && [...engineEl.options].some((option) => option.value === requested)) engineEl.value = requested;
-  fillVoices();
-  if (draft.beVoice && [...beVoiceEl.options].some((option) => option.value === draft.beVoice)) beVoiceEl.value = draft.beVoice;
+  if (isInstrument(engineEl.value) && draft.engine === engineEl.value) {
+    instrumentDrafts[engineEl.value] = instrumentFields.map(id => byId<HTMLInputElement>(id).value);
+  }
   applyEngine();
 }

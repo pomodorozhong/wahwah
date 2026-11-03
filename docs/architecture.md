@@ -12,15 +12,19 @@ before playback. Live input estimates the controls as audio arrives.
    pipeline directly. [Mumble generator](../crates/wahwah-core/src/mumble.rs)
 2. A Rust core, compiled to WASM, turns the phonemes into a timed score using
    klattsch's script language and synthesis design. Both its formant voice and
-   the muted trombone use that score. Babble Engine supplies its own syllables
-   and start times, so its adapter infers mouth shapes from the syllable letters
-   and uses quiet gaps in the audio to estimate their ends. Live mode's test
-   voices still use the JavaScript klattsch.
-   [Rust core](../crates/wahwah-core/src/lib.rs) · [Voice adapter](../src/voice/rustVoice.ts) · [Babble Engine adapter](../src/engines/babbleEngine.ts)
+   the muted trombone use that score. The four Talking Instruments voices
+   compile original text to a separate Rust note score: explicit note starts,
+   durations, pitch endpoints and word ranges. Brass and Kazoo glide between
+   pitches; Ooh Choir snaps notes to a pentatonic scale. Live mode's test voices
+   still use the JavaScript klattsch.
+   [Rust core](../crates/wahwah-core/src/lib.rs) · [Note score](../crates/wahwah-core/src/instruments/score.rs) · [Voice adapter](../src/voice/rustVoice.ts)
 3. One WASM call compiles the Rust score and returns audio at the device
    sample rate, its timeline, and an optional face track. With puppet output
-   disabled, the track generator does not run. Babble Engine temporarily uses
-   the legacy TypeScript track generator until its instrument rewrite.
+   disabled, the track generator does not run. Talking Instruments mouth tracks
+   follow individual note attacks and releases, including several notes in a
+   word. Ooh Choir uses a rounded pose; brass and Kazoo use an open pose.
+   Mouths articulate again at each onset while short audio release tails may
+   overlap. Neither path infers the mouth timing from rendered audio.
    Vowels and visible closures such as M carry
    more weight than consonants formed mainly with the tongue. Blending
    neighbouring poses keeps the jaw from closing on every consonant.

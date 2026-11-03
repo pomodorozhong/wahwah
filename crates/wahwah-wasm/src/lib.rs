@@ -4,6 +4,9 @@
 use serde::{Deserialize, Serialize};
 use wahwah_core::{
     ScoreOptions, TromboneOptions, Voice, compile_score,
+    instruments::{
+        InstrumentOptions, Note, compile_instrument, render_instrument as render_instrument_score,
+    },
     mouth::TrackOptions,
     mumble::{self, MumbleOptions, MumbleScript, TextToken},
     render_performance,
@@ -16,6 +19,76 @@ fn to_js(value: &impl Serialize) -> Result<JsValue, JsError> {
             .serialize_missing_as_null(true)
             .serialize_maps_as_objects(true),
     )?)
+}
+
+fn validate_sample_rate(sample_rate: f64) -> Result<(), JsError> {
+    if sample_rate.is_finite() && (8000.0..=192000.0).contains(&sample_rate) {
+        Ok(())
+    } else {
+        Err(JsError::new(
+            "Sample rate must be between 8000 and 192000 Hz",
+        ))
+    }
+}
+
+fn with_audio(metadata: &impl Serialize, audio: &[f32]) -> Result<JsValue, JsError> {
+    let result = to_js(metadata)?;
+    let audio = js_sys::Float32Array::from(audio);
+    js_sys::Reflect::set(&result, &JsValue::from_str("audio"), &audio)
+        .map_err(|_| JsError::new("Could not attach performance audio"))?;
+    Ok(result)
+}
+
+/// Original text becomes a note score, audio and per-note mouth movement.
+#[wasm_bindgen(js_name = renderInstrument)]
+pub fn render_instrument(
+    source: &str,
+    options: JsValue,
+    sample_rate: f64,
+    puppet: bool,
+) -> Result<JsValue, JsError> {
+    validate_sample_rate(sample_rate)?;
+    let options: InstrumentOptions = serde_wasm_bindgen::from_value(options)?;
+    if [
+        options.pitch_hz,
+        options.speed,
+        options.expression,
+        options.brightness,
+    ]
+    .iter()
+    .any(|v| !v.is_finite())
+        || !(40.0..=2000.0).contains(&options.pitch_hz)
+        || !(0.25..=4.0).contains(&options.speed)
+    {
+        return Err(JsError::new(
+            "Instrument settings must be finite; pitch 40–2000 Hz and speed 0.25–4",
+        ));
+    }
+    let mut score = compile_instrument(source, &options);
+    let track_options = TrackOptions::default();
+    let mut performance =
+        render_instrument_score(&score, sample_rate, puppet.then_some(&track_options));
+    for note in &mut score.notes {
+        note.src_start = js_offset(source, note.src_start);
+        note.src_end = js_offset(source, note.src_end);
+    }
+    for segment in &mut performance.timeline.segments {
+        segment.src_start = js_offset(source, segment.src_start);
+        segment.src_end = js_offset(source, segment.src_end);
+    }
+    #[derive(Serialize)]
+    struct InstrumentMetadata<'a> {
+        #[serde(flatten)]
+        performance: &'a wahwah_core::Performance,
+        notes: &'a [Note],
+    }
+    with_audio(
+        &InstrumentMetadata {
+            performance: &performance,
+            notes: &score.notes,
+        },
+        &performance.audio,
+    )
 }
 
 #[derive(Deserialize)]
@@ -150,11 +223,7 @@ pub fn render(
     sample_rate: f64,
     options: JsValue,
 ) -> Result<JsValue, JsError> {
-    if !sample_rate.is_finite() || !(8000.0..=192000.0).contains(&sample_rate) {
-        return Err(JsError::new(
-            "Sample rate must be between 8000 and 192000 Hz",
-        ));
-    }
+    validate_sample_rate(sample_rate)?;
     let base = serde_wasm_bindgen::from_value::<VoiceSettings>(settings)?.score_options()?;
     let options: RenderOptions = serde_wasm_bindgen::from_value(options)?;
     let mut script = match options.input {
@@ -212,13 +281,11 @@ pub fn render(
         performance: &'a wahwah_core::Performance,
         script: &'a Option<MumbleScript>,
     }
-    let result = to_js(&ResultMetadata {
-        performance: &performance,
-        script: &script,
-    })?;
-    // Transfer samples as a typed array, without serializing one JS number per sample.
-    let audio = js_sys::Float32Array::from(performance.audio.as_slice());
-    js_sys::Reflect::set(&result, &JsValue::from_str("audio"), &audio)
-        .map_err(|_| JsError::new("Could not attach performance audio"))?;
-    Ok(result)
+    with_audio(
+        &ResultMetadata {
+            performance: &performance,
+            script: &script,
+        },
+        &performance.audio,
+    )
 }
