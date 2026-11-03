@@ -32,20 +32,53 @@ house style or several switchable styles remains open.
 | --- | --- |
 | Keep input, mouth controls, and character rigs separate. | One utterance or microphone recording can exercise every rig. A future SDK can expose the controls independently of the renderer. |
 | Build the playground with TypeScript, Vite, Web Audio, and Three.js. | Voice synthesis, editing, and a live puppet preview can run together in a browser. |
-| Support both VRM and Live2D. | VRM provides standard vowel expressions on a 3D avatar. Live2D lets us compare how the same performance reads on layered artwork. Both use one renderer. |
-| Read Live2D meshes through Cubism Core. | The playground can draw them in Three.js without a second rendering stack. Users supply the runtime and models locally so the project can keep third-party assets out of its distribution. |
+| Target VRM for the Rust/WASM migration. | Focus the supported playground on one avatar format. Keep general mouth controls separate from VRM expressions so a future Live2D adapter can consume the same performance. The current TypeScript playground still contains Live2D; removal is part of the migration. |
+| Port the selected voice core before adding more behavior. | No users rely on the current output, so compatibility is not a release constraint. Establish one Rust implementation before adding multilingual input, viewer identities, and duration fitting. |
 | Start with a small mouth vocabulary. | Every host can support it. Future layers for blink, gaze, brows, head pose, and mood can be optional and map onto each rig's existing expressions. |
 | Evaluate live tracking on a real voice. | A synthetic test can measure lag and jitter. A speaker can judge whether the result looks right for the character and whether delaying the audio feels acceptable. |
 
 The [architecture guide](architecture.md) describes the current input paths,
 control format, and renderer mappings.
 
+## Next delivery: Rust/WASM and a hosted VRM playground
+
+The next task is [the Rust/WASM port](https://github.com/pomodorozhong/wahwah/issues/10).
+Rust should own the generated performance: invented speech, timing and pitch
+events, selected synthesis, and synchronized puppet controls. TypeScript
+continues to host the UI, Web Audio playback, Three.js, and VRM rendering.
+Audio and mouth movement must follow one performance timeline. Keep the
+control format independent of the avatar renderer.
+
+Keep six sound choices: wahwah's Wah-wah trombone, the klattsch formant
+voice, and Talking Instruments' Muted Horn, Trombone, Ooh Choir, and Kazoo
+from Babble Engine. The two trombones remain distinct. Port the selected
+instrument melody, note timing, glides, and synthesis with upstream
+attribution; remove the Babble Engine runtime dependency and its other
+styles after the port. The pinned reference is revision
+`c1d0571f40081a934777b3039d26658229ff5a33`, chiefly `renderTone` and its
+helpers in `site/src/engine.js`.
+
+The JavaScript klattsch compiler and synthesis need an explicit Rust
+solution; porting the project-owned trombone alone would leave that
+dependency in the generated path. Live-microphone analysis is not yet
+selected for the initial port and should not expand the milestone silently.
+
+The first milestone is all six voices driving the VRM puppet through
+Rust/WASM in a working GitHub Pages playground. Build for the `/wahwah/`
+repository path and verify the WASM, bundled tofu model, audio playback,
+and synchronized animation. Pages deployment has not been configured yet.
+Native Python and Apple packages remain possible future consumers.
+
+After that milestone, add multilingual invented speech including Chinese
+and mixed-language text, deterministic viewer-to-character profiles for
+Twitch, and configurable fixed-duration output. The distinction between
+an exact duration and a maximum duration remains a feature-design choice.
+
 ## Longer-term work
 
-- **Reusable core.** Once the control format and input behaviour settle,
-  extract suitable pieces into Rust for use through WASM, npm, Python, and
-  Apple packages. Portability is the reason for the extraction. The first
-  package and its minimum set of controls are still open.
+- **Reusable packages.** Choose npm library scope and native Python or Apple
+  bindings once a consumer needs them. Portability is the motivation for
+  Rust; a current performance bottleneck has not been established.
 - **More inputs and hosts.** Webcam or ARKit tracking could drive the same
   controls. A custom 2.5D host is an option if the project needs an entirely
   open-source runtime. How much of the body to animate beyond the head
