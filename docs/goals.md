@@ -42,37 +42,29 @@ control format, and renderer mappings.
 
 ## Next delivery: Rust/WASM and a hosted VRM playground
 
-The next task is [the Rust/WASM port](https://github.com/pomodorozhong/wahwah/issues/10).
-Rust should own the generated performance: invented speech, timing and pitch
-events, selected synthesis, and synchronized puppet controls. TypeScript
-continues to host the UI, Web Audio playback, Three.js, and VRM rendering.
-Audio and mouth movement must follow one performance timeline. Keep the
-control format independent of the avatar renderer.
+The next task is [the Rust/WASM rewrite](https://github.com/pomodorozhong/wahwah/issues/10).
+The current TypeScript code is a proof of concept, and the Rust version becomes
+the new standard, so matching today's output exactly is not a goal.
 
-Keep six sound choices: wahwah's Wah-wah trombone, the klattsch formant
-voice, and Talking Instruments' Muted Horn, Trombone, Ooh Choir, and Kazoo
-from Babble Engine. The two trombones remain distinct. Port the selected
-instrument melody, note timing, glides, and synthesis with upstream
-attribution; remove the Babble Engine runtime dependency and its other
-styles after the port. The pinned reference is revision
-`c1d0571f40081a934777b3039d26658229ff5a33`, chiefly `renderTone` and its
-helpers in `site/src/engine.js`.
+Rust will own invented speech, timing and pitch, synthesis, and synchronized
+puppet controls. TypeScript continues to host the UI, Web Audio playback,
+Three.js, VRM rendering, and live mode. Live analysis stays in TypeScript because
+porting it would only help a future native consumer.
 
-The JavaScript klattsch compiler and synthesis need an explicit Rust
-solution; porting the project-owned trombone alone would leave that
-dependency in the generated path. Live-microphone analysis is not yet
-selected for the initial port and should not expand the milestone silently.
+The end state keeps six sound choices: Wah-wah trombone, the klattsch formant
+voice with Trombone color, and Talking Instruments' Muted Horn, Trombone, Ooh
+Choir, and Kazoo from Babble Engine. The puppet views are Tofu, VRM, and Debug.
+The project is MIT-licensed and published on GitHub Pages under `/wahwah/`.
 
-The first milestone is all six voices driving the VRM puppet through
-Rust/WASM in a working GitHub Pages playground. Build for the `/wahwah/`
-repository path and verify the WASM, bundled tofu model, audio playback,
-and synchronized animation. Pages deployment has not been configured yet.
-Native Python and Apple packages remain possible future consumers.
+The work lands as six PRs, in the order listed on the issue: Rust voices in the
+playground, Rust performance, instruments, dependency cleanup, playground
+cleanup, and publishing. Text-to-babble, the instruments, Live2D removal, and
+Pages have not landed yet.
 
-After that milestone, add multilingual invented speech including Chinese
-and mixed-language text, deterministic viewer-to-character profiles for
-Twitch, and configurable fixed-duration output. The distinction between
-an exact duration and a maximum duration remains a feature-design choice.
+After that, add multilingual invented speech including Chinese and mixed-language
+text, deterministic viewer-to-character profiles for Twitch, and configurable
+fixed-duration output. The distinction between an exact duration and a maximum
+duration remains a feature-design choice.
 
 ## Longer-term work
 
