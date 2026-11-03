@@ -3,10 +3,10 @@
 wahwah, the mumble voice playgrounds: invented, stylized speech (klattsch,
 Babble Engine, a wah-wah trombone synth) with a host-agnostic 3D puppet control
 format, plus a live microphone mode. TypeScript + Vite + Three.js + Web Audio, managed with
-npm. See `README.md` to run the playground and `docs/` for architecture, decisions,
+npm, with voices moving to Rust/WASM under `crates/`. See `README.md` to run the playground and `docs/` for architecture, decisions,
 and development notes.
 
-Checks before committing: `npm run typecheck`, `npm test`, `npm run build`.
+Checks before committing: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`, `npm run typecheck`, `npm test`, `npm run build`.
 
 <!-- handoff:start (from the handoff skill; edit the skill's template, not this copy) -->
 ## Handoff

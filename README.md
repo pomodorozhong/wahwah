@@ -11,7 +11,16 @@ speech or drive the mouth with your microphone.
 
 ## Run the playground
 
-With Node.js 24 or 26 and npm installed, run these commands from the repository directory.
+You need Node.js 24 or 26 with npm, and Rust for the voices. If you don't have
+Rust, install `rustup` and the WASM binding generator from the repository
+directory, which also installs the pinned Rust toolchain:
+
+```sh
+brew install rustup
+"$(brew --prefix rustup)/bin/cargo" install wasm-bindgen-cli --version 0.2.130 --locked
+```
+
+Then run these commands from the repository directory:
 
 ```sh
 npm ci

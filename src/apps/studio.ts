@@ -4,6 +4,7 @@ import { byId, PuppetView, renderShell } from '../ui/puppetView';
 import { mountBabble } from './babble';
 import { mountKlattsch } from './klattsch';
 import { mountLive } from './live';
+import { loadVoices } from '../voice/rustVoice';
 
 const modes = { babble: mountBabble, klattsch: mountKlattsch, live: mountLive };
 type Mode = keyof typeof modes;
@@ -19,6 +20,13 @@ if (isMode(legacy)) {
   url.pathname = base.pathname;
   url.searchParams.set('mode', legacy);
   history.replaceState(null, '', url);
+}
+
+try {
+  await loadVoices();
+} catch (error) {
+  byId('app').textContent = `The voices could not load: ${error instanceof Error ? error.message : error}`;
+  throw error;
 }
 
 const root = byId('app');

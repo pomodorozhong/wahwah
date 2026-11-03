@@ -5,10 +5,17 @@
 After installing dependencies, run these from the repository root:
 
 ```sh
+cargo fmt --check
+cargo clippy --all-targets -- -D warnings
+cargo test
 npm run typecheck
 npm test
 npm run build
 ```
+
+The npm commands, including `npm run dev`, first run `npm run build:wasm`. It
+writes the generated package to `src/wasm/`, which is ignored by Git. Keep the
+`wasm-bindgen-cli` version equal to the `wasm-bindgen` crate version.
 
 The tests exercise synthesis, mouth tracks, host mappings, and live analysis
 in Node. To inspect the production build in a browser, run
@@ -87,6 +94,22 @@ in Node. To inspect the production build in a browser, run
   `data-for-engine`.
 - Spreading large sample arrays into `Math.max(...)` overflows the call
   stack; loop instead.
+
+## Rust voices
+
+- `crates/wahwah-core` has no browser dependency. `crates/wahwah-wasm` is the
+  stateless boundary, and `src/voice/rustVoice.ts` adapts it to `Utterance`.
+- Text to babble and Phoneme script use Rust for the formant voice and
+  wah-wah trombone. Live mode and existing tests still use the TypeScript and
+  JavaScript path until the dependency cleanup in issue #10.
+- The Rust version is the new standard, so it is not compared with klattsch's
+  output. Its script language keeps phonemes, stress and pitch marks, pauses,
+  syllable groups, comments and pitch, rate, scale, vibrato, tremolo, aspiration,
+  tilt and effort directives. It drops klattsch's bank, engine and voice
+  sections, extended uppercase directives and homoglyph normalization.
+- A `p` pause directive is now a pause segment on the timeline. Timeline
+  source offsets are UTF-8 byte ranges, which match JavaScript positions for
+  the ASCII phoneme strings the playground generates.
 
 ## Unified playground lifecycle and design
 
