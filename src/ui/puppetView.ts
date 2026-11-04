@@ -60,7 +60,8 @@ export function renderShell(root: HTMLElement): void {
     { label: 'Voice', body: '' },
     { label: 'Puppet', body: section('Appearance and motion', `<div class="view-opts">
             <label>View <select id="view"><option value="tofu">Tofu cube</option><option value="vrm">VRM model</option><option value="debug">Debug (instructions)</option></select></label>
-            <label id="modelLabel" hidden>Model <select id="model"></select></label>
+            <label id="modelLabel" hidden>Model <select id="model" aria-describedby="vrmModelHint"></select></label>
+            <p id="vrmModelHint" class="hint" hidden>Only the bundled Tofu VRM has been tested. Other VRM models may behave differently.</p>
             <input id="vrmFile" type="file" accept=".vrm" hidden />
             <label><input id="puppet" type="checkbox" checked /> Puppet output</label>
             <label><input id="idle" type="checkbox" checked /> Idle motion</label>
@@ -191,6 +192,7 @@ export class PuppetView {
     this.renderer.canvas.hidden = mode === 'debug';
     this.debugPuppet.visible = mode === 'debug';
     byId('modelLabel').hidden = mode !== 'vrm';
+    byId('vrmModelHint').hidden = mode !== 'vrm';
     this.host = null;
     this.renderer.setHost(null, false);
     byId('cameraTools').hidden = true;
