@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_VOICE, compilePerformance } from '../src/voice/performance';
-import { DEFAULT_TROMBONE, articulationCurves, f0Curve, renderTrombone, tromboneUtterance } from '../src/engines/trombone';
-import { generateMumble, moodVoice } from '../src/mumble/generate';
-import { generateFaceTrack } from '../src/puppet/generate';
+import { DEFAULT_VOICE, type VoiceSettings } from '../src/voice/performance';
+import { DEFAULT_TROMBONE } from '../src/voice/trombone';
+import { renderPhonemes, renderMumble } from '../src/voice/rustVoice';
 import { rmsEnvelope, syncReport } from '../src/analysis';
 
 const SR = 48000;
@@ -44,51 +43,35 @@ function centroidAt(audio: Float32Array, t: number): number {
   return num / den;
 }
 
-const mid = (perf: ReturnType<typeof compilePerformance>, i: number) => (perf.segments[i].startSeconds + perf.segments[i].endSeconds) / 2;
+const render = (source: string, settings: VoiceSettings = slow) =>
+  renderPhonemes(source, settings, SR, { engine: 'trombone', trombone: { ...DEFAULT_TROMBONE, transpose: 0 } });
+const mid = (perf: ReturnType<typeof render>, i: number) => (perf.timeline.segments[i].startSeconds + perf.timeline.segments[i].endSeconds) / 2;
 
 describe('wah-wah trombone engine', () => {
-  it('follows klattsch pitch targets and glides', () => {
-    const perf = compilePerformance('AA AA(+60)', slow);
-    const f0 = f0Curve(perf.schedule, perf.durationSeconds);
-    expect(f0[Math.floor(mid(perf, 0) / 0.002)]).toBeCloseTo(DEFAULT_VOICE.pitchHz, 0);
-    expect(Math.max(...f0)).toBeGreaterThan(DEFAULT_VOICE.pitchHz + 50);
-  });
-
-  it('plays at the speech pitch, transposed', () => {
-    const perf = compilePerformance('AA', { ...slow, msPerPhoneme: 600 });
-    const audio = renderTrombone(perf, SR, { ...DEFAULT_TROMBONE, transpose: 0 });
-    const hz = pitchAt(audio, mid(perf, 0));
-    expect(hz).toBeGreaterThan(DEFAULT_VOICE.pitchHz * 0.95);
-    expect(hz).toBeLessThan(DEFAULT_VOICE.pitchHz * 1.05);
-  });
-
-  it('opens the plunger on vowels and closes it on consonants and pauses', () => {
-    const perf = compilePerformance('W AA ; M UW', slow);
-    const { amp, open } = articulationCurves(perf, 1);
-    const at = (arr: Float32Array, t: number) => arr[Math.floor(t / 0.002)];
-    expect(at(open, mid(perf, 1))).toBeGreaterThan(at(open, mid(perf, 4)));
-    expect(at(amp, mid(perf, 1))).toBeGreaterThan(0.9);
-    expect(at(amp, mid(perf, 2))).toBeLessThan(0.15); // the 200 ms pause
+  it('plays at the speech pitch and follows pitch glides', () => {
+    const perf = render('AA AA(+60)', { ...slow, msPerPhoneme: 600 });
+    expect(pitchAt(perf.audio, 0.2)).toBeCloseTo(DEFAULT_VOICE.pitchHz, 0);
+    expect(pitchAt(perf.audio, 1.1)).toBeGreaterThan(DEFAULT_VOICE.pitchHz + 50);
   });
 
   it('sounds brighter on an open vowel than a rounded one (the "wah")', () => {
-    const perf = compilePerformance('AA , UW', { ...slow, msPerPhoneme: 500 });
-    const audio = renderTrombone(perf, SR);
+    const perf = render('AA , UW', { ...slow, msPerPhoneme: 500 });
+    const audio = perf.audio;
     expect(centroidAt(audio, mid(perf, 0))).toBeGreaterThan(centroidAt(audio, mid(perf, 2)) * 1.3);
   });
 
   it('renders deterministic, audible, normalized audio whose loudness the jaw follows', () => {
-    const script = generateMumble('Hello class. Please open your books to page forty two.', { seed: 4 });
-    const perf = compilePerformance(script.phonemes, moodVoice(DEFAULT_VOICE, script.mood));
-    const u = tromboneUtterance(perf);
-    const a = u.render(SR);
-    expect(a).toEqual(u.render(SR));
+    const sentence = () => renderMumble('Hello class. Please open your books to page forty two.', { seed: 4 }, DEFAULT_VOICE, SR,
+      { engine: 'trombone', trombone: DEFAULT_TROMBONE });
+    const u = sentence();
+    const a = u.audio;
+    expect(a).toEqual(sentence().audio);
     let peak = 0;
     for (const v of a) peak = Math.max(peak, Math.abs(v));
     expect(peak).toBeCloseTo(0.7, 2);
     expect(Math.max(...rmsEnvelope(a, SR))).toBeGreaterThan(0.1);
-    const report = syncReport(a, SR, generateFaceTrack(u.timeline));
-    expect(report.jawLoudnessCorrelation).toBeGreaterThan(0.45); // measured 0.56
+    const report = syncReport(a, SR, u.track!);
+    expect(report.jawLoudnessCorrelation).toBeGreaterThan(0.45);
     expect(Math.abs(report.jawLeadSeconds)).toBeLessThanOrEqual(0.06);
   });
 });

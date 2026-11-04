@@ -1,18 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { runLive, heldPose, SR, DT, N } from './helpers/liveEval';
-import { calibrate, klattschVoice, lowpass, pinkTromboneVoice, roomNoise, type StepVoice } from './helpers/calibrate';
+import { calibrate, formantVoice, lowpass, pinkTromboneVoice, roomNoise, type StepVoice } from './helpers/calibrate';
 import { Calibration, CALIBRATION_STEPS, classify, argmax, parseProfile, serializeProfile } from '../src/live/profile';
 import { mfcc } from '../src/live/mfcc';
 import { magnitudeSpectrumDb } from '../src/live/features';
-import { DEFAULT_VOICE, compilePerformance, renderPerformance } from '../src/voice/performance';
+import { DEFAULT_VOICE } from '../src/voice/performance';
+import { renderFormant } from './helpers/voice';
 import { renderSweep, PT_VOWELS } from '../src/live/ptVoice';
-import { generateFaceTrack, sampleFaceTrack } from '../src/puppet/generate';
+import { sampleFaceTrack } from '../src/puppet/generate';
 import { generateMumble } from '../src/mumble/generate';
 import { pearson } from '../src/analysis';
 
 const SLOW = { timeout: 60000 };
 const held = (code: string, formantScale: number, pitchHz: number) =>
-  renderPerformance(compilePerformance(code, { ...DEFAULT_VOICE, formantScale, pitchHz, msPerPhoneme: 700 }), SR);
+  renderFormant(code, { ...DEFAULT_VOICE, formantScale, pitchHz, msPerPhoneme: 700 }, SR).audio;
 
 describe('MFCC features', () => {
   it('differ between vowels and match for the same vowel at another pitch', () => {
@@ -27,7 +28,7 @@ describe('MFCC features', () => {
 
 describe('voice profile calibration', () => {
   it('builds a profile with every sound recognized, and suggests settings', SLOW, () => {
-    const p = calibrate(klattschVoice(1.15, 200));
+    const p = calibrate(formantVoice(1.15, 200));
     expect(p.classes.map((c) => c.id)).toEqual(CALIBRATION_STEPS.map((s) => s.id));
     for (const acc of Object.values(p.quality.accuracy)) expect(acc).toBeGreaterThan(0.9);
     expect(p.quality.messages[0].level).toBe('ok');
@@ -42,7 +43,7 @@ describe('voice profile calibration', () => {
     ['adult female-like', 1.15, 200],
     ['child-like', 1.3, 270],
   ] as const)('reads a %s voice correctly after calibration', SLOW, (_name, scale, pitch) => {
-    const profile = calibrate(klattschVoice(scale, pitch));
+    const profile = calibrate(formantVoice(scale, pitch));
     const expectations: [string, (p: ReturnType<typeof heldPose>) => boolean][] = [
       ['AA', (p) => p.sound === 'AA' && p.jawOpen > 0.8],
       ['IY', (p) => p.sound === 'IY' && p.lipWidth > 0.8],
@@ -79,14 +80,14 @@ describe('voice profile calibration', () => {
   it('keeps sentences moving: jaw and width track, rounding at least matches formant mode', SLOW, () => {
     const scale = 1.3;
     const pitch = 270;
-    const profile = calibrate(klattschVoice(scale, pitch));
+    const profile = calibrate(formantVoice(scale, pitch));
     const texts = ['Hello there! How are you today?', 'I can see the moon, she said. Oh wow!', 'My mom made more lemon muffins for me.'];
     const score = (mode: 'formants' | 'profile') => {
       const acc = { jawOpen: 0, lipWidth: 0, lipRound: 0 };
       for (const t of texts) {
-        const perf = compilePerformance(generateMumble(t, { seed: 3 }).phonemes, { ...DEFAULT_VOICE, formantScale: scale, pitchHz: pitch });
-        const fr = runLive(renderPerformance(perf, SR), mode, 0.3, profile);
-        const track = generateFaceTrack(perf);
+        const perf = renderFormant(generateMumble(t, { seed: 3 }).phonemes, { ...DEFAULT_VOICE, formantScale: scale, pitchHz: pitch });
+        const fr = runLive(perf.audio, mode, 0.3, profile);
+        const track = perf.track!;
         const ref = fr.map((_, i) => sampleFaceTrack(track, i * DT + N / SR));
         for (const k of ['jawOpen', 'lipWidth', 'lipRound'] as const) acc[k] += pearson(fr.map((f) => f[k]), ref.map((x) => x[k])) / texts.length;
       }
@@ -102,7 +103,7 @@ describe('voice profile calibration', () => {
 
 describe('calibration quality checks', () => {
   it('reports a sound that was not heard', SLOW, () => {
-    const base = klattschVoice();
+    const base = formantVoice();
     const voice: StepVoice = (id, s) => (id === 'UW' ? roomNoise(s) : base(id, s));
     const p = calibrate(voice);
     expect(p.quality.messages.some((m) => m.level === 'error' && m.text.includes('“oo”'))).toBe(true);
@@ -110,27 +111,27 @@ describe('calibration quality checks', () => {
   });
 
   it('warns when two recorded sounds are the same', SLOW, () => {
-    const base = klattschVoice();
+    const base = formantVoice();
     const voice: StepVoice = (id, s) => base(id === 'EH' ? 'IY' : id, s); // said "ee" when asked for "eh"
     const p = calibrate(voice);
     expect(p.quality.messages.some((m) => m.level === 'warn' && m.text.includes('“eh”') && m.text.includes('“ee”'))).toBe(true);
   });
 
   it('warns about a telephone-band microphone (cut at ~4 kHz)', SLOW, () => {
-    const base = klattschVoice();
+    const base = formantVoice();
     const p = calibrate((id, s) => lowpass(base(id, s), 3800));
     expect(p.quality.messages.some((m) => m.level === 'warn' && m.text.includes('above 4 kHz'))).toBe(true);
   });
 
   it('notes a 16 kHz-band "call mode" microphone (cut at ~8 kHz) without failing', SLOW, () => {
-    const base = klattschVoice();
+    const base = formantVoice();
     const p = calibrate((id, s) => lowpass(base(id, s), 7600));
     expect(p.quality.messages.some((m) => m.level === 'ok' && m.text.includes('8 kHz'))).toBe(true);
     expect(p.quality.messages.some((m) => m.text.includes('above 4 kHz'))).toBe(false);
   });
 
   it('warns when the voice is barely above the room noise', SLOW, () => {
-    const base = klattschVoice();
+    const base = formantVoice();
     const noisy: StepVoice = (id, s) => {
       const noise = roomNoise(s, 0.06);
       if (id === 'silence') return noise;
@@ -144,7 +145,7 @@ describe('calibration quality checks', () => {
 
 describe('profile storage', () => {
   it('round-trips through JSON and classifies the same', SLOW, () => {
-    const p = calibrate(klattschVoice());
+    const p = calibrate(formantVoice());
     const q = parseProfile(serializeProfile(p));
     const a = held('IY', 1, 120);
     const coeffs = mfcc(magnitudeSpectrumDb(a.subarray(12000, 12000 + N)), SR);
@@ -159,7 +160,7 @@ describe('profile storage', () => {
   });
 
   it('accepts profiles saved under the old mumble-voice kind', SLOW, () => {
-    const legacy = JSON.parse(serializeProfile(calibrate(klattschVoice()))) as { kind: string };
+    const legacy = JSON.parse(serializeProfile(calibrate(formantVoice()))) as { kind: string };
     legacy.kind = 'mumble-voice-profile';
     expect(parseProfile(JSON.stringify(legacy)).kind).toBe('wahwah-voice-profile');
   });

@@ -3,7 +3,8 @@ import { CalibrationFlow, DEFAULT_FLOW } from '../src/live/calibrationFlow';
 import { frameFeatures } from '../src/live/profile';
 import { magnitudeSpectrumDb } from '../src/live/features';
 import { ulsInputLength } from '../src/live/ulipsync';
-import { klattschVoice, roomNoise } from './helpers/calibrate';
+import { formantVoice, roomNoise } from './helpers/calibrate';
+import { demoStepAudio } from '../src/live/demoVoice';
 import { SR, N, DT } from './helpers/liveEval';
 
 /** Feed audio to the flow frame by frame, as the live page does. */
@@ -31,10 +32,24 @@ const concat = (...parts: Float32Array[]) => {
   return out;
 };
 
-const voice = klattschVoice(1.15, 200);
+const voice = formantVoice(1.15, 200);
 const SLOW = { timeout: 60000 };
 
 describe('self-paced calibration flow', () => {
+  it('accepts the live demo responses through a complete guided session', SLOW, () => {
+    const flow = new CalibrationFlow(SR);
+    flow.begin();
+    flow.confirmQuiet();
+    feed(flow, roomNoise(DEFAULT_FLOW.quietSeconds + 1));
+    for (const step of flow.steps.slice(1)) {
+      expect(flow.view().step?.id).toBe(step.id);
+      feed(flow, concat(demoStepAudio(step.id, SR)!, roomNoise(1)));
+    }
+    expect(flow.profile!.classes.map(c => c.id)).toEqual(flow.steps.map(s => s.id));
+    expect(flow.profile!.quality.messages[0].level).toBe('ok');
+    expect(flow.profile!.uls).toBeDefined();
+  });
+
   it('waits on the intro and the quiet step until the speaker acts', () => {
     const flow = new CalibrationFlow(SR);
     feed(flow, roomNoise(2));

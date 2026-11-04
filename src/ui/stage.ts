@@ -1,9 +1,9 @@
 // Utterance stage: plays one rendered utterance on a single clock and drives the
 // puppet view from its face-control track. Each playground page supplies its
-// own panel and a compile() callback that returns an Utterance from any engine.
+// own panel and a compile() callback that returns a rendered Rust performance.
 
-import { segmentAt, type PerformanceSegment, type RenderedUtterance, type Timeline, type Utterance } from '../voice/performance';
-import { generateFaceTrack, sampleFaceTrack } from '../puppet/generate';
+import { segmentAt, type PerformanceSegment, type RenderedUtterance, type Timeline } from '../voice/performance';
+import { sampleFaceTrack } from '../puppet/generate';
 import type { FaceControlTrack, FaceControls } from '../puppet/controls';
 import { rmsEnvelope, syncReport, type SyncReport } from '../analysis';
 import { Player } from '../playback';
@@ -38,7 +38,7 @@ export interface StageOptions {
   inputHtml: string;
   voiceHtml: string;
   /** Build the utterance from the page's current inputs, with any engine. */
-  compile: (sampleRate: number, puppet: boolean) => Utterance | RenderedUtterance;
+  compile: (sampleRate: number, puppet: boolean) => RenderedUtterance;
   /** Called every frame with the playback time and active segment. */
   onFrame?: (time: number | null, segment: PerformanceSegment | null) => void;
   /** Extra fields for the window.__wahwah debug hook. */
@@ -109,12 +109,11 @@ export class Stage {
     const sampleRate = this.player?.sampleRate ?? 48000;
     const utterance = this.opts.compile(sampleRate, this.view.puppetEnabled);
     const performance = utterance.timeline;
-    const legacy = 'render' in utterance;
-    const audio = (legacy ? utterance.render(sampleRate) : utterance.audio) as Float32Array<ArrayBuffer>;
+    const audio = utterance.audio as Float32Array<ArrayBuffer>;
     // Puppet disabled means the instruction generator does not run at all.
     let track: FaceControlTrack | null = null;
     if (this.view.puppetEnabled) {
-      track = legacy ? generateFaceTrack(performance) : utterance.track;
+      track = utterance.track;
       this.generatorRuns++;
     }
     const p: Prepared = {

@@ -4,7 +4,7 @@
 import { DEFAULT_LIVE, LiveMouthEstimator, type LiveFrame, type ShapeMode } from '../live/estimator';
 import { REFERENCE_VOWELS } from '../live/vowels';
 import { renderSweep, PT_VOWELS } from '../live/ptVoice';
-import { frameFeatures, parseProfile, serializeProfile, type CalibrationStep, type ProfileClassId, type VoiceProfile } from '../live/profile';
+import { frameFeatures, parseProfile, serializeProfile, type ProfileClassId, type VoiceProfile } from '../live/profile';
 import { CalibrationRunner } from '../ui/calibrationUi';
 import { ulsInputLength } from '../live/ulipsync';
 import analysisWorkletUrl from '../live/analysisWorklet.ts?worker&url';
@@ -13,8 +13,7 @@ import recorderWorkletUrl from '../live/recorderWorklet.ts?worker&url';
 import { analyseRecording, measureMouthLagMs, mouthAt, planPlayback, type AnalysedRecording, type PlaybackPlan } from '../live/delayTest';
 import { magnitudeSpectrumDb } from '../live/features';
 import { NEUTRAL, type FaceControls } from '../puppet/controls';
-import { compilePerformance, renderPerformance, DEFAULT_VOICE } from '../voice/performance';
-import { moodVoice, generateMumble } from '../mumble/generate';
+import { demoStepAudio, liveSpeechAudio } from '../live/demoVoice';
 import { PuppetView, byId, fitCanvas, renderMode, disclosure, section } from '../ui/puppetView';
 import { rmsEnvelope } from '../analysis';
 import { MONITOR_SIGNALS, MONITOR_COLORS, beginMonitor, drawMonitorLegend, drawMonitorPlayhead } from '../ui/monitorTheme';
@@ -22,6 +21,14 @@ import { MONITOR_SIGNALS, MONITOR_COLORS, beginMonitor, drawMonitorLegend, drawM
 const FFT = 1024; // short analysis window (~21 ms at 48 kHz)
 const BUFFER = 4096; // time-domain history; uLipSync-style mode uses the last 64 ms
 const HISTORY_SECONDS = 6;
+
+const SHAPE_MODE_HELP: Record<ShapeMode, string> = {
+  profile: 'Matches the sounds learned during your calibration and blends their mouth shapes. No F1/F2 position is measured, so the Vowel map has no moving circle.',
+  ulipsync: 'Matches your calibrated sounds and smooths their mouth shapes with a spring. Use uLipSync smoothness to adjust the response. No F1/F2 position is measured, so the Vowel map has no moving circle.',
+  formants: 'Estimates vowel resonances (F1/F2), hissing sounds and closed lips without calibration. Detected vowels also appear as a moving circle on the Vowel map.',
+  centroid: 'Uses the sound’s brightness to approximate wide or rounded lips, without calibration. No F1/F2 position is measured, so the Vowel map has no moving circle.',
+  off: 'Uses loudness to open and close the jaw, leaving lip width and rounding neutral. No F1/F2 position is measured, so the Vowel map has no moving circle.',
+};
 
 const slider = (id: string, label: string, min: number, max: number, step: number, value: number) =>
   `<label class="field slider">${label} <output id="${id}Out"></output><input id="${id}" type="range" min="${min}" max="${max}" step="${step}" value="${value}" /></label>`;
@@ -75,14 +82,16 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
         ${slider('release', 'Close time', 20, 300, 10, DEFAULT_LIVE.releaseSeconds * 1000)}
         <div id="smoothField">${slider('smooth', 'uLipSync smoothness', 0, 0.2, 0.01, DEFAULT_LIVE.smoothSeconds)}</div>
         <label class="field">Mouth shape from
-          <select id="shapeMode">
+          <select id="shapeMode" aria-describedby="shapeModeHint shapeModeCalibrationHint">
             <option value="profile" disabled>Your voice profile (calibrate first)</option>
             <option value="ulipsync" disabled>uLipSync-style (calibrate first)</option>
             <option value="formants">Formants: vowels, s/sh/f, closed lips</option>
             <option value="centroid">Brightness only (earlier method)</option>
             <option value="off">Loudness only (jaw)</option>
           </select>
-        </label>`,
+        </label>
+        <p class="hint" id="shapeModeHint"></p>
+        <p class="hint" id="shapeModeCalibrationHint">Calibration selects Your voice profile, or keeps uLipSync-style if already selected. Choose Formants to see vowel positions on the map.</p>`,
       ),
     analysisHtml: section(
         'Delay test',
@@ -103,8 +112,9 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
       ) +
       section(
         'Vowel map',
-        `<canvas id="vowelMap" class="vowel-map"></canvas>
-        <p class="hint">Your F1 (openness, down) and F2 (front, left) against the reference vowels, scaled to your voice. The dot is now; the trail is the last second.</p>`,
+        `<canvas id="vowelMap" class="vowel-map" aria-describedby="vowelMapHint"></canvas>
+        <p class="hint" id="vowelMapHint">F1 (openness, down) and F2 (front, left) place your voice against the reference vowels. The circle shows the latest detected vowel; the fading trail covers the last second.</p>
+        <p class="hint">To see the circle, start the input, enable Puppet output, and select Formants under Voice → Mouth shape from. Other modes do not measure F1/F2 and show no circle. Silence and unvoiced sounds may also leave the map empty.</p>`,
       ) +
       disclosure(
         'Latency',
@@ -173,6 +183,7 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
     byId('releaseOut').textContent = `${num('release')} ms`;
     byId('smoothOut').textContent = num('smooth') === 0 ? 'off' : `${(num('smooth') * 1000).toFixed(0)} ms`;
     byId('smoothField').hidden = byId<HTMLSelectElement>('shapeMode').value !== 'ulipsync';
+    byId('shapeModeHint').textContent = SHAPE_MODE_HELP[estimator.settings.shapeMode];
     syncWorklet();
     if (clip) analyseClip(); // the delay test follows the current settings
   }
@@ -202,22 +213,9 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
     }
   }
 
-  // The demo voice: deliberately unlike the formant mode's adult-male reference.
-  const DEMO_VOICE = { ...DEFAULT_VOICE, formantScale: 1.25, pitchHz: 230 };
-
-  /** What the demo speaker says for a calibration step: a pause, then the sound held ~2.6 s. */
-  function demoStepAudio(step: CalibrationStep, sampleRate: number): Float32Array<ArrayBuffer> | null {
-    if (step.id === 'silence') return null;
-    // Start ~0.7 s after the prompt, like a person reacting to it.
-    return renderPerformance(compilePerformance(`p700 ${step.id}`, { ...DEMO_VOICE, msPerPhoneme: 2600 }), sampleRate) as Float32Array<ArrayBuffer>;
-  }
-
   function testSignal(ctx: AudioContext, kind: 'test' | 'sweep' | 'demo'): AudioBufferSourceNode {
     let pcm: Float32Array<ArrayBuffer>;
-    if (kind === 'demo') {
-      const script = generateMumble('Hi! I am the demo voice. Watch my mouth: ah, ee, ooh. So soft, so sweet!', { seed: 5 });
-      pcm = renderPerformance(compilePerformance(script.phonemes, moodVoice(DEMO_VOICE, script.mood)), ctx.sampleRate) as Float32Array<ArrayBuffer>;
-    } else if (kind === 'sweep') {
+    if (kind === 'sweep') {
       // Pink Trombone gliding between vowel shapes: a voice the analyzer was not tuned on.
       const v = PT_VOWELS;
       pcm = renderSweep(
@@ -226,9 +224,7 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
         140,
       ) as Float32Array<ArrayBuffer>;
     } else {
-      const script = generateMumble('Hello there! Testing, one two three. Can you see my mouth move? Oh, wonderful.', { seed: 9 });
-      const perf = compilePerformance(script.phonemes, moodVoice(DEFAULT_VOICE, script.mood));
-      pcm = renderPerformance(perf, ctx.sampleRate) as Float32Array<ArrayBuffer>;
+      pcm = liveSpeechAudio(kind, ctx.sampleRate) as Float32Array<ArrayBuffer>;
     }
     const buffer = ctx.createBuffer(1, pcm.length + ctx.sampleRate, ctx.sampleRate); // 1 s gap between loops
     buffer.copyToChannel(pcm, 0);
@@ -362,7 +358,7 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
     {
       onStep: (step) => {
         if (!running || sourceEl.value !== 'demo') return;
-        playClip(demoStepAudio(step, running.ctx.sampleRate));
+        playClip(demoStepAudio(step.id, running.ctx.sampleRate) as Float32Array<ArrayBuffer> | null);
         // The demo speaker also "clicks" I'm quiet on the quiet step.
         if (step.id === 'silence') afterCurrentInput(600, () => calibration.confirmQuiet());
       },

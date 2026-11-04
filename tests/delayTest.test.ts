@@ -1,14 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { analyseRecording, measureMouthLagMs, mouthAt, planPlayback } from '../src/live/delayTest';
 import { DEFAULT_LIVE } from '../src/live/estimator';
-import { DEFAULT_VOICE, compilePerformance, renderPerformance } from '../src/voice/performance';
+import { DEFAULT_VOICE } from '../src/voice/performance';
+import { renderFormant } from './helpers/voice';
 import { generateMumble } from '../src/mumble/generate';
-import { calibrate, klattschVoice, roomNoise } from './helpers/calibrate';
+import { calibrate, formantVoice, roomNoise } from './helpers/calibrate';
 
 const SR = 48000;
 const SLOW = { timeout: 60000 };
 const speech = () => {
-  const a = renderPerformance(compilePerformance(generateMumble('Hello there! How are you today? I can see the moon.', { seed: 3 }).phonemes, DEFAULT_VOICE), SR);
+  const a = renderFormant(generateMumble('Hello there! How are you today? I can see the moon.', { seed: 3 }).phonemes, DEFAULT_VOICE, SR).audio;
   const n = roomNoise(a.length / SR, 0.002);
   return a.map((v, i) => v + n[i]);
 };
@@ -35,7 +36,7 @@ describe('delay test: analysing a recording like live mode', () => {
 
   it('measures how far the mouth trails the sound, and more smoothing trails further', SLOW, () => {
     const pcm = speech();
-    const profile = calibrate(klattschVoice());
+    const profile = calibrate(formantVoice());
     const quick = measureMouthLagMs(pcm, analyseRecording(pcm, SR, { ...DEFAULT_LIVE, shapeMode: 'ulipsync', smoothSeconds: 0 }, profile));
     const smooth = measureMouthLagMs(pcm, analyseRecording(pcm, SR, { ...DEFAULT_LIVE, shapeMode: 'ulipsync', smoothSeconds: 0.08 }, profile));
     expect(quick).toBeGreaterThan(0);
