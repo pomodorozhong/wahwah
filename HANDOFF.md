@@ -2,6 +2,62 @@
 
 ## In progress
 
+### codex/playground-cleanup
+
+- Task: step 5 of six for [issue #10](https://github.com/pomodorozhong/wahwah/issues/10). The implementation plan was approved in chat. Source work is complete and awaits publication approval.
+- PR: none. The proposed PR targets main and is ready for review. This branch is unlinked and closes no issues. PR #17 merged as 2562f67; issue #10 remains open for step 6.
+- Code checkpoint: 60aa3ba (refactor(playground): remove Live2D and preview face), based on main at 2562f67. The implementation is committed locally.
+- State: Tofu, VRM and Debug are the only views. Removed Preview face, Live2D, Cubism declarations, Live2D mappings/tests, folder loading/runtime discovery and stencil allocation. Local-model discovery is VRM-only. The stage detaches its 3D host while switching or in Debug and waits for Tofu without a fallback face. VRM selection, camera navigation, idle settings and renderer-independent mouth controls remain. Guides describe the supported views and include the previous mouth-analysis/vowel-map guidance.
+- Verification: all six AGENTS.md checks passed, including 36 Rust tests and 220 TypeScript tests across 17 files. The implementation commit independently passed all six checks in a fresh detached checkout after npm ci. Five Live2D tests were removed; four regression tests cover startup, late Tofu completion after selecting Debug or VRM, idle settings and opened-file selection. Browser checks passed for Tofu/Debug playback, Phoneme script, supplied-model VRM loading using the bundled Tofu as an ordinary VRM, model/view retention, orbit/zoom/reset, idle settings, live Demo voice and puppet-off diagnostics. Production preview verified Tofu/Debug playback, input switching and live Demo voice. No browser errors.
+- Reviewer follow-up: native Open .vrm file selection, physical microphone and touchscreen gestures. The in-app automated file chooser timed out, so file-opening behavior is covered through its change callback in a regression test. The temporary startup-model fixture was removed before the final build.
+- Local review servers: development http://127.0.0.1:5201/ and production preview http://127.0.0.1:5202/. Test audio is stopped. Processes do not transfer to another computer.
+- Toolchain: pinned Rust 1.99.1 and wasm-bindgen-cli 0.2.130; direct cargo commands need /opt/homebrew/opt/rustup/bin and ~/.cargo/bin on PATH. No shell profile changes.
+- Next action: obtain final publication approval, then push this branch and open the ready PR with the exact title/body below. After merge, step 6 adds MIT, Pages workflow and /wahwah/ base path, enables Pages and closes #10. Merging is not authorized.
+- P-11 superseded: the user approved carrying forward the documentation checkpoint from codex/rust-playground-cleanup in this implementation PR instead of publishing that older checkpoint separately.
+- **P-12** Push codex/playground-cleanup, including its implementation and docs handoff commits, and open the ready PR against main with the title and exact body below. Why: the open-pr skill requires approval of the finished branch and PR text before publishing. Blocks: publication only. The plan approval does not authorize a push.
+- Proposed title: refactor(playground): remove Live2D and preview face
+
+```markdown
+## What changed
+
+- Keep Tofu cube, VRM model and Debug as the three puppet views. Remove Preview face and Live2D, their renderers and Cubism declarations, Live2D mappings and tests, folder loading and runtime discovery.
+- Detach the 3D host and camera controls while changing views or showing Debug. Wait for Tofu without a fallback face, and keep the selected view active when loading finishes.
+- Make local-model discovery VRM-only. Preserve VRM selection, camera navigation, idle settings and renderer-independent mouth controls.
+- Add regression coverage for startup, asynchronous view switching, idle settings and opened VRM selection. Update the guides and carry forward the mouth-analysis and vowel-map guidance.
+
+## Why
+
+This completes step 5 of the six-step Rust/WASM port. The playground now supports Tofu, VRM and Debug. Licensing and GitHub Pages publication remain step 6.
+
+## Verification
+
+### Automated checks
+
+- `cargo fmt --check`: passed.
+- `cargo clippy --all-targets -- -D warnings`: passed.
+- `cargo test`: passed, 36 tests.
+- `npm run typecheck`: passed.
+- `npm test`: passed, 220 tests across 17 files.
+- `npm run build`: passed.
+
+Five Live2D-only tests were removed and four view-loading/VRM-selection tests were added. The implementation commit also passed all six checks in a fresh detached checkout after `npm ci`.
+
+### How to verify
+
+1. Run `npm ci` and `npm run dev`. Under Puppet, View should offer only Tofu cube, VRM model and Debug (instructions).
+2. Play a line with Tofu. Drag to orbit, scroll to zoom, reset the view and toggle Idle motion.
+3. Supply a VRM under `public/models/` before starting Vite, or choose Open .vrm file. Switch between VRM, Debug and Tofu; return to VRM and check the retained model.
+4. Switch between Text to mumble, Phoneme script and Live microphone. In live mode, select Demo voice and start it. Change views while it runs, then toggle Puppet output and stop.
+
+Verified in the in-app browser: Tofu and Debug playback, Phoneme script, supplied-model VRM loading (using the bundled Tofu asset as an ordinary VRM), retained model and view selection, orbit/zoom/reset, idle settings, live Demo voice and puppet-off diagnostics. Production preview verified Tofu and Debug playback, mode switching and live Demo voice. No browser errors were reported.
+
+Reviewer follow-up: native Open .vrm file selection, a physical microphone and touchscreen gestures. The in-app browser's automated file chooser timed out; the opened-file callback and retained blob selection are covered by a regression test.
+
+## Related issues
+
+Related to #10: step 5 of six. This PR closes no issues, and its branch is unlinked.
+```
+
 ### codex/rust-dependency-cleanup
 
 - Task: resume step 4 of six for [issue #10](https://github.com/pomodorozhong/wahwah/issues/10). This branch is a wrap-up documentation checkpoint only; step 4 source work has not started. Keep it unlinked because it will not finish the port.
@@ -16,67 +72,9 @@
 - Known limitation: the default tofu M/B/P target stays slightly open; see [#12](https://github.com/pomodorozhong/wahwah/issues/12).
 - **P-09** Push this branch's documentation checkpoint, based on main at 5a4a597 and changing only HANDOFF.md, without opening a PR. Why: the previous publication approval covered the exact instrument PR tip; it does not authorize publishing this new branch. Blocks: retrieving the latest repository handoff from another computer. The application code and issue progress note are already remote.
 
-### codex/rust-live-wasm
-
-- Task: step 4 of six for [issue #10](https://github.com/pomodorozhong/wahwah/issues/10): Rust/WASM dependency cleanup. Implementation plan approved in chat. Keep this branch unlinked because it does not finish the port.
-- PR: [#17](https://github.com/pomodorozhong/wahwah/pull/17), open and ready for review against main. Published with the reviewed help-text follow-up. The branch stays unlinked to #10; the PR closes no issues.
-- Code checkpoint: 73774a4 (help text) on acda10b (dependency cleanup), based on main at 5a4a597 (merged PR #16). Source changes are committed.
-- State: live Mumble test speech, Demo voice and calibration responses render through WASM with generated mouth tracks disabled. Live analysis remains TypeScript and imports the copied ten vowel references and shared mouth poses synchronously without WASM. The klattsch and babble-engine packages, optional CMU dictionary, legacy JS synthesizers/adapters, TS track generator and stage fallback are removed. Pink Trombone remains for independent live test signals. Voice and live-analysis tests use actual Rust/WASM audio and tracks; obsolete adapter tests are removed. Upstream notices remain.
-- Verification: all six AGENTS.md checks passed, including 36 Rust tests and 221 TypeScript tests across 16 files. The implementation commit also passed all six checks independently in a fresh detached checkout after npm ci. In-app browser checks passed for live Demo voice, complete guided calibration (all nine sounds distinct, 99% recognized), test sentence, Pink Trombone sweep, stop/restart, both analysis threads and puppet-off behavior. Production preview verified Demo voice, mode switching, all six text voices and Phoneme script. No browser errors. Physical microphone input and user sound judgment remain reviewer follow-up.
-- Help-text follow-up verification: npm typecheck, all 221 TypeScript tests and production build passed. Browser verification covered all five mode explanations and the Vowel map guidance. The local Vite server was restarted to clear its stale module cache.
-- Toolchain: pinned Rust 1.99.1 and wasm-bindgen-cli 0.2.130; direct cargo commands need /opt/homebrew/opt/rustup/bin and ~/.cargo/bin on PATH. No shell profile changes.
-- Local review servers: development http://127.0.0.1:5197/ and production preview http://127.0.0.1:5198/. Test audio is stopped. These processes do not transfer to another computer.
-- Remaining port work: remove Live2D and Preview face (step 5); add MIT, Pages workflow and /wahwah/ base path, enable Pages and close #10 (step 6). The vowel-sweep visualization (#13), real microphone evaluation (#8), live model (#9) and tofu M/B/P closure bug (#12) remain separately tracked.
-- Next action: await review and merge of PR #17. After it merges, plan step 5 (remove Live2D and Preview face) on current main. Merging is not authorized.
-- P-10 resolved: the user explicitly requested “push and open” after reviewing the implementation and requested help-text follow-up. Publication is authorized; merging is not.
-- Published title: refactor(voice): finish Rust/WASM dependency cleanup
-
-```markdown
-## What changed
-
-- Render the live Mumble test sentence, Demo voice and calibration responses through Rust/WASM. Keep the demo's higher pitch, formant scale and response delay; feed its audio through the TypeScript live analyzer with generated mouth tracks disabled.
-- Copy the ten live F1/F2 reference pairs from klattsch, including UW's rounded endpoint, so live analysis and the audio worklet still load synchronously without WASM.
-- Remove the klattsch and babble-engine npm dependencies, the optional CMU dictionary, obsolete JavaScript synthesis/adapters, and the stage's legacy rendering fallback. Retain upstream notices and the Pink Trombone test source.
-- Migrate voice, mouth-track, calibration and live-analysis fixtures to Rust audio and tracks. Add tests for synthetic live inputs and a complete guided Demo voice calibration.
-- Explain each Mouth shape from option and when the Vowel map can display its circle and trail.
-
-## Why
-
-This completes step 4 of the Rust/WASM port. The selected voices and live synthetic speech now use one Rust implementation, while microphone analysis remains in TypeScript. View cleanup and Pages publication remain steps 5 and 6.
-
-## Verification
-
-### Automated checks
-
-- `cargo fmt --check`: passed.
-- `cargo clippy --all-targets -- -D warnings`: passed.
-- `cargo test`: passed, 36 tests.
-- `npm run typecheck`: passed.
-- `npm test`: passed, 221 tests across 16 files.
-- `npm run build`: passed.
-
-The implementation commit also passed all six checks in a fresh detached checkout after `npm ci`. Tests cover finite and repeatable live audio at multiple sample rates, calibration response timing, guided calibration, live analysis quality, pitch, distinct mouth poses and audio/mouth synchronization. Tests specific to discarded JavaScript adapters were removed.
-
-### How to verify
-
-1. Run `npm ci` and `npm run dev`. In Live microphone, choose Demo voice and press Start. The input level and mouth should move.
-2. Press Calibrate my voice, then Begin. The demo should answer all prompts and finish with nine distinct sounds. Stop and restart the input.
-3. Try the Mumble test sentence and Pink Trombone vowel sweep. In Analysis, expand Latency and switch between audio-thread and page analysis. Disable Puppet output and check that audio continues while the estimator reports off.
-4. Switch to Text to mumble and play each of the six voices, then try Phoneme script.
-5. In live mode, select each Mouth shape from option under Voice and check its help text. In Analysis, check the Vowel map explanation of the circle, trail and required mode.
-
-Verified in the in-app browser: all steps above; guided demo calibration reported 99% recognition. Production preview also verified Demo voice, mode switching, all six text voices and Phoneme script. All five mouth-mode explanations and the Vowel map guidance were also verified in the browser. No browser errors were reported.
-
-Reviewer follow-up: judge the Rust live demo by ear and exercise a physical microphone; physical microphone input was not tested.
-
-## Related issues
-
-Related to #10: step 4 of six. This PR closes no issues, and its branch is unlinked.
-```
-
 ## Ranked work
 
-1. [#10 Port the selected voice core to Rust/WASM and deploy the VRM playground](https://github.com/pomodorozhong/wahwah/issues/10), in the six PRs listed on the issue; PR 1 merged as [#14](https://github.com/pomodorozhong/wahwah/pull/14) and PR 2 as [#15](https://github.com/pomodorozhong/wahwah/pull/15); step 3 merged as [#16](https://github.com/pomodorozhong/wahwah/pull/16). Step 4, dependency cleanup, is open for review as [#17](https://github.com/pomodorozhong/wahwah/pull/17) on codex/rust-live-wasm. Do this before the following capabilities.
+1. [#10 Port the selected voice core to Rust/WASM and deploy the VRM playground](https://github.com/pomodorozhong/wahwah/issues/10), in the six PRs listed on the issue. Steps 1–4 merged as [#14](https://github.com/pomodorozhong/wahwah/pull/14), [#15](https://github.com/pomodorozhong/wahwah/pull/15), [#16](https://github.com/pomodorozhong/wahwah/pull/16) and [#17](https://github.com/pomodorozhong/wahwah/pull/17). Step 5, removing Live2D and Preview face, is implemented locally on codex/playground-cleanup and awaits publication approval (P-12). Step 6 is licensing and Pages. Do this before the following capabilities.
 2. Add multilingual invented-speech input, including Chinese and mixed-language text, with a general Unicode fallback and language-specific rhythm improvements.
 3. Add deterministic viewer-to-character voice profiles for Twitch, with stable account identity, a versioned mapping and saved overrides.
 4. Add configurable fixed-duration output with synchronized audio and mouth timing; decide exact duration versus a maximum when designing this feature.
@@ -86,6 +84,10 @@ Revisit the preserved rendering and mouth experiments in P-05 after completing t
 Nice-to-have ideas, without implementation priority: [#8 real-microphone evaluation](https://github.com/pomodorozhong/wahwah/issues/8), [#9 trained live-viseme model](https://github.com/pomodorozhong/wahwah/issues/9), and [#11 visual styles](https://github.com/pomodorozhong/wahwah/issues/11), alongside the existing [#6 line-boil experiment](https://github.com/pomodorozhong/wahwah/issues/6). The [#12 mouth-closure bug](https://github.com/pomodorozhong/wahwah/issues/12) is separately tracked; no priority relative to the port was selected. npm library publication and native bindings remain longer-term possibilities.
 
 ## Pending
+
+- **P-09 obsolete:** the old codex/rust-dependency-cleanup documentation checkpoint is superseded by the newer code and handoff merged through PR #17. Its original subsection remains from that branch’s own record; publishing it is unnecessary.
+
+- **P-11 superseded:** the user approved including the useful codex/rust-playground-cleanup documentation in the step 5 implementation PR. Separate publication of the older checkpoint is unnecessary.
 
 - **P-05** Preserved local experiments, deferred until after the Rust/WASM port in #10 by the user's decision on 2026-11-03. This is later integration work, not lost-work recovery. Proposed scope: (1) codex/vrm-render-styles: model rebuild command, style metadata, lighting, shaders and screen passes for Painted Toon, Ink Dither and Comic Print; regenerate from a supplied source and check motion, low-resolution rendering, dither switching, stable comic dots and ordinary VRM fallback. (2) codex/replacement-mouths: sample-rig detection, replacement mouth selector/plates, and gesture-driven selection from general FaceControls; test original and fallback VRMs with generated and live/demo input. (3) codex/experimental-mouth-modes: optional sculpted lips, ink contour, hinged jaw and traced gesture replay, dependent on replacement mouths; compare poses and switching, including styled hosts. The old recommendation was replacement mouths before optional mouth modes, retaining the three controls and original VRM mouth as default. Publish only approved generators/source, keeping sample assets, generated binaries and ZIPs local. Each extracted feature would target current main and pass typecheck, tests and build. Navigation, trombone color and unified UI from the original proposal already merged; the selected tofu model also shipped separately. Re-evaluate the earlier model scope against that shipped tofu when this work resumes; implementation and publication details remain to be agreed then. No matching extraction issues or milestones exist. Why: the user chose to handle these experiments after the Rust port. Blocks: later experiment integration only; nothing in rank one.
 
