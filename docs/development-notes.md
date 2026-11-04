@@ -176,6 +176,13 @@ in Node. To inspect the production build in a browser, run
   `vite.config.ts`) that scans the git-ignored `public/models/` for VRMs.
   Adding files triggers a full reload in dev; a production build lists what
   was there at build time.
+- **Local model files are copied into production output.** Git-ignoring
+  `public/models/` does not keep Vite from copying it into `dist/models/`.
+  Build distributable assets from a clean checkout without local models, or
+  explicitly exclude them from deployment. The tested external VRM is
+  pixiv’s `VRM1_Constraint_Twist_Sample`; its local file and the preserved
+  experiment models are not repository assets. If a newly created model
+  directory is missing from the menu, restart Vite to refresh its manifest.
 - **A host that throws inside `update()` stops the page's frame loop**, since
   the stage schedules the next frame after rendering. Hosts catch their own
   errors and report them through `status`.
