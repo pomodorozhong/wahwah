@@ -1,7 +1,7 @@
 // One WASM render compiles one score and returns audio, timing and mouth movement.
 import init, { renderPerformance, renderInstrument as instrument } from '../wasm/wahwah_wasm';
 import { mumbleOptions, type MumbleOptions, type MumbleScript } from '../mumble/generate';
-import type { TromboneOptions } from '../engines/trombone';
+import type { TromboneOptions } from './trombone';
 import type { RenderedUtterance, VoiceSettings } from './performance';
 import { INSTRUMENTS, type InstrumentNote, type InstrumentOptions } from './instruments';
 

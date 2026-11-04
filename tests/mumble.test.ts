@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { countSyllables, stressIndex, tokenizeText } from '../src/mumble/text';
-import { moodVoice, generateMumble, wordAtPhonemeOffset, findMood } from '../src/mumble/generate';
+import { generateMumble, wordAtPhonemeOffset } from '../src/mumble/generate';
 import { MOODS, STYLES } from '../src/mumble/styles';
-import { DEFAULT_VOICE, compilePerformance, renderPerformance } from '../src/voice/performance';
-import { generateFaceTrack } from '../src/puppet/generate';
+import { DEFAULT_VOICE } from '../src/voice/performance';
+import { renderFormant } from './helpers/voice';
+import { renderMumble } from '../src/voice/rustVoice';
 import { rmsEnvelope } from '../src/analysis';
 
 const vowelCount = (phonemes: string) =>
@@ -62,7 +63,7 @@ describe('Mumble generation', () => {
   });
 
   it('rises at the end of a question and falls at the end of a statement', () => {
-    const mood = findMood('neutral');
+    const mood = MOODS.find(m => m.id === 'neutral')!;
     const q = generateMumble('Are you there?', { seed: 1, moodId: 'neutral' });
     const st = generateMumble('You are there.', { seed: 1, moodId: 'neutral' });
     const lastGlide = (p: string) => Number(p.match(/\(([+-]\d+)\)(?!.*\()/)?.[1] ?? 0);
@@ -72,8 +73,8 @@ describe('Mumble generation', () => {
 
   it('maps every phoneme back to the English word that produced it', () => {
     const s = generateMumble(text, { seed: 2 });
-    const perf = compilePerformance(s.phonemes, DEFAULT_VOICE);
-    for (const seg of perf.segments.filter((x) => x.phoneme)) {
+    const perf = renderFormant(s.phonemes, DEFAULT_VOICE);
+    for (const seg of perf.timeline.segments.filter((x) => x.phoneme)) {
       const w = wordAtPhonemeOffset(s, seg.srcStart);
       expect(w).not.toBeNull();
       expect(text.slice(w!.srcStart, w!.srcEnd)).toBe(w!.text);
@@ -81,10 +82,9 @@ describe('Mumble generation', () => {
   });
 
   it.each(STYLES.flatMap((st) => MOODS.map((m) => [st.id, m.id] as const)))(
-    'style %s / mood %s compiles without klattsch warnings',
+    'style %s / mood %s compiles without Rust score warnings',
     (styleId, moodId) => {
-      const s = generateMumble(text, { seed: 11, styleId, moodId });
-      expect(compilePerformance(s.phonemes, moodVoice(DEFAULT_VOICE, s.mood)).warnings).toEqual([]);
+      expect(renderMumble(text, { seed: 11, styleId, moodId }, DEFAULT_VOICE, 24000, { engine: 'formant', brassColor: 0 }).warnings).toEqual([]);
     },
   );
 
@@ -93,22 +93,16 @@ describe('Mumble generation', () => {
     expect(generateMumble('?!...', { seed: 1 }).phonemes).toBe('');
   });
 
-  it('moods change pitch and speed', () => {
-    const happy = moodVoice(DEFAULT_VOICE, findMood('happy'));
-    const sad = moodVoice(DEFAULT_VOICE, findMood('sad'));
-    expect(happy.pitchHz).toBeGreaterThan(sad.pitchHz);
-    expect(happy.msPerPhoneme).toBeLessThan(sad.msPerPhoneme);
-    const durHappy = compilePerformance(generateMumble(text, { seed: 1, moodId: 'happy' }).phonemes, happy).durationSeconds;
-    const durSad = compilePerformance(generateMumble(text, { seed: 1, moodId: 'sad' }).phonemes, sad).durationSeconds;
-    expect(durHappy).toBeLessThan(durSad);
+  it('moods change performance duration in Rust', () => {
+    const render = (moodId: string) => renderMumble(text, { seed: 1, moodId }, DEFAULT_VOICE, 24000, { engine: 'formant', brassColor: 0 });
+    expect(render('happy').timeline.durationSeconds).toBeLessThan(render('sad').timeline.durationSeconds);
   });
 
   it('renders audible Mumble with a moving face track', () => {
-    const s = generateMumble(text, { seed: 5 });
-    const perf = compilePerformance(s.phonemes, moodVoice(DEFAULT_VOICE, s.mood));
-    const env = rmsEnvelope(renderPerformance(perf, 48000), 48000);
+    const perf = renderMumble(text, { seed: 5 }, DEFAULT_VOICE, 48000, { engine: 'formant', brassColor: 0 });
+    const env = rmsEnvelope(perf.audio, 48000);
     expect(Math.max(...env)).toBeGreaterThan(0.1);
-    const jaw = generateFaceTrack(perf).samples.map((x) => x.jawOpen);
+    const jaw = perf.track!.samples.map((x) => x.jawOpen);
     expect(Math.max(...jaw) - Math.min(...jaw)).toBeGreaterThan(0.5);
   });
 });

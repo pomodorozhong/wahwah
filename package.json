@@ -18,8 +18,6 @@
   },
   "dependencies": {
     "@pixiv/three-vrm": "^3.5.5",
-    "babble-engine": "github:wrongfloor-dev/babble-engine#c1d0571f40081a934777b3039d26658229ff5a33",
-    "klattsch": "^0.8.0",
     "pink-trombone-mod": "^0.1.0",
     "three": "^0.187.0"
   },

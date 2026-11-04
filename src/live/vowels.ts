@@ -3,7 +3,6 @@
 // pipeline uses), with an adaptive speaker scale so higher voices (shorter
 // vocal tracts, formants ~10-30% higher) map onto the same vowels.
 
-import { banks } from 'klattsch';
 import { VISEMES } from '../puppet/visemes';
 import { lerpControls, NEUTRAL, type FaceControls } from '../puppet/controls';
 
@@ -16,17 +15,15 @@ export interface ReferenceVowel {
 
 // Monophthongs plus the end points of rounded glides, from klattsch's
 // Klatt (1980) bank: an adult male reference (speaker scale 1).
-const CODES = ['AA', 'AE', 'AH', 'AO', 'EH', 'ER', 'IH', 'IY', 'UH', 'UW'];
+const TARGETS: readonly [code: string, f1: number, f2: number][] = [
+  ['AA', 700, 1220], ['AE', 620, 1660], ['AH', 620, 1220], ['AO', 600, 990],
+  ['EH', 530, 1680], ['ER', 470, 1270], ['IH', 400, 1800], ['IY', 310, 2020],
+  ['UH', 450, 1100], ['UW', 320, 900], // UW uses its rounded glide endpoint.
+];
 
-export const REFERENCE_VOWELS: ReferenceVowel[] = (() => {
-  const bank = banks.get(banks.defaultName)!.phonemes;
-  return CODES.map((code) => {
-    const p = bank[code];
-    // UW's steady target is its rounded glide end (320/900 Hz).
-    const t = code === 'UW' && p.glideTo ? { ...p, ...p.glideTo } : p;
-    return { code, f1: t.F1, f2: t.F2, pose: VISEMES[code].pose };
-  });
-})();
+export const REFERENCE_VOWELS: ReferenceVowel[] = TARGETS.map(([code, f1, f2]) => ({
+  code, f1, f2, pose: VISEMES[code].pose,
+}));
 
 /** Speaker scales tried: 1 = reference adult male; ~1.15 typical adult female; ~1.3 child. */
 export const SPEAKER_SCALES = Array.from({ length: 13 }, (_, i) => 0.85 + i * 0.05);

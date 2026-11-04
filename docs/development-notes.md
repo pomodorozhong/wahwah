@@ -59,8 +59,8 @@ in Node. To inspect the production build in a browser, run
 - Jerk (mean absolute second difference of jaw) measures jitter. Lag is the
   best cross-correlation offset. The two trade against each other through
   smoothing time.
-- Neither klattsch nor Pink Trombone makes a nasal "m" quieter than its
-  vowels, so closed-lip detection rules cannot be validated synthetically.
+- Neither the Rust formant voice nor Pink Trombone makes a nasal "m" quieter
+  than its vowels, so closed-lip detection rules cannot be validated synthetically.
 
 ## Code structure gotchas
 
@@ -81,8 +81,6 @@ in Node. To inspect the production build in a browser, run
 - `pink-trombone-mod` has no package entry point and uses extensionless
   relative imports. Import `pink-trombone-mod/Synthesizer.js`; Vitest needs
   `server.deps.inline: ['pink-trombone-mod']` (see `vite.config.ts`).
-- `babble-engine` is installed from GitHub pinned to a reviewed commit. It is
-  not on the npm registry.
 - AudioWorklet modules are bundled with Vite's `?worker&url` imports
   (`analysisWorklet.ts`, `recorderWorklet.ts`). Everything they import must
   avoid DOM APIs; the estimator and its dependencies are pure.
@@ -100,11 +98,16 @@ in Node. To inspect the production build in a browser, run
 - `crates/wahwah-core` has no browser dependency. `crates/wahwah-wasm` is the
   stateless boundary, and `src/voice/rustVoice.ts` requests a complete
   `RenderedUtterance`: typed audio, timeline, warnings and optional mouth track.
-- Text to mumble and Phoneme script use Rust for Mumble generation, the formant
-  voice, wah-wah trombone and mouth tracks. The live demo uses Rust to generate
-  its Mumble script, with legacy JavaScript synthesis until the dependency
-  cleanup in issue #10. All six text-mode voices now render in Rust. The
-  babble-engine package and adapter remain for legacy tests until that cleanup.
+- All six text-mode voices render in Rust. Text to mumble and Phoneme script
+  use Rust for Mumble generation, synthesis and mouth tracks. Live mode's
+  Mumble test sentence, Demo voice and calibration responses use the same WASM
+  renderer with mouth generation disabled: the TypeScript estimator must infer
+  their movement from the audio, just as it does for microphone input.
+- The klattsch and babble-engine npm packages and their old synthesis adapters
+  are removed. Their upstream notices remain in THIRD_PARTY_NOTICES.md.
+- Live formant matching uses the ten Klatt (1980) F1/F2 reference pairs copied
+  from klattsch in `src/live/vowels.ts`, including UW's rounded glide endpoint.
+  These reference values and the mouth poses load synchronously without WASM.
 - `data/mouth-poses.json` supplies Rust's mouth generator and trombone plunger
   and TypeScript's live analysis. `data/mumble-presets.json` supplies Rust's
   sound inventories and moods and TypeScript's UI options. Rust embeds these
@@ -119,9 +122,9 @@ in Node. To inspect the production build in a browser, run
   are UTF-8 byte ranges. The WASM boundary converts timeline and Mumble word
   offsets to UTF-16 positions, including after emoji and smart punctuation.
 - Vitest's setup file initializes the actual WASM binary before tests import
-  Mumble generation. Legacy JavaScript synthesis and track tests remain until
-  their scheduled cleanup; the complete-performance tests exercise Rust audio
-  and Rust tracks together.
+  generation or synthesis. Voice, mouth-track and live-analysis fixtures all
+  exercise Rust audio and tracks. Pink Trombone remains the independent
+  synthesizer used to check calibration and live analysis on another voice.
 - Talking Instruments live in `crates/wahwah-core/src/instruments/`: `score.rs`
   produces explicit notes and `synth.rs` renders them. The score drives the
   note mouth track directly, so multi-note words articulate at each onset.

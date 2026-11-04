@@ -5,14 +5,15 @@ import { matchVowel, bestScale, REFERENCE_VOWELS } from '../src/live/vowels';
 import { LiveMouthEstimator, DEFAULT_LIVE } from '../src/live/estimator';
 import { renderSweep, renderTract, PT_VOWELS } from '../src/live/ptVoice';
 import { magnitudeSpectrumDb } from '../src/live/features';
-import { DEFAULT_VOICE, compilePerformance, renderPerformance } from '../src/voice/performance';
-import { generateFaceTrack, sampleFaceTrack } from '../src/puppet/generate';
+import { DEFAULT_VOICE } from '../src/voice/performance';
+import { renderFormant } from './helpers/voice';
+import { sampleFaceTrack } from '../src/puppet/generate';
 import { generateMumble } from '../src/mumble/generate';
 import { pearson } from '../src/analysis';
 import { VISEMES } from '../src/puppet/visemes';
 
 const held = (code: string, pitchHz = 120, formantScale = 1) =>
-  renderPerformance(compilePerformance(code, { ...DEFAULT_VOICE, pitchHz, formantScale, msPerPhoneme: 700 }), SR);
+  renderFormant(code, { ...DEFAULT_VOICE, pitchHz, formantScale, msPerPhoneme: 700 }, SR).audio;
 
 const medianFormants = (audio: Float32Array) => {
   const f1: number[] = [];
@@ -27,7 +28,7 @@ const medianFormants = (audio: Float32Array) => {
 };
 
 describe('formant estimation (LPC)', () => {
-  // klattsch vowels have known formant targets; allow ~15%.
+  // Rust formant vowels have known targets; allow ~15%.
   it.each([
     ['AA', 700, 1220], ['AH', 620, 1220], ['IY', 310, 2020], ['UH', 450, 1100],
   ])('%s: F1 ≈ %i Hz, F2 ≈ %i Hz', (code, f1, f2) => {
@@ -85,7 +86,7 @@ describe('live mouth shapes (formant mode)', () => {
     ['EH', 'spread, half open', (p: ReturnType<typeof heldPose>) => p.lipWidth > 0.4 && p.jawOpen > 0.4],
     ['S', 'teeth together, spread', (p: ReturnType<typeof heldPose>) => p.sound === 'S' && p.jawOpen < 0.2],
     ['SH', 'rounded hiss', (p: ReturnType<typeof heldPose>) => p.sound === 'SH' && p.lipRound > 0.4],
-  ])('klattsch %s reads as %s', (code, _label, check) => {
+  ])('Rust formant %s reads as %s', (code, _label, check) => {
     const pose = heldPose(runLive(held(code as string)));
     expect(check(pose), JSON.stringify(pose)).toBe(true);
   });
@@ -134,8 +135,8 @@ describe('live mouth shapes (formant mode)', () => {
     const cases = ['Hello there! How are you today?', 'I can see the moon, she said. Oh wow!'].flatMap((t) =>
       [1, 1.15].map((scale) => {
         const s = generateMumble(t, { seed: 3 });
-        const perf = compilePerformance(s.phonemes, { ...DEFAULT_VOICE, formantScale: scale, pitchHz: scale > 1 ? 200 : 120 });
-        return { audio: renderPerformance(perf, SR), track: generateFaceTrack(perf) };
+        const perf = renderFormant(s.phonemes, { ...DEFAULT_VOICE, formantScale: scale, pitchHz: scale > 1 ? 200 : 120 });
+        return { audio: perf.audio, track: perf.track! };
       }),
     );
     const score = (mode: 'centroid' | 'formants', key: 'jawOpen' | 'lipWidth') =>
@@ -152,8 +153,8 @@ describe('live mouth shapes (formant mode)', () => {
 
   it('adapts its speaker scale toward a smaller voice over a sentence', () => {
     const s = generateMumble('Hello there! How are you today? I can see the moon.', { seed: 3 });
-    const small = runLive(renderPerformance(compilePerformance(s.phonemes, { ...DEFAULT_VOICE, formantScale: 1.25, pitchHz: 220 }), SR));
-    const big = runLive(renderPerformance(compilePerformance(s.phonemes, { ...DEFAULT_VOICE, formantScale: 1, pitchHz: 110 }), SR));
+    const small = runLive(renderFormant(s.phonemes, { ...DEFAULT_VOICE, formantScale: 1.25, pitchHz: 220 }, SR).audio);
+    const big = runLive(renderFormant(s.phonemes, { ...DEFAULT_VOICE, formantScale: 1, pitchHz: 110 }, SR).audio);
     expect(small.at(-1)!.speakerScale).toBeGreaterThan(big.at(-1)!.speakerScale);
   });
 

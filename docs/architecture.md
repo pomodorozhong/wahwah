@@ -15,8 +15,8 @@ before playback. Live input estimates the controls as audio arrives.
    the muted trombone use that score. The four Talking Instruments voices
    compile original text to a separate Rust note score: explicit note starts,
    durations, pitch endpoints and word ranges. Brass and Kazoo glide between
-   pitches; Ooh Choir snaps notes to a pentatonic scale. Live mode's test voices
-   still use the JavaScript klattsch.
+   pitches; Ooh Choir snaps notes to a pentatonic scale. Live mode's Mumble
+   test sentence, Demo voice and calibration responses also render through WASM.
    [Rust core](../crates/wahwah-core/src/lib.rs) · [Note score](../crates/wahwah-core/src/instruments/score.rs) · [Voice adapter](../src/voice/rustVoice.ts)
 3. One WASM call compiles the Rust score and returns audio at the device
    sample rate, its timeline, and an optional face track. With puppet output

@@ -1,19 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { runLive, heldPose, SR, DT, N } from './helpers/liveEval';
-import { calibrate, klattschVoice, pinkTromboneVoice, roomNoise } from './helpers/calibrate';
+import { calibrate, formantVoice, pinkTromboneVoice, roomNoise } from './helpers/calibrate';
 import { SmoothDamp, ULS, ulsInputLength, ulsMfcc, ulsScores } from '../src/live/ulipsync';
 import { DEFAULT_LIVE, LiveMouthEstimator } from '../src/live/estimator';
 import { magnitudeSpectrumDb } from '../src/live/features';
 import { parseProfile, serializeProfile } from '../src/live/profile';
-import { DEFAULT_VOICE, compilePerformance, renderPerformance } from '../src/voice/performance';
+import { DEFAULT_VOICE } from '../src/voice/performance';
+import { renderFormant } from './helpers/voice';
 import { renderSweep, PT_VOWELS } from '../src/live/ptVoice';
-import { generateFaceTrack, sampleFaceTrack } from '../src/puppet/generate';
+import { sampleFaceTrack } from '../src/puppet/generate';
 import { generateMumble } from '../src/mumble/generate';
 import { pearson } from '../src/analysis';
 
 const SLOW = { timeout: 120000 };
 const held = (code: string, formantScale = 1, pitchHz = 120) =>
-  renderPerformance(compilePerformance(code, { ...DEFAULT_VOICE, formantScale, pitchHz, msPerPhoneme: 700 }), SR);
+  renderFormant(code, { ...DEFAULT_VOICE, formantScale, pitchHz, msPerPhoneme: 700 }, SR).audio;
 
 describe('uLipSync port: analysis and scoring', () => {
   it('needs 64 ms of input and returns 12 coefficients', () => {
@@ -33,7 +34,7 @@ describe('uLipSync port: analysis and scoring', () => {
   });
 
   it('also works at 44.1 kHz (non-integer decimation)', () => {
-    const a = renderPerformance(compilePerformance('IY', { ...DEFAULT_VOICE, msPerPhoneme: 700 }), 44100);
+    const a = renderFormant('IY', { ...DEFAULT_VOICE, msPerPhoneme: 700 }, 44100).audio;
     const c = ulsMfcc(a.subarray(11000, 11000 + ulsInputLength(44100)), 44100);
     expect(c.every(Number.isFinite)).toBe(true);
   });
@@ -69,7 +70,7 @@ describe('SmoothDamp (Unity Mathf.SmoothDamp)', () => {
 
 describe('uLipSync-style live mode', () => {
   it('calibration stores one averaged template per sound, and it survives JSON', SLOW, () => {
-    const p = calibrate(klattschVoice());
+    const p = calibrate(formantVoice());
     expect(Object.keys(p.uls!.prototypes).sort()).toEqual(['AA', 'EH', 'IY', 'M', 'OW', 'S', 'SH', 'UW', 'silence']);
     const q = parseProfile(serializeProfile(p));
     expect(q.uls!.prototypes.AA![0]).toBeCloseTo(p.uls!.prototypes.AA![0], 2);
@@ -79,7 +80,7 @@ describe('uLipSync-style live mode', () => {
     ['female-like', 1.15, 200],
     ['child-like', 1.3, 270],
   ] as const)('reads a calibrated %s voice correctly', SLOW, (_n, scale, pitch) => {
-    const profile = calibrate(klattschVoice(scale, pitch));
+    const profile = calibrate(formantVoice(scale, pitch));
     const checks: [string, (p: ReturnType<typeof heldPose>) => boolean][] = [
       ['AA', (p) => p.sound === 'AA' && p.jawOpen > 0.7],
       ['IY', (p) => p.sound === 'IY' && p.lipWidth > 0.8 && p.jawOpen < 0.3],
@@ -104,14 +105,14 @@ describe('uLipSync-style live mode', () => {
   });
 
   it('trades lag for steadiness with the smoothness setting (measured on sentences)', SLOW, () => {
-    const profile = calibrate(klattschVoice(1.15, 200));
+    const profile = calibrate(formantVoice(1.15, 200));
     const texts = ['Hello there! How are you today?', 'I can see the moon, she said. Oh wow!'];
     const run = (smoothSeconds: number) => {
       let r = 0;
       let jerk = 0;
       for (const t of texts) {
-        const perf = compilePerformance(generateMumble(t, { seed: 3 }).phonemes, { ...DEFAULT_VOICE, formantScale: 1.15, pitchHz: 200 });
-        const raw = renderPerformance(perf, SR);
+        const perf = renderFormant(generateMumble(t, { seed: 3 }).phonemes, { ...DEFAULT_VOICE, formantScale: 1.15, pitchHz: 200 });
+        const raw = perf.audio;
         const noise = roomNoise(raw.length / SR, 0.002);
         const audio = raw.map((v, i) => v + noise[i]);
         const est = new LiveMouthEstimator({ ...DEFAULT_LIVE, shapeMode: 'ulipsync', smoothSeconds, gateDb: profile.suggested.gateDb, rangeDb: profile.suggested.rangeDb });
@@ -125,7 +126,7 @@ describe('uLipSync-style live mode', () => {
           const fr = est.process(f, magnitudeSpectrumDb(f), SR, DT, audio.subarray(end - 3072, end));
           jaw.push(fr.jawOpen);
           width.push(fr.lipWidth);
-          refW.push(sampleFaceTrack(generateFaceTrack(perf), end / SR).lipWidth);
+          refW.push(sampleFaceTrack(perf.track!, end / SR).lipWidth);
         }
         r += pearson(width, refW) / texts.length;
         for (let i = 2; i < jaw.length; i++) jerk += Math.abs(jaw[i] - 2 * jaw[i - 1] + jaw[i - 2]) / (jaw.length - 2) / texts.length;

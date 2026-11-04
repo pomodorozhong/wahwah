@@ -4,7 +4,7 @@
 import { DEFAULT_LIVE, LiveMouthEstimator, type LiveFrame, type ShapeMode } from '../live/estimator';
 import { REFERENCE_VOWELS } from '../live/vowels';
 import { renderSweep, PT_VOWELS } from '../live/ptVoice';
-import { frameFeatures, parseProfile, serializeProfile, type CalibrationStep, type ProfileClassId, type VoiceProfile } from '../live/profile';
+import { frameFeatures, parseProfile, serializeProfile, type ProfileClassId, type VoiceProfile } from '../live/profile';
 import { CalibrationRunner } from '../ui/calibrationUi';
 import { ulsInputLength } from '../live/ulipsync';
 import analysisWorkletUrl from '../live/analysisWorklet.ts?worker&url';
@@ -13,8 +13,7 @@ import recorderWorkletUrl from '../live/recorderWorklet.ts?worker&url';
 import { analyseRecording, measureMouthLagMs, mouthAt, planPlayback, type AnalysedRecording, type PlaybackPlan } from '../live/delayTest';
 import { magnitudeSpectrumDb } from '../live/features';
 import { NEUTRAL, type FaceControls } from '../puppet/controls';
-import { compilePerformance, renderPerformance, DEFAULT_VOICE } from '../voice/performance';
-import { moodVoice, generateMumble } from '../mumble/generate';
+import { demoStepAudio, liveSpeechAudio } from '../live/demoVoice';
 import { PuppetView, byId, fitCanvas, renderMode, disclosure, section } from '../ui/puppetView';
 import { rmsEnvelope } from '../analysis';
 import { MONITOR_SIGNALS, MONITOR_COLORS, beginMonitor, drawMonitorLegend, drawMonitorPlayhead } from '../ui/monitorTheme';
@@ -202,22 +201,9 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
     }
   }
 
-  // The demo voice: deliberately unlike the formant mode's adult-male reference.
-  const DEMO_VOICE = { ...DEFAULT_VOICE, formantScale: 1.25, pitchHz: 230 };
-
-  /** What the demo speaker says for a calibration step: a pause, then the sound held ~2.6 s. */
-  function demoStepAudio(step: CalibrationStep, sampleRate: number): Float32Array<ArrayBuffer> | null {
-    if (step.id === 'silence') return null;
-    // Start ~0.7 s after the prompt, like a person reacting to it.
-    return renderPerformance(compilePerformance(`p700 ${step.id}`, { ...DEMO_VOICE, msPerPhoneme: 2600 }), sampleRate) as Float32Array<ArrayBuffer>;
-  }
-
   function testSignal(ctx: AudioContext, kind: 'test' | 'sweep' | 'demo'): AudioBufferSourceNode {
     let pcm: Float32Array<ArrayBuffer>;
-    if (kind === 'demo') {
-      const script = generateMumble('Hi! I am the demo voice. Watch my mouth: ah, ee, ooh. So soft, so sweet!', { seed: 5 });
-      pcm = renderPerformance(compilePerformance(script.phonemes, moodVoice(DEMO_VOICE, script.mood)), ctx.sampleRate) as Float32Array<ArrayBuffer>;
-    } else if (kind === 'sweep') {
+    if (kind === 'sweep') {
       // Pink Trombone gliding between vowel shapes: a voice the analyzer was not tuned on.
       const v = PT_VOWELS;
       pcm = renderSweep(
@@ -226,9 +212,7 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
         140,
       ) as Float32Array<ArrayBuffer>;
     } else {
-      const script = generateMumble('Hello there! Testing, one two three. Can you see my mouth move? Oh, wonderful.', { seed: 9 });
-      const perf = compilePerformance(script.phonemes, moodVoice(DEFAULT_VOICE, script.mood));
-      pcm = renderPerformance(perf, ctx.sampleRate) as Float32Array<ArrayBuffer>;
+      pcm = liveSpeechAudio(kind, ctx.sampleRate) as Float32Array<ArrayBuffer>;
     }
     const buffer = ctx.createBuffer(1, pcm.length + ctx.sampleRate, ctx.sampleRate); // 1 s gap between loops
     buffer.copyToChannel(pcm, 0);
@@ -362,7 +346,7 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
     {
       onStep: (step) => {
         if (!running || sourceEl.value !== 'demo') return;
-        playClip(demoStepAudio(step, running.ctx.sampleRate));
+        playClip(demoStepAudio(step.id, running.ctx.sampleRate) as Float32Array<ArrayBuffer> | null);
         // The demo speaker also "clicks" I'm quiet on the quiet step.
         if (step.id === 'silence') afterCurrentInput(600, () => calibration.confirmQuiet());
       },

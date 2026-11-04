@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_LIVE, LiveMouthEstimator, rmsDb, spectralCentroid } from '../src/live/estimator';
-import { DEFAULT_VOICE, compilePerformance, renderPerformance } from '../src/voice/performance';
+import { DEFAULT_VOICE } from '../src/voice/performance';
+import { renderFormant } from './helpers/voice';
 import { rmsEnvelope, pearson } from '../src/analysis';
 
 const SR = 48000;
@@ -98,8 +99,8 @@ describe('live mouth estimator', () => {
   });
 
   it('tracks rendered speech: jaw follows the loudness envelope', () => {
-    const perf = compilePerformance('AA . AA , M AA . W AA', { ...DEFAULT_VOICE, msPerPhoneme: 150 });
-    const audio = renderPerformance(perf, SR);
+    const perf = renderFormant('AA . AA , M AA . W AA', { ...DEFAULT_VOICE, msPerPhoneme: 150 });
+    const audio = perf.audio;
     const hop = Math.round(SR * DT);
     const est = new LiveMouthEstimator();
     const jaw: number[] = [];

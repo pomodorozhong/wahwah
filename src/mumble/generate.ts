@@ -1,8 +1,6 @@
-// Mumble generation belongs to Rust. This adapter also serves the legacy live
-// demo, whose JavaScript synthesizer is removed in the dependency-cleanup step.
+// Mumble generation belongs to Rust. Call after loadVoices().
 import { generateMumble as generate } from '../wasm/wahwah_wasm';
-import type { VoiceSettings } from '../voice/performance';
-import { STYLES, MOODS, type MumbleStyle, type Mood } from './styles';
+import type { MumbleStyle, Mood } from './styles';
 
 export interface MumbleOptions {
   seed: number;
@@ -33,15 +31,6 @@ export const mumbleOptions = (options: MumbleOptions): MumbleOptions => ({ ...op
 /** Call after loadVoices(); generation itself is synchronous. */
 export function generateMumble(text: string, options: MumbleOptions): MumbleScript {
   return generate(text, mumbleOptions(options)) as MumbleScript;
-}
-
-export const findStyle = (id?: string): MumbleStyle => STYLES.find(s => s.id === id) ?? STYLES[0];
-export const findMood = (id?: string): Mood => MOODS.find(m => m.id === id) ?? MOODS[0];
-
-/** Legacy JS synthesis only. Rust applies the mood itself when rendering. */
-export function moodVoice(base: VoiceSettings, mood: Mood): VoiceSettings {
-  return { ...base, pitchHz: base.pitchHz * mood.pitchScale, msPerPhoneme: base.msPerPhoneme * mood.rateScale,
-    vibratoDepth: mood.vibratoDepth, aspiration: mood.aspiration, effort: mood.effort, tilt: mood.tilt };
 }
 
 export const wordAtPhonemeOffset = (script: MumbleScript, offset: number): MumbleWord | null =>

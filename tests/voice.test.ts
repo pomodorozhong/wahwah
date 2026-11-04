@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_VOICE, compilePerformance, renderPerformance, segmentAt } from '../src/voice/performance';
+import { DEFAULT_VOICE, segmentAt } from '../src/voice/performance';
+import { renderFormant } from './helpers/voice';
 import { PRESETS } from '../src/voice/presets';
 import { rmsEnvelope } from '../src/analysis';
 
 describe('voice module', () => {
   it.each(PRESETS.map((p) => [p.id, p] as const))('preset %s compiles cleanly and renders audible audio', (_id, preset) => {
-    const perf = compilePerformance(preset.phonemes, preset.voice);
+    const perf = renderFormant(preset.phonemes, preset.voice);
     expect(perf.warnings).toEqual([]);
-    const audio = renderPerformance(perf, 48000);
+    const audio = perf.audio;
     const env = rmsEnvelope(audio, 48000);
     expect(Math.max(...env)).toBeGreaterThan(0.1);
     // Most of the utterance is sound, not silence.
@@ -15,17 +16,19 @@ describe('voice module', () => {
   });
 
   it('speaking rate changes duration', () => {
-    const slow = compilePerformance('M AA L IY', { ...DEFAULT_VOICE, msPerPhoneme: 200 });
-    const fast = compilePerformance('M AA L IY', { ...DEFAULT_VOICE, msPerPhoneme: 80 });
-    expect(slow.durationSeconds).toBeGreaterThan(fast.durationSeconds);
+    const slow = renderFormant('M AA L IY', { ...DEFAULT_VOICE, msPerPhoneme: 200 });
+    const fast = renderFormant('M AA L IY', { ...DEFAULT_VOICE, msPerPhoneme: 80 });
+    expect(slow.timeline.durationSeconds).toBeGreaterThan(fast.timeline.durationSeconds);
   });
 
   it.each([0.75, 1])('keeps the consonant, pause and voiced pitch at brass color %s', (color) => {
     const sr = 24000;
-    const perf = compilePerformance('SH AA(+40) , UW', { ...DEFAULT_VOICE, msPerPhoneme: 300 });
-    const dry = renderPerformance(perf, sr);
-    const brass = renderPerformance(perf, sr, color);
-    const [, aa, pause, uw] = perf.segments;
+    const source = 'SH AA(+40) , UW';
+    const settings = { ...DEFAULT_VOICE, msPerPhoneme: 300 };
+    const perf = renderFormant(source, settings, sr);
+    const dry = perf.audio;
+    const brass = renderFormant(source, settings, sr, color).audio;
+    const [, aa, pause, uw] = perf.timeline.segments;
     expect(brass.length).toBe(dry.length);
     const sample = (seconds: number) => Math.round(seconds * sr);
     expect(brass.slice(0, sample(aa.startSeconds))).toEqual(dry.slice(0, sample(aa.startSeconds)));
@@ -43,17 +46,17 @@ describe('voice module', () => {
   });
 
   it('keeps phoneme identity and timing in segments', () => {
-    const perf = compilePerformance('M AA , IY', DEFAULT_VOICE);
-    expect(perf.segments.map((s) => s.phoneme)).toEqual(['M', 'AA', null, 'IY']);
-    for (let i = 1; i < perf.segments.length; i++) {
-      expect(perf.segments[i].startSeconds).toBeCloseTo(perf.segments[i - 1].endSeconds, 6);
+    const perf = renderFormant('M AA , IY', DEFAULT_VOICE);
+    expect(perf.timeline.segments.map((s) => s.phoneme)).toEqual(['M', 'AA', null, 'IY']);
+    for (let i = 1; i < perf.timeline.segments.length; i++) {
+      expect(perf.timeline.segments[i].startSeconds).toBeCloseTo(perf.timeline.segments[i - 1].endSeconds, 6);
     }
-    const aa = perf.segments[1];
-    expect(segmentAt(perf, (aa.startSeconds + aa.endSeconds) / 2)?.phoneme).toBe('AA');
+    const aa = perf.timeline.segments[1];
+    expect(segmentAt(perf.timeline, (aa.startSeconds + aa.endSeconds) / 2)?.phoneme).toBe('AA');
   });
 
   it('reports unknown phonemes as warnings instead of throwing', () => {
-    const perf = compilePerformance('AA QQ', DEFAULT_VOICE);
+    const perf = renderFormant('AA QQ', DEFAULT_VOICE);
     expect(perf.warnings.join(' ')).toMatch(/QQ/);
   });
 });

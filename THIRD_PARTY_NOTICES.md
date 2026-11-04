@@ -4,6 +4,8 @@
 
 `crates/wahwah-core` reimplements klattsch's phoneme script language, schedule
 compiler and formant synthesis in Rust, and carries its English phoneme data.
+`src/live/vowels.ts` also retains ten F1/F2 reference pairs from its Klatt (1980)
+bank for synchronous live analysis. The klattsch npm package is not required.
 
 ```text
 MIT License

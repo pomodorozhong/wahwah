@@ -1,7 +1,8 @@
 // Run the guided calibration on a synthetic voice, frame by frame like the live page.
 import { Calibration, CALIBRATION_STEPS, frameFeatures, type ProfileClassId, type VoiceProfile } from '../../src/live/profile';
 import { magnitudeSpectrumDb } from '../../src/live/features';
-import { DEFAULT_VOICE, compilePerformance, renderPerformance } from '../../src/voice/performance';
+import { DEFAULT_VOICE } from '../../src/voice/performance';
+import { renderFormant } from './voice';
 import { renderTract, PT_VOWELS, PT_M } from '../../src/live/ptVoice';
 import { SR, N, DT } from './liveEval';
 import { ulsInputLength } from '../../src/live/ulipsync';
@@ -14,15 +15,15 @@ export function roomNoise(seconds: number, amp = 1e-4): Float32Array {
   return Float32Array.from({ length: Math.round(seconds * SR) }, () => ((x = (x * 16807) % 2147483647) / 2147483647 - 0.5) * 2 * amp);
 }
 
-export function klattschVoice(formantScale = 1, pitchHz = 120): StepVoice {
+export function formantVoice(formantScale = 1, pitchHz = 120): StepVoice {
   return (id, seconds) =>
     id === 'silence'
       ? roomNoise(seconds)
-      : renderPerformance(compilePerformance(id, { ...DEFAULT_VOICE, formantScale, pitchHz, msPerPhoneme: seconds * 1000 }), SR).subarray(0, Math.round(seconds * SR));
+      : renderFormant(id, { ...DEFAULT_VOICE, formantScale, pitchHz, msPerPhoneme: seconds * 1000 }, SR).audio.subarray(0, Math.round(seconds * SR));
 }
 
 export function pinkTromboneVoice(pitchHz = 130): StepVoice {
-  const k = klattschVoice(1, pitchHz);
+  const k = formantVoice(1, pitchHz);
   const configs: Partial<Record<ProfileClassId, Parameters<typeof renderTract>[0]>> = {
     ...PT_VOWELS,
     OW: { tongueIndex: 18.4, tongueDiameter: 2.29, lipDiameter: 0.85 },

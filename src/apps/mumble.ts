@@ -5,7 +5,7 @@ import { renderMumble, renderInstrument, type InstrumentPerformance } from '../v
 import { wordAtPhonemeOffset, type MumbleScript } from '../mumble/generate';
 import { MOODS, STYLES } from '../mumble/styles';
 import { INSTRUMENTS, isInstrument, type InstrumentId } from '../voice/instruments';
-import { DEFAULT_TROMBONE } from '../engines/trombone';
+import { DEFAULT_TROMBONE } from '../voice/trombone';
 import type { PuppetView } from '../ui/puppetView';
 import { Stage, byId, section, restoreDraft } from '../ui/stage';
 
