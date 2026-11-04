@@ -92,6 +92,9 @@ It follows the same mouth controls in text, phoneme, and microphone modes.
 
 Under **Puppet → View**, choose **VRM model**. In **Model**, open a local
 `.vrm` file or choose one of the models supplied at startup.
+This option has been tested with pixiv’s `VRM1_Constraint_Twist_Sample`;
+other VRM models may behave differently. The sample is supplied locally,
+separately from the bundled Tofu puppet.
 
 To offer characters in the menu on startup, place their files in this layout
 before running or building the playground. Models are supplied locally.

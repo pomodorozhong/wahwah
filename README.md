@@ -5,6 +5,8 @@ a cartoon *wah-wah* voice. A muted trombone follows the rhythm of invented
 syllables and the rise at the end of a question. You can switch to synthetic
 speech or drive the mouth with your microphone.
 
+[Open the playground](https://pomodorozhong.github.io/wahwah/).
+
 ![The default white tofu puppet with its mouth open mid-syllable](docs/face.jpg)
 
 ![Tofu mouth poses for neutral, AA, IY, UW and M](docs/poses.jpg)
@@ -46,3 +48,8 @@ Use **Input mode** to try the same puppet with another source.
 - [Architecture](docs/architecture.md) — follow a syllable from the audio timeline to the three controls that move the mouth.
 - [Project goals and decisions](docs/goals.md) — visual influences and plans for a reusable puppet SDK.
 - [Development notes](docs/development-notes.md) — run the checks and measure voice-to-mouth timing.
+
+## License
+
+MIT — see [LICENSE](LICENSE). Upstream voice and browser-library notices are
+in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
