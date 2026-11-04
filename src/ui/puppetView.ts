@@ -1,4 +1,4 @@
-// Page shell and the puppet view shared by every playground: the 3D face or
+// Page shell and the puppet view shared by every playground: a VRM avatar or
 // the debug puppet, the input mode and puppet controls, and the live meters.
 
 import './style.css';
@@ -8,13 +8,11 @@ import './script-editor.css';
 import type { FaceControls } from '../puppet/controls';
 import { MotionTracker, type FaceMotion } from '../puppet/motion';
 import localModels from 'virtual:local-models';
-import { PreviewFace } from '../host/face';
 import { ControlFollower } from '../host/follower';
 import { DebugPuppet } from '../host/debug';
 import { FaceRenderer } from '../host/renderer';
 import type { FaceHost } from '../host/host';
 import type { VrmFace } from '../host/vrm';
-import type { Live2DFace } from '../host/live2d';
 
 export interface ShellOptions {
   /** Primary transport buttons (play/stop, start/stop mic). */
@@ -61,10 +59,10 @@ export function renderShell(root: HTMLElement): void {
     { label: 'Script', body: '' },
     { label: 'Voice', body: '' },
     { label: 'Puppet', body: section('Appearance and motion', `<div class="view-opts">
-            <label>View <select id="view"><option value="tofu">Tofu cube</option><option value="face">Preview face</option><option value="vrm">VRM model</option><option value="live2d">Live2D model</option><option value="debug">Debug (instructions)</option></select></label>
-            <label id="modelLabel" hidden>Model <select id="model"></select></label>
+            <label>View <select id="view"><option value="tofu">Tofu cube</option><option value="vrm">VRM model</option><option value="debug">Debug (instructions)</option></select></label>
+            <label id="modelLabel" hidden>Model <select id="model" aria-describedby="vrmModelHint"></select></label>
+            <p id="vrmModelHint" class="hint" hidden>This VRM option has only been tested with pixiv’s VRM1_Constraint_Twist_Sample. Other VRM models may behave differently.</p>
             <input id="vrmFile" type="file" accept=".vrm" hidden />
-            <input id="live2dFolder" type="file" webkitdirectory hidden />
             <label><input id="puppet" type="checkbox" checked /> Puppet output</label>
             <label><input id="idle" type="checkbox" checked /> Idle motion</label>
           </div>`) },
@@ -140,35 +138,32 @@ export function renderShell(root: HTMLElement): void {
   }
 }
 
-export type PuppetViewMode = 'tofu' | 'face' | 'vrm' | 'live2d' | 'debug';
-type ModelMode = 'vrm' | 'live2d';
+export type PuppetViewMode = 'tofu' | 'vrm' | 'debug';
 
 const MODELS_URL = `${import.meta.env.BASE_URL}models/`;
 const OPEN_FILE = '__open__';
 
 export class PuppetView {
   readonly renderer: FaceRenderer;
-  readonly face = new PreviewFace();
   readonly follower = new ControlFollower();
   readonly debugPuppet: DebugPuppet;
   readonly motion = new MotionTracker();
   readonly puppetEl: HTMLInputElement;
-  private mode: PuppetViewMode = 'face';
-  private host: FaceHost = this.face;
+  private mode: PuppetViewMode = 'tofu';
+  private host: FaceHost | null = null;
   private vrm: VrmFace | null = null;
   private tofu: Promise<VrmFace> | null = null;
-  private live2d: Live2DFace | null = null;
   private idle = true;
   private readonly modelEl: HTMLSelectElement;
   private readonly statusEl: HTMLElement;
-  /** The model picked for each host, kept while switching views. */
-  private readonly picked: Record<ModelMode, string> = { vrm: localModels.vrm[0] ?? '', live2d: localModels.live2d[0] ?? '' };
-  private readonly loading = new Set<ModelMode>();
+  /** The VRM model selection survives switching views. */
+  private pickedVrm = localModels.vrm[0] ?? '';
+  private loadingVrm = false;
 
   constructor() {
     const container = byId('face');
     this.renderer = new FaceRenderer(container);
-    byId('resetView').addEventListener('click', () => this.host.navigation?.reset());
+    byId('resetView').addEventListener('click', () => this.host?.navigation?.reset());
     this.debugPuppet = new DebugPuppet(container);
     this.puppetEl = byId('puppet');
     this.modelEl = byId('model');
@@ -176,11 +171,10 @@ export class PuppetView {
     byId<HTMLSelectElement>('view').addEventListener('change', (e) => void this.setMode((e.target as HTMLSelectElement).value as PuppetViewMode));
     byId<HTMLInputElement>('idle').addEventListener('change', (e) => {
       this.idle = (e.target as HTMLInputElement).checked;
-      this.host.idleMotion = this.idle;
+      if (this.host) this.host.idleMotion = this.idle;
     });
     this.modelEl.addEventListener('change', () => this.onModelPicked());
     byId<HTMLInputElement>('vrmFile').addEventListener('change', (e) => this.openVrmFile(e.target as HTMLInputElement));
-    byId<HTMLInputElement>('live2dFolder').addEventListener('change', (e) => this.openLive2DFolder(e.target as HTMLInputElement));
     void this.setMode('tofu');
   }
 
@@ -197,18 +191,23 @@ export class PuppetView {
     byId<HTMLSelectElement>('view').value = mode;
     this.renderer.canvas.hidden = mode === 'debug';
     this.debugPuppet.visible = mode === 'debug';
-    byId('modelLabel').hidden = mode !== 'vrm' && mode !== 'live2d';
+    byId('modelLabel').hidden = mode !== 'vrm';
+    byId('vrmModelHint').hidden = mode !== 'vrm';
+    this.host = null;
+    this.renderer.setHost(null, false);
+    byId('cameraTools').hidden = true;
+    this.showStatus(mode === 'debug' ? '' : 'Loading…');
     if (mode === 'tofu') {
       const host = await this.tofuHost();
       if (this.mode === mode) this.useHost(host);
-    } else if (mode === 'vrm' || mode === 'live2d') {
-      this.fillModelList(mode);
-      const host = mode === 'vrm' ? await this.vrmHost() : await this.live2dHost();
+    } else if (mode === 'vrm') {
+      this.fillModelList();
+      const host = await this.vrmHost();
       if (this.mode !== mode) return;
       this.useHost(host);
-      const picked = this.picked[mode];
-      if (host.status && picked && !picked.startsWith('blob:') && !this.loading.has(mode)) this.loadLocal(mode, picked);
-    } else this.useHost(this.face);
+      const picked = this.pickedVrm;
+      if (host.status && picked && !picked.startsWith('blob:') && !this.loadingVrm) this.loadLocal(picked);
+    }
   }
 
   private useHost(host: FaceHost): void {
@@ -236,21 +235,12 @@ export class PuppetView {
     return this.tofu;
   }
 
-  private async live2dHost(): Promise<Live2DFace> {
-    if (!this.live2d) {
-      const { Live2DFace } = await import('../host/live2d');
-      this.live2d ??= new Live2DFace();
-    }
-    return this.live2d;
-  }
-
-  private fillModelList(mode: ModelMode): void {
-    const files = mode === 'vrm' ? localModels.vrm : localModels.live2d;
-    const name = (f: string) => f.split('/').pop()!.replace(/\.(vrm|model3\.json)$/, '');
-    const open = mode === 'vrm' ? 'Open .vrm file…' : 'Open model folder…';
+  private fillModelList(): void {
+    const files = localModels.vrm;
+    const name = (f: string) => f.split('/').pop()!.replace(/\.vrm$/i, '');
     this.modelEl.innerHTML =
-      files.map((f) => `<option value="${f}">${name(f)}</option>`).join('') + `<option value="${OPEN_FILE}">${open}</option>`;
-    const picked = this.picked[mode];
+      files.map((f) => `<option value="${f}">${name(f)}</option>`).join('') + `<option value="${OPEN_FILE}">Open .vrm file…</option>`;
+    const picked = this.pickedVrm;
     this.modelEl.value = picked && (files.includes(picked) || picked.startsWith('blob:')) ? picked : files[0] ?? OPEN_FILE;
     if (picked.startsWith('blob:')) {
       this.modelEl.insertAdjacentHTML('afterbegin', `<option value="${picked}">opened file</option>`);
@@ -259,30 +249,23 @@ export class PuppetView {
   }
 
   private onModelPicked(): void {
-    const mode = this.mode;
-    if (mode !== 'vrm' && mode !== 'live2d') return;
+    if (this.mode !== 'vrm') return;
     const value = this.modelEl.value;
     if (value === OPEN_FILE) {
-      this.modelEl.value = this.picked[mode] || OPEN_FILE;
-      byId(mode === 'vrm' ? 'vrmFile' : 'live2dFolder').click();
+      this.modelEl.value = this.pickedVrm || OPEN_FILE;
+      byId('vrmFile').click();
       return;
     }
     if (value.startsWith('blob:')) return;
-    this.picked[mode] = value;
-    this.loadLocal(mode, value);
+    this.pickedVrm = value;
+    this.loadLocal(value);
   }
 
-  private loadLocal(mode: ModelMode, file: string): void {
+  private loadLocal(file: string): void {
     const label = file.split('/').pop()!;
     const url = MODELS_URL + file;
-    this.loading.add(mode);
-    const done = () => this.loading.delete(mode);
-    if (mode === 'vrm') void this.vrmHost().then((h) => h.load(url, label)).finally(done);
-    else {
-      const dir = url.slice(0, url.lastIndexOf('/') + 1);
-      const core = localModels.cubismCore ? MODELS_URL + localModels.cubismCore : `${MODELS_URL}live2d/live2dcubismcore.min.js`;
-      void this.live2dHost().then((h) => h.load(core, url, (p) => dir + p, label)).finally(done);
-    }
+    this.loadingVrm = true;
+    void this.vrmHost().then((h) => h.load(url, label)).finally(() => { this.loadingVrm = false; });
   }
 
   private openVrmFile(input: HTMLInputElement): void {
@@ -290,37 +273,9 @@ export class PuppetView {
     input.value = '';
     if (!file) return;
     const url = this.blobUrl(file);
-    this.picked.vrm = url;
-    this.fillModelList('vrm');
+    this.pickedVrm = url;
+    this.fillModelList();
     void this.vrmHost().then((h) => h.load(url, file.name));
-  }
-
-  /** A picked Live2D folder: its files become blob URLs keyed by relative path. */
-  private openLive2DFolder(input: HTMLInputElement): void {
-    const files = [...(input.files ?? [])];
-    input.value = '';
-    const settings = files.find((f) => f.name.endsWith('.model3.json'));
-    if (!settings) {
-      void this.live2dHost().then((h) => (h.status = 'That folder has no .model3.json file.'));
-      return;
-    }
-    const path = (f: File) => f.webkitRelativePath || f.name;
-    const base = path(settings).slice(0, path(settings).lastIndexOf('/') + 1);
-    const byPath = new Map(files.map((f) => [path(f), f]));
-    const coreFile = files.find((f) => /live2dcubismcore(\.min)?\.js$/.test(f.name));
-    const core = coreFile
-      ? this.blobUrl(coreFile)
-      : localModels.cubismCore
-        ? MODELS_URL + localModels.cubismCore
-        : `${MODELS_URL}live2d/live2dcubismcore.min.js`;
-    const resolve = (p: string) => {
-      const f = byPath.get(normalizePath(base + p));
-      return f ? this.blobUrl(f) : `missing:${p}`;
-    };
-    const url = this.blobUrl(settings);
-    this.picked.live2d = url;
-    this.fillModelList('live2d');
-    void this.live2dHost().then((h) => h.load(core, url, resolve, settings.name));
   }
 
   private blobUrl(file: File): string {
@@ -344,9 +299,9 @@ export class PuppetView {
       this.showStatus('');
       this.debugPuppet.render(motion, this.puppetEnabled);
     } else {
-      this.host.setControls(this.follower.controls);
+      this.host?.setControls(this.follower.controls);
       this.renderer.render(dtSeconds);
-      this.showStatus(this.host.status);
+      if (this.host) this.showStatus(this.host.status);
     }
     return motion;
   }
@@ -366,20 +321,10 @@ export class PuppetView {
   /** Stop following anything and hold a pose, e.g. for screenshots. */
   holdPose(c: FaceControls): HTMLCanvasElement {
     this.follower.follow(c);
-    this.host.setControls(c);
+    this.host?.setControls(c);
     this.renderer.render(0);
     return this.renderer.canvas;
   }
-}
-
-/** Collapse "a/./b" and "a/x/../b" in paths from model3.json. */
-function normalizePath(p: string): string {
-  const out: string[] = [];
-  for (const part of p.split('/')) {
-    if (part === '..') out.pop();
-    else if (part !== '.' && part !== '') out.push(part);
-  }
-  return out.join('/');
 }
 
 /** Match the canvas backing store to its CSS size; returns a 2D context in CSS pixels. */

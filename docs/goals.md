@@ -32,7 +32,7 @@ house style or several switchable styles remains open.
 | --- | --- |
 | Keep input, mouth controls, and character rigs separate. | One utterance or microphone recording can exercise every rig. A future SDK can expose the controls independently of the renderer. |
 | Build the playground with TypeScript, Vite, Web Audio, and Three.js. | Voice synthesis, editing, and a live puppet preview can run together in a browser. |
-| Target VRM for the Rust/WASM migration. | Focus the supported playground on one avatar format. Keep general mouth controls separate from VRM expressions so a future Live2D adapter can consume the same performance. The current TypeScript playground still contains Live2D; removal is part of the migration. |
+| Target VRM for the Rust/WASM migration. | Focus the supported playground on one avatar format. Keep general mouth controls separate from VRM expressions so a future adapter can consume the same performance. The playground keeps Tofu, VRM, and Debug views. |
 | Port the selected voice core before adding more behavior. | No users rely on the current output, so compatibility is not a release constraint. Establish one Rust implementation before adding multilingual input, viewer identities, and duration fitting. |
 | Start with a small mouth vocabulary. | Every host can support it. Future layers for blink, gaze, brows, head pose, and mood can be optional and map onto each rig's existing expressions. |
 | Evaluate live tracking on a real voice. | A synthetic test can measure lag and jitter. A speaker can judge whether the result looks right for the character and whether delaying the audio feels acceptable. |
@@ -60,7 +60,8 @@ The work lands as six PRs, in the order listed on the issue: Rust voices in the
 playground, Rust performance, instruments, dependency cleanup, playground
 cleanup, and publishing. Rust now owns Mumble generation and synchronized
 audio and mouth performances, including the four Talking Instruments voices.
-Dependency cleanup, Live2D removal, and Pages are the remaining steps.
+Dependency and playground cleanup are complete. Licensing and Pages are the
+remaining step.
 
 After that, add multilingual invented speech including Chinese and mixed-language
 text, deterministic viewer-to-character profiles for Twitch, and configurable

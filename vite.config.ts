@@ -21,7 +21,7 @@ function listModelFiles(dir = MODELS_DIR): string[] {
 
 /**
  * Lists the user's local, git-ignored model files (public/models) for the
- * face hosts: VRM avatars, Live2D model3.json files and Cubism Core.
+ * VRM host.
  */
 function localModels(): Plugin {
   return {
@@ -32,8 +32,6 @@ function localModels(): Plugin {
       const files = listModelFiles();
       const models = {
         vrm: files.filter((f) => f.toLowerCase().endsWith('.vrm')),
-        live2d: files.filter((f) => f.endsWith('.model3.json')),
-        cubismCore: files.find((f) => /live2dcubismcore(\.min)?\.js$/.test(f)) ?? null,
       };
       return `export default ${JSON.stringify(models)};`;
     },

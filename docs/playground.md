@@ -58,6 +58,20 @@ override the voice sliders. The editor reports unrecognized tokens.
 For a rehearsal, select **Demo voice** as the input. It can answer the
 calibration prompts itself.
 
+### Understand mouth analysis and the vowel map
+
+**Voice → Mouth shape from** explains the selected analysis mode. **Your
+voice profile** matches calibrated sounds; **uLipSync-style** smooths those
+matches with a spring. **Formants** estimates vowel resonances without
+calibration. **Brightness only** approximates wide or rounded lips from the
+sound's brightness, while **Loudness only** moves just the jaw.
+
+The **Analysis → Vowel map** circle and one-second trail need running input,
+**Puppet output** enabled, and **Formants** selected. The map plots F1
+(openness, down) and F2 (front, left). Other analysis modes do not measure
+F1/F2, so the mouth can move while the map has no circle. Silence and unvoiced
+sounds can also leave the map empty.
+
 ### Compare timing on one recording
 
 Open **Analysis → Delay test**. Choose **Record**, say a few spaced “ah”
@@ -75,25 +89,20 @@ physical microphone remains an open question.
 
 The playground starts with **Tofu cube**, the white, clipped-corner puppet.
 It follows the same mouth controls in text, phoneme, and microphone modes.
-Choose **Preview face** under **Puppet → View** to use the procedural face.
 
-Under **Puppet → View**, choose **VRM model** or **Live2D model**. In
-**Model**, open a local `.vrm` file or select a Live2D model folder containing
-its `.model3.json`, mesh, and textures. Include the Cubism Core runtime from
-the Cubism SDK for Web in the selected folder or at the path below.
+Under **Puppet → View**, choose **VRM model**. In **Model**, open a local
+`.vrm` file or choose one of the models supplied at startup.
 
 To offer characters in the menu on startup, place their files in this layout
-before running or building the playground. Models and Cubism Core are supplied
-locally. Use assets you have permission to use.
+before running or building the playground. Models are supplied locally.
+Use assets you have permission to use.
 
 ```text
 public/models/
   vrm/character.vrm
-  live2d/live2dcubismcore.min.js
-  live2d/character/character.model3.json
 ```
 
-In the tofu, preview, and VRM views, drag to orbit, Shift-drag or right-drag to pan,
+In the tofu and VRM views, drag to orbit, Shift-drag or right-drag to pan,
 and scroll to zoom. On touchscreens, drag with one finger to orbit or use two
 to pan and pinch. **Reset view** restores the initial framing.
 

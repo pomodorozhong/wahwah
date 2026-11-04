@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Blinker, controlsToLive2D, controlsToVrmVisemes, parseModel3 } from '../src/host/mappings';
-import { renderOrderFromDrawOrders } from '../src/host/live2d';
+import { Blinker, controlsToVrmVisemes } from '../src/host/mappings';
 
 const sum = (v: Record<string, number>) => Object.values(v).reduce((a, b) => a + b, 0);
 
@@ -25,48 +24,6 @@ describe('controlsToVrmVisemes', () => {
   });
 });
 
-describe('controlsToLive2D', () => {
-  it('drives the LipSync group and MouthForm as spread minus pucker', () => {
-    expect(controlsToLive2D({ jawOpen: 0.6, lipWidth: 0.1, lipRound: 0.5 }, ['ParamMouthOpenY', 'ParamA'])).toEqual({
-      ParamMouthOpenY: 0.6,
-      ParamA: 0.6,
-      ParamMouthForm: 0.1 - 0.5,
-    });
-  });
-
-  it('falls back to ParamMouthOpenY without a LipSync group', () => {
-    expect(controlsToLive2D({ jawOpen: 1, lipWidth: 1, lipRound: 0 }, [])).toEqual({ ParamMouthOpenY: 1, ParamMouthForm: 1 });
-  });
-});
-
-describe('parseModel3', () => {
-  it('reads files, groups and head hit areas', () => {
-    const s = parseModel3({
-      Version: 3,
-      FileReferences: { Moc: 'hiyori.moc3', Textures: ['hiyori.2048/texture_00.png'] },
-      Groups: [
-        { Target: 'Parameter', Name: 'LipSync', Ids: ['ParamMouthOpenY'] },
-        { Target: 'Parameter', Name: 'EyeBlink', Ids: ['ParamEyeLOpen', 'ParamEyeROpen'] },
-      ],
-      HitAreas: [
-        { Id: 'HitArea', Name: 'Body' },
-        { Id: 'HitAreaHead', Name: 'Head' },
-      ],
-    });
-    expect(s).toEqual({
-      moc: 'hiyori.moc3',
-      textures: ['hiyori.2048/texture_00.png'],
-      lipSyncIds: ['ParamMouthOpenY'],
-      eyeBlinkIds: ['ParamEyeLOpen', 'ParamEyeROpen'],
-      headDrawableIds: ['HitAreaHead'],
-    });
-  });
-
-  it('rejects a file without a moc', () => {
-    expect(() => parseModel3({ FileReferences: {} })).toThrow(/Moc/);
-  });
-});
-
 describe('Blinker', () => {
   it('closes fully once mid-blink and reopens', () => {
     const b = new Blinker(() => 0);
@@ -78,11 +35,5 @@ describe('Blinker', () => {
     }
     expect(peak).toBeGreaterThan(0.99);
     expect(last).toBe(0);
-  });
-});
-
-describe('renderOrderFromDrawOrders', () => {
-  it('ranks drawables by draw order, ties by index', () => {
-    expect([...renderOrderFromDrawOrders([500, 200, 500, 100])]).toEqual([2, 1, 3, 0]);
   });
 });

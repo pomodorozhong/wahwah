@@ -10,8 +10,7 @@ export class FaceRenderer {
   private height = 1;
 
   constructor(private readonly container: HTMLElement) {
-    // Stencil is needed by Live2D clipping masks.
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, stencil: true });
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.appendChild(this.renderer.domElement);
     this.resize();
@@ -22,9 +21,13 @@ export class FaceRenderer {
     return this.renderer.domElement;
   }
 
-  setHost(host: FaceHost, interactive: boolean): void {
+  setHost(host: FaceHost | null, interactive: boolean): void {
     if (this.host?.navigation?.domElement) this.host.navigation.disconnect();
     this.host = host;
+    if (!host) {
+      this.renderer.clear();
+      return;
+    }
     host.resize(this.width, this.height);
     if (interactive) host.navigation?.connect(this.canvas);
   }
