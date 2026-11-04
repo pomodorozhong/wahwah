@@ -22,6 +22,14 @@ const FFT = 1024; // short analysis window (~21 ms at 48 kHz)
 const BUFFER = 4096; // time-domain history; uLipSync-style mode uses the last 64 ms
 const HISTORY_SECONDS = 6;
 
+const SHAPE_MODE_HELP: Record<ShapeMode, string> = {
+  profile: 'Matches the sounds learned during your calibration and blends their mouth shapes. No F1/F2 position is measured, so the Vowel map has no moving circle.',
+  ulipsync: 'Matches your calibrated sounds and smooths their mouth shapes with a spring. Use uLipSync smoothness to adjust the response. No F1/F2 position is measured, so the Vowel map has no moving circle.',
+  formants: 'Estimates vowel resonances (F1/F2), hissing sounds and closed lips without calibration. Detected vowels also appear as a moving circle on the Vowel map.',
+  centroid: 'Uses the sound’s brightness to approximate wide or rounded lips, without calibration. No F1/F2 position is measured, so the Vowel map has no moving circle.',
+  off: 'Uses loudness to open and close the jaw, leaving lip width and rounding neutral. No F1/F2 position is measured, so the Vowel map has no moving circle.',
+};
+
 const slider = (id: string, label: string, min: number, max: number, step: number, value: number) =>
   `<label class="field slider">${label} <output id="${id}Out"></output><input id="${id}" type="range" min="${min}" max="${max}" step="${step}" value="${value}" /></label>`;
 
@@ -74,14 +82,16 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
         ${slider('release', 'Close time', 20, 300, 10, DEFAULT_LIVE.releaseSeconds * 1000)}
         <div id="smoothField">${slider('smooth', 'uLipSync smoothness', 0, 0.2, 0.01, DEFAULT_LIVE.smoothSeconds)}</div>
         <label class="field">Mouth shape from
-          <select id="shapeMode">
+          <select id="shapeMode" aria-describedby="shapeModeHint shapeModeCalibrationHint">
             <option value="profile" disabled>Your voice profile (calibrate first)</option>
             <option value="ulipsync" disabled>uLipSync-style (calibrate first)</option>
             <option value="formants">Formants: vowels, s/sh/f, closed lips</option>
             <option value="centroid">Brightness only (earlier method)</option>
             <option value="off">Loudness only (jaw)</option>
           </select>
-        </label>`,
+        </label>
+        <p class="hint" id="shapeModeHint"></p>
+        <p class="hint" id="shapeModeCalibrationHint">Calibration selects Your voice profile, or keeps uLipSync-style if already selected. Choose Formants to see vowel positions on the map.</p>`,
       ),
     analysisHtml: section(
         'Delay test',
@@ -102,8 +112,9 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
       ) +
       section(
         'Vowel map',
-        `<canvas id="vowelMap" class="vowel-map"></canvas>
-        <p class="hint">Your F1 (openness, down) and F2 (front, left) against the reference vowels, scaled to your voice. The dot is now; the trail is the last second.</p>`,
+        `<canvas id="vowelMap" class="vowel-map" aria-describedby="vowelMapHint"></canvas>
+        <p class="hint" id="vowelMapHint">F1 (openness, down) and F2 (front, left) place your voice against the reference vowels. The circle shows the latest detected vowel; the fading trail covers the last second.</p>
+        <p class="hint">To see the circle, start the input, enable Puppet output, and select Formants under Voice → Mouth shape from. Other modes do not measure F1/F2 and show no circle. Silence and unvoiced sounds may also leave the map empty.</p>`,
       ) +
       disclosure(
         'Latency',
@@ -172,6 +183,7 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
     byId('releaseOut').textContent = `${num('release')} ms`;
     byId('smoothOut').textContent = num('smooth') === 0 ? 'off' : `${(num('smooth') * 1000).toFixed(0)} ms`;
     byId('smoothField').hidden = byId<HTMLSelectElement>('shapeMode').value !== 'ulipsync';
+    byId('shapeModeHint').textContent = SHAPE_MODE_HELP[estimator.settings.shapeMode];
     syncWorklet();
     if (clip) analyseClip(); // the delay test follows the current settings
   }
