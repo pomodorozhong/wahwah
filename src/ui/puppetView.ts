@@ -61,7 +61,7 @@ export function renderShell(root: HTMLElement): void {
     { label: 'Puppet', body: section('Appearance and motion', `<div class="view-opts">
             <label>View <select id="view"><option value="tofu">Tofu cube</option><option value="vrm">VRM model</option><option value="debug">Debug (instructions)</option></select></label>
             <label id="modelLabel" hidden>Model <select id="model" aria-describedby="vrmModelHint"></select></label>
-            <p id="vrmModelHint" class="hint" hidden>Only the bundled Tofu VRM has been tested. Other VRM models may behave differently.</p>
+            <p id="vrmModelHint" class="hint" hidden>This VRM option has only been tested with pixiv’s VRM1_Constraint_Twist_Sample. Other VRM models may behave differently.</p>
             <input id="vrmFile" type="file" accept=".vrm" hidden />
             <label><input id="puppet" type="checkbox" checked /> Puppet output</label>
             <label><input id="idle" type="checkbox" checked /> Idle motion</label>
