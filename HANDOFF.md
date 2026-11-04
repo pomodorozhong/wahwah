@@ -19,7 +19,7 @@
 ### codex/rust-live-wasm
 
 - Task: step 4 of six for [issue #10](https://github.com/pomodorozhong/wahwah/issues/10): Rust/WASM dependency cleanup. Implementation plan approved in chat. Keep this branch unlinked because it does not finish the port.
-- PR: publication authorized in chat on 2026-11-04, including the reviewed help-text follow-up; ready-for-review against main. Keep the branch unlinked to #10.
+- PR: [#17](https://github.com/pomodorozhong/wahwah/pull/17), open and ready for review against main. Published with the reviewed help-text follow-up. The branch stays unlinked to #10; the PR closes no issues.
 - Code checkpoint: 73774a4 (help text) on acda10b (dependency cleanup), based on main at 5a4a597 (merged PR #16). Source changes are committed.
 - State: live Mumble test speech, Demo voice and calibration responses render through WASM with generated mouth tracks disabled. Live analysis remains TypeScript and imports the copied ten vowel references and shared mouth poses synchronously without WASM. The klattsch and babble-engine packages, optional CMU dictionary, legacy JS synthesizers/adapters, TS track generator and stage fallback are removed. Pink Trombone remains for independent live test signals. Voice and live-analysis tests use actual Rust/WASM audio and tracks; obsolete adapter tests are removed. Upstream notices remain.
 - Verification: all six AGENTS.md checks passed, including 36 Rust tests and 221 TypeScript tests across 16 files. The implementation commit also passed all six checks independently in a fresh detached checkout after npm ci. In-app browser checks passed for live Demo voice, complete guided calibration (all nine sounds distinct, 99% recognized), test sentence, Pink Trombone sweep, stop/restart, both analysis threads and puppet-off behavior. Production preview verified Demo voice, mode switching, all six text voices and Phoneme script. No browser errors. Physical microphone input and user sound judgment remain reviewer follow-up.
@@ -27,9 +27,9 @@
 - Toolchain: pinned Rust 1.99.1 and wasm-bindgen-cli 0.2.130; direct cargo commands need /opt/homebrew/opt/rustup/bin and ~/.cargo/bin on PATH. No shell profile changes.
 - Local review servers: development http://127.0.0.1:5197/ and production preview http://127.0.0.1:5198/. Test audio is stopped. These processes do not transfer to another computer.
 - Remaining port work: remove Live2D and Preview face (step 5); add MIT, Pages workflow and /wahwah/ base path, enable Pages and close #10 (step 6). The vowel-sweep visualization (#13), real microphone evaluation (#8), live model (#9) and tofu M/B/P closure bug (#12) remain separately tracked.
-- Next action: push the approved branch without force, open the ready-for-review PR against main, and verify its tip, title, body and empty closing-issue list.
+- Next action: await review and merge of PR #17. After it merges, plan step 5 (remove Live2D and Preview face) on current main. Merging is not authorized.
 - P-10 resolved: the user explicitly requested “push and open” after reviewing the implementation and requested help-text follow-up. Publication is authorized; merging is not.
-- Proposed title: refactor(voice): finish Rust/WASM dependency cleanup
+- Published title: refactor(voice): finish Rust/WASM dependency cleanup
 
 ```markdown
 ## What changed
@@ -76,7 +76,7 @@ Related to #10: step 4 of six. This PR closes no issues, and its branch is unlin
 
 ## Ranked work
 
-1. [#10 Port the selected voice core to Rust/WASM and deploy the VRM playground](https://github.com/pomodorozhong/wahwah/issues/10), in the six PRs listed on the issue; PR 1 merged as [#14](https://github.com/pomodorozhong/wahwah/pull/14) and PR 2 as [#15](https://github.com/pomodorozhong/wahwah/pull/15); step 3 merged as [#16](https://github.com/pomodorozhong/wahwah/pull/16). Step 4, dependency cleanup, is built on codex/rust-live-wasm; publication was approved and the PR is being opened. Do this before the following capabilities.
+1. [#10 Port the selected voice core to Rust/WASM and deploy the VRM playground](https://github.com/pomodorozhong/wahwah/issues/10), in the six PRs listed on the issue; PR 1 merged as [#14](https://github.com/pomodorozhong/wahwah/pull/14) and PR 2 as [#15](https://github.com/pomodorozhong/wahwah/pull/15); step 3 merged as [#16](https://github.com/pomodorozhong/wahwah/pull/16). Step 4, dependency cleanup, is open for review as [#17](https://github.com/pomodorozhong/wahwah/pull/17) on codex/rust-live-wasm. Do this before the following capabilities.
 2. Add multilingual invented-speech input, including Chinese and mixed-language text, with a general Unicode fallback and language-specific rhythm improvements.
 3. Add deterministic viewer-to-character voice profiles for Twitch, with stable account identity, a versioned mapping and saved overrides.
 4. Add configurable fixed-duration output with synchronized audio and mouth timing; decide exact duration versus a maximum when designing this feature.
