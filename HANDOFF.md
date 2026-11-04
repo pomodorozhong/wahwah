@@ -19,15 +19,16 @@
 ### codex/rust-live-wasm
 
 - Task: step 4 of six for [issue #10](https://github.com/pomodorozhong/wahwah/issues/10): Rust/WASM dependency cleanup. Implementation plan approved in chat. Keep this branch unlinked because it does not finish the port.
-- PR: not opened; ready for review, pending publish approval P-10. Nothing has been pushed from this branch.
-- Code checkpoint: acda10b, based on main at 5a4a597 (merged PR #16).
+- PR: publication authorized in chat on 2026-11-04, including the reviewed help-text follow-up; ready-for-review against main. Keep the branch unlinked to #10.
+- Code checkpoint: 73774a4 (help text) on acda10b (dependency cleanup), based on main at 5a4a597 (merged PR #16). Source changes are committed.
 - State: live Mumble test speech, Demo voice and calibration responses render through WASM with generated mouth tracks disabled. Live analysis remains TypeScript and imports the copied ten vowel references and shared mouth poses synchronously without WASM. The klattsch and babble-engine packages, optional CMU dictionary, legacy JS synthesizers/adapters, TS track generator and stage fallback are removed. Pink Trombone remains for independent live test signals. Voice and live-analysis tests use actual Rust/WASM audio and tracks; obsolete adapter tests are removed. Upstream notices remain.
 - Verification: all six AGENTS.md checks passed, including 36 Rust tests and 221 TypeScript tests across 16 files. The implementation commit also passed all six checks independently in a fresh detached checkout after npm ci. In-app browser checks passed for live Demo voice, complete guided calibration (all nine sounds distinct, 99% recognized), test sentence, Pink Trombone sweep, stop/restart, both analysis threads and puppet-off behavior. Production preview verified Demo voice, mode switching, all six text voices and Phoneme script. No browser errors. Physical microphone input and user sound judgment remain reviewer follow-up.
+- Help-text follow-up verification: npm typecheck, all 221 TypeScript tests and production build passed. Browser verification covered all five mode explanations and the Vowel map guidance. The local Vite server was restarted to clear its stale module cache.
 - Toolchain: pinned Rust 1.99.1 and wasm-bindgen-cli 0.2.130; direct cargo commands need /opt/homebrew/opt/rustup/bin and ~/.cargo/bin on PATH. No shell profile changes.
 - Local review servers: development http://127.0.0.1:5197/ and production preview http://127.0.0.1:5198/. Test audio is stopped. These processes do not transfer to another computer.
 - Remaining port work: remove Live2D and Preview face (step 5); add MIT, Pages workflow and /wahwah/ base path, enable Pages and close #10 (step 6). The vowel-sweep visualization (#13), real microphone evaluation (#8), live model (#9) and tofu M/B/P closure bug (#12) remain separately tracked.
-- Next action: obtain P-10 approval, verify the reviewed tip/title/body and absence of an existing PR, then push without force and open the ready-for-review PR against main. No implementation scope deviations.
-- **P-10** Publish approval requested: push codex/rust-live-wasm and open a ready-for-review PR against main with the exact title and body below, including the implementation and separate handoff docs commits. Why: the open-pr skill requires separate approval of the finished branch before publication. Blocks: publishing only. Merging closes no issues.
+- Next action: push the approved branch without force, open the ready-for-review PR against main, and verify its tip, title, body and empty closing-issue list.
+- P-10 resolved: the user explicitly requested “push and open” after reviewing the implementation and requested help-text follow-up. Publication is authorized; merging is not.
 - Proposed title: refactor(voice): finish Rust/WASM dependency cleanup
 
 ```markdown
@@ -37,6 +38,7 @@
 - Copy the ten live F1/F2 reference pairs from klattsch, including UW's rounded endpoint, so live analysis and the audio worklet still load synchronously without WASM.
 - Remove the klattsch and babble-engine npm dependencies, the optional CMU dictionary, obsolete JavaScript synthesis/adapters, and the stage's legacy rendering fallback. Retain upstream notices and the Pink Trombone test source.
 - Migrate voice, mouth-track, calibration and live-analysis fixtures to Rust audio and tracks. Add tests for synthetic live inputs and a complete guided Demo voice calibration.
+- Explain each Mouth shape from option and when the Vowel map can display its circle and trail.
 
 ## Why
 
@@ -61,8 +63,9 @@ The implementation commit also passed all six checks in a fresh detached checkou
 2. Press Calibrate my voice, then Begin. The demo should answer all prompts and finish with nine distinct sounds. Stop and restart the input.
 3. Try the Mumble test sentence and Pink Trombone vowel sweep. In Analysis, expand Latency and switch between audio-thread and page analysis. Disable Puppet output and check that audio continues while the estimator reports off.
 4. Switch to Text to mumble and play each of the six voices, then try Phoneme script.
+5. In live mode, select each Mouth shape from option under Voice and check its help text. In Analysis, check the Vowel map explanation of the circle, trail and required mode.
 
-Verified in the in-app browser: all steps above; guided demo calibration reported 99% recognition. Production preview also verified Demo voice, mode switching, all six text voices and Phoneme script. No browser errors were reported.
+Verified in the in-app browser: all steps above; guided demo calibration reported 99% recognition. Production preview also verified Demo voice, mode switching, all six text voices and Phoneme script. All five mouth-mode explanations and the Vowel map guidance were also verified in the browser. No browser errors were reported.
 
 Reviewer follow-up: judge the Rust live demo by ear and exercise a physical microphone; physical microphone input was not tested.
 
@@ -73,7 +76,7 @@ Related to #10: step 4 of six. This PR closes no issues, and its branch is unlin
 
 ## Ranked work
 
-1. [#10 Port the selected voice core to Rust/WASM and deploy the VRM playground](https://github.com/pomodorozhong/wahwah/issues/10), in the six PRs listed on the issue; PR 1 merged as [#14](https://github.com/pomodorozhong/wahwah/pull/14) and PR 2 as [#15](https://github.com/pomodorozhong/wahwah/pull/15); step 3 merged as [#16](https://github.com/pomodorozhong/wahwah/pull/16). Step 4, dependency cleanup, is built on codex/rust-live-wasm and awaits publish approval P-10. Do this before the following capabilities.
+1. [#10 Port the selected voice core to Rust/WASM and deploy the VRM playground](https://github.com/pomodorozhong/wahwah/issues/10), in the six PRs listed on the issue; PR 1 merged as [#14](https://github.com/pomodorozhong/wahwah/pull/14) and PR 2 as [#15](https://github.com/pomodorozhong/wahwah/pull/15); step 3 merged as [#16](https://github.com/pomodorozhong/wahwah/pull/16). Step 4, dependency cleanup, is built on codex/rust-live-wasm; publication was approved and the PR is being opened. Do this before the following capabilities.
 2. Add multilingual invented-speech input, including Chinese and mixed-language text, with a general Unicode fallback and language-specific rhythm improvements.
 3. Add deterministic viewer-to-character voice profiles for Twitch, with stable account identity, a versioned mapping and saved overrides.
 4. Add configurable fixed-duration output with synchronized audio and mouth timing; decide exact duration versus a maximum when designing this feature.
