@@ -5,6 +5,7 @@
 mod bank;
 mod brass;
 mod formant;
+pub mod instruments;
 pub mod mouth;
 pub mod mumble;
 mod performance;

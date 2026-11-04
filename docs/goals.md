@@ -59,8 +59,8 @@ The project is MIT-licensed and published on GitHub Pages under `/wahwah/`.
 The work lands as six PRs, in the order listed on the issue: Rust voices in the
 playground, Rust performance, instruments, dependency cleanup, playground
 cleanup, and publishing. Rust now owns Mumble generation and synchronized
-audio and mouth performances. The instrument rewrite, dependency cleanup,
-Live2D removal, and Pages are the remaining steps.
+audio and mouth performances, including the four Talking Instruments voices.
+Dependency cleanup, Live2D removal, and Pages are the remaining steps.
 
 After that, add multilingual invented speech including Chinese and mixed-language
 text, deterministic viewer-to-character profiles for Twitch, and configurable

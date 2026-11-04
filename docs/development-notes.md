@@ -103,8 +103,8 @@ in Node. To inspect the production build in a browser, run
 - Text to mumble and Phoneme script use Rust for Mumble generation, the formant
   voice, wah-wah trombone and mouth tracks. The live demo uses Rust to generate
   its Mumble script, with legacy JavaScript synthesis until the dependency
-  cleanup in issue #10. Babble Engine still uses its own generator and audio,
-  with a TypeScript mouth track.
+  cleanup in issue #10. All six text-mode voices now render in Rust. The
+  babble-engine package and adapter remain for legacy tests until that cleanup.
 - `data/mouth-poses.json` supplies Rust's mouth generator and trombone plunger
   and TypeScript's live analysis. `data/mumble-presets.json` supplies Rust's
   sound inventories and moods and TypeScript's UI options. Rust embeds these
@@ -122,6 +122,13 @@ in Node. To inspect the production build in a browser, run
   Mumble generation. Legacy JavaScript synthesis and track tests remain until
   their scheduled cleanup; the complete-performance tests exercise Rust audio
   and Rust tracks together.
+- Talking Instruments live in `crates/wahwah-core/src/instruments/`: `score.rs`
+  produces explicit notes and `synth.rs` renders them. The score drives the
+  note mouth track directly, so multi-note words articulate at each onset.
+  Their original-text source ranges are converted to UTF-16 in WASM just like
+  Mumble word ranges. `data/instrument-presets.json` supplies the four default
+  control sets to Rust and TypeScript. Choir pitches are quantized relative
+  to the selected base pitch; the other three instruments retain pitch glides.
 
 ## Unified playground lifecycle and design
 
