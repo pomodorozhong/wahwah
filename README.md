@@ -42,7 +42,7 @@ Use **Input mode** to try the same puppet with another source.
 
 ## Explore further
 
-- [Playground guide](docs/playground.md) — shape a voice, calibrate your microphone, compare playback delays, or load a VRM or Live2D character.
+- [Playground guide](docs/playground.md) — shape a voice, calibrate your microphone, compare playback delays, or load a VRM character.
 - [Architecture](docs/architecture.md) — follow a syllable from the audio timeline to the three controls that move the mouth.
 - [Project goals and decisions](docs/goals.md) — visual influences and plans for a reusable puppet SDK.
 - [Development notes](docs/development-notes.md) — run the checks and measure voice-to-mouth timing.

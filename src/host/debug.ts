@@ -45,7 +45,7 @@ export class DebugPuppet {
     const jaw = motion.jawOpen.value;
     const wide = motion.lipWidth.value;
     const round = motion.lipRound.value;
-    // Mouth schematic, in the same spirit as the preview face's mapping.
+    // Mouth schematic: width spreads the lips and rounding narrows them.
     const halfW = (60 + 60 * wide - 50 * round) * scale;
     const top = (6 + 10 * jaw) * scale;
     const bottom = (6 + 120 * jaw) * scale;

@@ -76,12 +76,11 @@ session while preserving the selected face and camera. [Studio](../src/apps/stud
 | View | How it uses the controls |
 | --- | --- |
 | Tofu cube (default) | Uses a bundled VRM with vowel shapes, a hinged lower lip, and separate body, gaze, and brow expressions. |
-| Preview face | Deforms a procedural mouth in Three.js. |
 | VRM | Blends the five vowel expressions `aa`, `ih`, `ou`, `ee`, and `oh`. Lip shape selects a vowel family and jaw opening selects its more open member. |
-| Live2D | Sends jaw opening to the model’s LipSync group and width minus rounding to `ParamMouthForm`. The resulting expression depends on the artwork. |
 | Debug | Draws the control values, velocity, and acceleration on a 2D canvas. |
 
 Hosts own cosmetic motion such as blinking and sway. All character views
-share a Three.js renderer. The Live2D host draws Cubism Core meshes
-with clipping masks and supports neither Cubism physics nor motion files.
-[Host mappings](../src/host/mappings.ts) · [Live2D renderer](../src/host/live2d.ts)
+share a Three.js renderer; Debug uses its own 2D canvas. While a character
+loads, the stage waits without a fallback face. Switching to Debug disconnects
+the 3D host and camera controls, so a pending model cannot replace that view.
+[Host mappings](../src/host/mappings.ts) · [VRM renderer](../src/host/vrm.ts)
