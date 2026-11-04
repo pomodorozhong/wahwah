@@ -18,23 +18,70 @@
 
 ### codex/rust-pages
 
-- Task: resume step 6 of six for [issue #10](https://github.com/pomodorozhong/wahwah/issues/10). This branch is a wrap-up documentation checkpoint only; step 6 source work has not started. It stays unlinked because this checkpoint does not finish the port.
-- PR: none for this branch. [PR #18](https://github.com/pomodorozhong/wahwah/pull/18) merged on 2026-11-04 as 23a91e5. Steps 1–5 are complete; issue #10 remains open. Its publication requests P-11 and P-12 are resolved.
-- Code checkpoint: main at 23a91e5. Its complete tree was verified identical to the tested and published step 5 tip 0251202. No unfinished application-source changes remain.
-- State: all six selected text voices and live synthetic speech run through Rust/WASM. Live analysis stays in TypeScript. Puppet views are Tofu, VRM and Debug. Preview face and Live2D are removed, including Cubism declarations/runtime discovery, mappings and folder loading. Stage initialization and switching use no procedural fallback; Debug detaches the 3D host and camera controls. Renderer-independent controls, VRM selection, camera navigation and idle settings remain.
-- Model clarification: the external sample meant by the user is pixiv’s VRM1_Constraint_Twist_Sample, not the bundled Tofu VRM. The picker note names that sample. Its existing local file was restored under ignored public/models/vrm and is selected in the development playground. Do not commit or publish it or the preserved experiment assets.
-- Verification: the final source passed all six AGENTS.md checks (36 Rust tests; 220 TypeScript tests across 17 files). The implementation and initial picker-note follow-up also passed independently in fresh checkouts. Browser checks passed for Tofu/Debug playback, Phoneme script, actual pixiv sample loading and playback, retained VRM/view settings, orbit/zoom/reset, idle settings, live Demo voice and puppet-off diagnostics. Production preview verified Tofu/Debug playback, input switching and Demo voice. No browser errors. Native file selection, physical microphone and touchscreen gestures remain reviewer follow-up; the automated file chooser timed out, while the opened-file callback has a regression test.
-- Learned: Vite copies ignored public/models files into dist/models. Pages must build from a clean checkout without local models or explicitly exclude them. Newly created model directories can require a Vite restart before the manifest refreshes. These details and the tested sample are recorded in the guides.
-- Wrap-up verification: only HANDOFF.md, docs/playground.md and docs/development-notes.md changed after the merge. Checked with git diff --check; application tests were not rerun for these documentation-only edits. AGENTS.md already matches the handoff template.
-- Local servers: development http://127.0.0.1:5201/ and production preview http://127.0.0.1:5202/ both returned HTTP 200 at wrap-up and remain running as requested. Test audio is stopped. Servers and ignored models do not transfer to another computer.
-- Toolchain: pinned Rust 1.99.1 and wasm-bindgen-cli 0.2.130; direct cargo commands need /opt/homebrew/opt/rustup/bin and ~/.cargo/bin on PATH. No shell profile changes.
-- Issue handoff: [Codex-authored progress note](https://github.com/pomodorozhong/wahwah/issues/10#issuecomment-6632646435) was posted and its exact body verified.
-- Next action: prepare the step 6 plan with the open-pr skill and obtain plan approval before source work. Add the MIT license, preserve upstream notices, add the Pages workflow and /wahwah/ base path, exclude local models from deployment, then verify deployed assets and playback, enable Pages and close #10. The final implementation branch may link to #10 only when its PR will fully resolve it.
-- **P-13** Push this documentation-only checkpoint on codex/rust-pages, based on main at 23a91e5 and changing HANDOFF.md, docs/playground.md and docs/development-notes.md, without opening a PR. Why: prior publication approval covered the merged step 5 branch, not this fresh branch required by the commit skill. Blocks: retrieving the latest wrap-up documentation from another computer. All application code and the issue progress note are already remote.
+- Task: step 6 of six for [issue #10](https://github.com/pomodorozhong/wahwah/issues/10). The user approved the implementation plan and carrying the P-13 documentation checkpoint into this PR. Source work is complete; publication approval is pending.
+- PR: none. Ready to open against main at 23a91e5. The branch is unlinked; the proposed body closes #10 on merge. Steps 1–5 are merged, including PR #18. No merge is authorized.
+- Code checkpoint: aa6beeb adds MIT licensing, license metadata, the /wahwah/ base, Pages build isolation, deployment workflow and build integration test. It follows the approved documentation checkpoint 8ec172b, based on main at 23a91e5.
+- State: all six selected voices and live synthetic speech use Rust/WASM; live analysis stays in TypeScript. Views remain Tofu, VRM and Debug. The Pages build disables public-directory copying and the local-model manifest, then emits only bundled Tofu and license files alongside generated assets. Ordinary private builds retain startup models. The workflow checks PRs and main, uploads/deploys only main, and uses the github-pages environment. GitHub Pages is still disabled and no environment exists yet; Actions are enabled.
+- Verification: all six AGENTS.md checks passed (36 Rust tests; 220 TypeScript tests across 17 files), plus npm run test:pages, npm run build:pages and actionlint 1.7.12. The implementation commit passed all of these independently in a fresh detached checkout after npm ci. The Pages test builds with disposable local-model and public-file fixtures: ordinary inclusion, Pages exclusion from output and picker, stale-output removal, exact Tofu/notices, prefixed HTML asset URLs, WASM and both worklets. Existing Pink Trombone sourcemap warnings appear in Vitest; tests pass.
+- Browser verification: production preview passed all six voices, Tofu playback, Phoneme script, live Demo voice, recording and recorded playback, the empty startup-model picker and all four legacy URLs under /wahwah/. All production files returned HTTP 200, including application/wasm for the WASM binary. No browser warnings or errors. Development startup and playback also passed with the new prefix. Test audio is stopped.
+- Not yet verified: the GitHub-hosted workflow and deployed assets/playback require publication and merge. Native VRM file selection, physical microphone and touchscreen gestures remain reviewer follow-up. The existing opened-file callback regression test passes.
+- Toolchain: Rust 1.99.1 and wasm-bindgen-cli 0.2.130, with Node 26.13.0 locally and Node 24 in CI. Direct cargo commands need the Homebrew rustup and cargo bin directories on PATH. The existing WASM helper reads relative target/: a scratch verification attempt with CARGO_TARGET_DIR failed; the default-layout clean-checkout rerun passed. No shell profile changes.
+- Local review servers: development http://127.0.0.1:5204/wahwah/ and production preview http://127.0.0.1:5203/wahwah/. Servers and ignored local files do not transfer to another computer. The earlier servers were left untouched.
+- Model handling: pixiv’s VRM1_Constraint_Twist_Sample and preserved experiment models remain local-only. The Pages build excludes public/models even when local files are present. See the guides for the sample clarification and build commands.
+- Next action: obtain P-14 publication approval for the reviewed final tip and exact title/body below, then verify the tip, push without force, open the ready PR and enable GitHub Pages with build_type=workflow. Verify the PR metadata, closing issues and checks. After the user authorizes merge and main deploys, verify the hosted assets and playback at https://pomodorozhong.github.io/wahwah/.
+- P-13 resolved: the user approved carrying the documentation checkpoint into the step 6 PR instead of publishing it separately.
+- **P-14** Push this reviewed branch, open the ready PR with the exact title/body below and enable GitHub Pages using GitHub Actions. Why: the open-pr skill requires approval of the finished branch before publication; plan approval does not authorize a push. Blocks: publication and Pages setup. Intended closing issue: #10 only, via the body; the branch has no linked issue. Merging is not included.
+- Proposed title: ci(pages): publish the voice playground on GitHub Pages
+
+```markdown
+## What changed
+
+- Add the MIT license and npm/Cargo license metadata. Preserve the klattsch and Babble Engine notices, add the browser-library notices, and include the license files in production output.
+- Serve the playground under `/wahwah/`, including WASM, Tofu, audio worklets and legacy playground URLs.
+- Add `npm run build:pages`. Its Pages mode disables automatic public-directory copying and the local-model manifest, then includes only the bundled Tofu and license files. Ordinary builds retain local startup models; Pages visitors can open a VRM file in their browser.
+- Add a GitHub Actions workflow that runs the six repository checks plus the Pages test and build on pull requests and pushes to main. Only main uploads and deploys through the `github-pages` environment. Pin the actions to commit hashes and use Node 24, the repository's Rust toolchain and wasm-bindgen-cli 0.2.130.
+- Carry forward the tested-VRM documentation checkpoint and document local preview and deployment.
+
+## Why
+
+This is step 6 of the Rust/WASM port. It prepares the licensed playground for GitHub Pages while keeping user-supplied model files out of the published artifact and model picker.
+
+## Verification
+
+### Automated checks
+
+- `cargo fmt --check`: passed.
+- `cargo clippy --all-targets -- -D warnings`: passed.
+- `cargo test`: passed, 36 tests.
+- `npm run typecheck`: passed.
+- `npm test`: passed, 220 tests across 17 files.
+- `npm run build`: passed.
+- `npm run test:pages`: passed. A real build with disposable local files verifies ordinary-build inclusion, Pages exclusion from files and the picker, removal of stale private output, exact Tofu/notices, prefixed HTML asset URLs, WASM and both worklets.
+- `npm run build:pages`: passed.
+- `actionlint .github/workflows/pages.yml`: passed with actionlint 1.7.12.
+
+The implementation commit also passed these checks independently in a fresh detached checkout after `npm ci`, using the default Rust target layout.
+
+### How to verify
+
+1. Run `npm ci`, `npm run test:pages`, `npm run build:pages` and `npm run preview`. Open the printed URL ending in `/wahwah/`.
+2. Play all six sound engines with Tofu. Switch to Phoneme script and play a line. Under Puppet, select VRM model: the Pages build should offer Open .vrm file without startup models.
+3. Switch to Live microphone, choose Demo voice and start. Under Analysis, record a short clip and play it back. Stop test audio.
+4. Open `/wahwah/mumble/`, `/wahwah/klattsch/`, `/wahwah/babble/` and `/wahwah/live/`. Each should retain the base prefix and select the corresponding input; Babble selects Mumble.
+5. After merge and deployment, repeat the hosted playback checks and verify the WASM, Tofu and worklet requests at `https://pomodorozhong.github.io/wahwah/`.
+
+Verified in the in-app browser against the production preview: all six voices, Tofu, Phoneme script, live Demo voice, recording and recorded playback, the empty startup-model picker and all four legacy URLs. All production assets returned HTTP 200, including the WASM response with application/wasm. No browser warnings or errors. Development startup and playback also passed under `/wahwah/`.
+
+Reviewer follow-up: native VRM file selection, physical microphone and touchscreen gestures. The GitHub Actions run and hosted deployment/playback remain pending publication and merge.
+
+## Related issues
+
+Closes #10
+```
 
 ## Ranked work
 
-1. [#10 Port the selected voice core to Rust/WASM and deploy the VRM playground](https://github.com/pomodorozhong/wahwah/issues/10), in the six PRs listed on the issue. Steps 1–5 merged as [#14](https://github.com/pomodorozhong/wahwah/pull/14), [#15](https://github.com/pomodorozhong/wahwah/pull/15), [#16](https://github.com/pomodorozhong/wahwah/pull/16), [#17](https://github.com/pomodorozhong/wahwah/pull/17) and [#18](https://github.com/pomodorozhong/wahwah/pull/18). Step 6, licensing and Pages publication, is next; source work has not started. Do this before the following capabilities.
+1. [#10 Port the selected voice core to Rust/WASM and deploy the VRM playground](https://github.com/pomodorozhong/wahwah/issues/10), in the six PRs listed on the issue. Steps 1–5 merged as [#14](https://github.com/pomodorozhong/wahwah/pull/14), [#15](https://github.com/pomodorozhong/wahwah/pull/15), [#16](https://github.com/pomodorozhong/wahwah/pull/16), [#17](https://github.com/pomodorozhong/wahwah/pull/17) and [#18](https://github.com/pomodorozhong/wahwah/pull/18). Step 6, licensing and Pages publication, is implemented on codex/rust-pages and awaits publication approval (P-14), merge and deployed verification. Do this before the following capabilities.
 2. Add multilingual invented-speech input, including Chinese and mixed-language text, with a general Unicode fallback and language-specific rhythm improvements.
 3. Add deterministic viewer-to-character voice profiles for Twitch, with stable account identity, a versioned mapping and saved overrides.
 4. Add configurable fixed-duration output with synchronized audio and mouth timing; decide exact duration versus a maximum when designing this feature.
