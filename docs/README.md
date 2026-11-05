@@ -7,5 +7,6 @@ Start with the [project README](../README.md) to run the playground locally.
 | Change the voice or load a character | [Playground guide](playground.md) |
 | Tune microphone response and lip sync | [Calibration](playground.md#calibrate-a-microphone) and [delay testing](playground.md#compare-timing-on-one-recording) |
 | Understand how audio drives a rig | [Architecture](architecture.md) |
-| Understand the visual direction and SDK plans | [Project goals and decisions](goals.md) |
+| Understand voice goals and decisions | [Project goals and decisions](goals.md) |
+| See how the avatar app was split out | [Avatar split plan](avatar-split.md) |
 | Work on the code or evaluate a change | [Development notes](development-notes.md) |
