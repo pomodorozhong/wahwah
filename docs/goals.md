@@ -8,7 +8,7 @@ How much character can a puppet get from a few well-timed mouth shapes? The play
 
 A consumer receives the generated audio and timeline plus timed `FaceControlTrack` samples. It can pass a stable hash to get repeatable voice settings, through a versioned mapping so that later changes to the voices do not alter existing characters. Twitch is only a documentation example: a consumer that hashes a viewer ID owns the account lookup, chat data, and character choice.
 
-Tofu is the reference example of how a VRM model links to those instructions: its model, generator, and control-to-rig mapping live here. It shows the format in use and is not a voice feature. Other models, model selection, visual styles, and mouth experiments live in `wahwah-avatar`.
+Tofu is the reference example of how a VRM model links to those instructions: its model, generator, and control-to-rig mapping live here. It shows the format in use and is not a voice feature. Its mouth-pose bug, [#12](https://github.com/pomodorozhong/wahwah/issues/12), stays here too. Other models, model selection, visual styles, and mouth experiments live in `wahwah-avatar`.
 
 Voice and live-input work lives here: real-microphone evaluation ([#8](https://github.com/pomodorozhong/wahwah/issues/8)), a trained viseme model ([#9](https://github.com/pomodorozhong/wahwah/issues/9)), live visualization ([#13](https://github.com/pomodorozhong/wahwah/issues/13)) and exact-duration fitting ([#20](https://github.com/pomodorozhong/wahwah/issues/20)).
 
@@ -19,7 +19,6 @@ Voice and live-input work lives here: real-microphone evaluation ([#8](https://g
 | Keep input, mouth controls, and character rigs separate. | One utterance or microphone recording can exercise every rig. A future SDK can expose the controls independently of the renderer. |
 | Keep voice output independent of avatar rigs. | One audio performance and timed controls can drive different hosts. `wahwah-avatar` owns 3D model rendering and rig mappings. |
 | Keep the voice playground browser-based. | TypeScript, Vite and Web Audio support voice synthesis, editing, microphone analysis and diagnostics. Tofu stays as the reference VRM example. |
-| Port the selected voice core before adding more behavior. | No users rely on the current output, so compatibility is not a release constraint. Establish one Rust implementation before adding multilingual input, viewer identities, and duration fitting. |
 | Start with a small mouth vocabulary. | Every host can support it. Optional blink, gaze, body motion, and style controls belong to the avatar host that implements them. |
 | Evaluate live tracking on a real voice. | A synthetic test can measure lag and jitter. A speaker can judge whether the result looks right for the character and whether delaying the audio feels acceptable. |
 
@@ -31,15 +30,16 @@ The [Rust/WASM port](https://github.com/pomodorozhong/wahwah/issues/10) is compl
 
 ## Roadmap
 
-1. **Multilingual invented speech.** Support Chinese and mixed-language text, a general Unicode fallback, and language-specific rhythm improvements.
-2. **Deterministic character voices from a hash.** Expose a general-purpose interface that accepts a caller-provided hash and derives repeatable voice settings through a versioned mapping, so a later change to the mapping cannot silently change existing characters. Use Twitch as a documentation example. An external integration can hash a stable Twitch viewer ID and pass the result to wahwah. The external integration owns account lookup, authentication, and Twitch data handling.
-3. **Maximum output duration.** Fit longer lines within a caller-supplied cap while keeping audio and mouth motion synchronized. Shorter lines keep their natural duration.
+1. **Standalone performance interface.** Make `RenderedUtterance` and `FaceControlTrack` importable without the playground, as a versioned package or a pinned git dependency, with a small example that plays a performance on Tofu. `wahwah-avatar` needs this before it can start.
+2. **Multilingual invented speech.** Support Chinese and mixed-language text, a general Unicode fallback, and language-specific rhythm improvements.
+3. **Deterministic character voices from a hash.** Expose a general-purpose interface that accepts a caller-provided hash and derives repeatable voice settings through a versioned mapping, so a later change to the mapping cannot silently change existing characters. Use Twitch as a documentation example. An external integration can hash a stable Twitch viewer ID and pass the result to wahwah. The external integration owns account lookup, authentication, and Twitch data handling.
+4. **Maximum output duration.** Fit longer lines within a caller-supplied cap while keeping audio and mouth motion synchronized. Shorter lines keep their natural duration.
 
 [Exact-duration fitting](https://github.com/pomodorozhong/wahwah/issues/20) is a P2 follow-up after maximum duration. It should fit either shorter or longer performances exactly to a requested time on the shared audio and mouth timeline.
 
 ## Longer-term work
 
-- **Reusable packages.** Choose npm library scope and native Python or Apple bindings once a consumer needs them. Portability is the motivation for Rust; a current performance bottleneck has not been established.
+- **Reusable packages.** Beyond the standalone interface, choose npm library scope and native Python or Apple bindings once a consumer needs them. Portability is the motivation for Rust; a current performance bottleneck has not been established.
 - **More inputs.** Webcam or ARKit tracking could generate the same model-independent controls. Prioritize an input when a consumer needs it.
 - **Additional 3D and 2.5D hosts.** Rig support, model-specific expression mappings and renderer choices belong in `wahwah-avatar`. A custom 2.5D host is an option if that app needs an entirely open-source runtime.
 - **Streaming integrations.** Twitch chat and OBS Browser Source are part of the `wahwah-avatar` use case. Consider NDI or Syphon when a consumer needs it.
