@@ -8,7 +8,7 @@ Do not create the repository or move code or issues until all three hold.
 
 1. **Consumable interface** (roadmap item 1, [#23](https://github.com/pomodorozhong/wahwah/issues/23)). Met. `RenderedUtterance` and `FaceControlTrack` are exported by `wahwah/performance` in the `wahwah` package, published as the `wahwah-0.1.0.tgz` asset of the `v0.1.0` GitHub release (see the [packaging plan](packaging.md)). The [interface guide](interface.md) uses the playground as the worked example that plays a rendered performance on Tofu. Publishing to npm follows after the split is finished (step 7).
 2. **Boundary documented.** The goals and architecture docs describe the split.
-3. **Destination ready.** The repository exists with a license, CI, and a skeleton that renders Tofu from a `FaceControlTrack` using the interface in condition 1.
+3. **Destination ready.** The repository exists with a license, CI, and a skeleton that renders Tofu from a `FaceControlTrack` using the interface in condition 1. Met. [`wahwah-avatar`](https://github.com/pomodorozhong/wahwah-avatar) has an MIT license, a Pages workflow and a playground that drives several models from one `wahwah` performance.
 
 ## Steps
 
@@ -16,7 +16,7 @@ Each step is its own PR. The diagram shows who does what and in what order.
 
 ![Swimlane of the split: wahwah, wahwah-avatar and GitHub issues](avatar-split.svg)
 
-1. Transfer [#6](https://github.com/pomodorozhong/wahwah/issues/6) (line boil) and [#11](https://github.com/pomodorozhong/wahwah/issues/11) (visual styles). [#12](https://github.com/pomodorozhong/wahwah/issues/12) (Tofu M/B/P closure, P2) stays in `wahwah` because Tofu does. A transfer gives each issue a new number in `wahwah-avatar`. The old URL redirects, but update links to the old numbers in `HANDOFF.md`, `docs/` and open PRs in the same step.
+1. Done: [#6](https://github.com/pomodorozhong/wahwah/issues/6) (line boil) is now [wahwah-avatar#3](https://github.com/pomodorozhong/wahwah-avatar/issues/3) and [#11](https://github.com/pomodorozhong/wahwah/issues/11) (visual styles) is [wahwah-avatar#4](https://github.com/pomodorozhong/wahwah-avatar/issues/4). [#12](https://github.com/pomodorozhong/wahwah/issues/12) (Tofu M/B/P closure, P2) stays in `wahwah` because Tofu does. A transfer gives each issue a new number; the old URL redirects, and the links in `HANDOFF.md` and `docs/` now use the new numbers.
 2. Move model picking, local model loading and the generic VRM support in `vrm.ts`.
 3. Extract the visual and mouth experiments, replacement mouths before optional mouth modes.
 4. Remove what moved from `wahwah`, including the VRM model picker, its view option and the generic VRM loading path, and update `apps/playground/vite.config.ts`, `apps/playground/scripts/check-pages.mjs` and the picker tests. The voice playground and its Pages workflow stay.
@@ -29,6 +29,8 @@ Each step is its own PR. The diagram shows who does what and in what order.
 Copy files into `wahwah-avatar`; do not carry git history. The history stays in `wahwah`, and step 4 deletes the originals there. Note the source commit in the first commit message of each copied file set so `git blame` can be followed back.
 
 ## What stays in wahwah
+
+Tofu is built here. `wahwah-avatar` carries a copy of its generator, motion and control mapping so its playground can render it, because the `wahwah` package does not export them.
 
 Tofu: `apps/playground/scripts/tofu/`, `apps/playground/public/tofu/corner-cut.vrm`, `apps/playground/src/host/mappings.ts`, and their tests and pose images (`docs/face.jpg`, `docs/poses.jpg`, `apps/playground/tests/mappings.test.ts`, `apps/playground/tests/tofu.test.js`). Three.js and `@pixiv/three-vrm` stay with them.
 
