@@ -3,7 +3,7 @@ name: Release package
 on:
   push:
     tags:
-      - 'performance-v*'
+      - 'v*'
 
 permissions:
   contents: write
@@ -19,23 +19,25 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      - name: Install pinned Rust toolchain and WASM target
+        run: rustup show
+      - name: Install WASM binding generator
+        run: cargo install wasm-bindgen-cli --version 0.2.130 --locked
       - name: Install JavaScript dependencies
         run: npm ci
       - name: Check the tag matches the package version
         run: |
-          package="${GITHUB_REF_NAME%%-v*}"
-          version="${GITHUB_REF_NAME#*-v}"
-          actual=$(node -p "require('./packages/${package}/package.json').version")
+          version="${GITHUB_REF_NAME#v}"
+          actual=$(node -p "require('./packages/wahwah/package.json').version")
           if [ "$version" != "$actual" ]; then
-            echo "Tag $GITHUB_REF_NAME does not match packages/${package}/package.json version $actual" >&2
+            echo "Tag $GITHUB_REF_NAME does not match packages/wahwah/package.json version $actual" >&2
             exit 1
           fi
-          echo "PACKAGE=$package" >> "$GITHUB_ENV"
       - name: Test the package
-        run: npm test --workspace "@wahwah/${PACKAGE}"
+        run: npm test --workspace wahwah
       - name: Build and pack
-        run: node scripts/pack-release.mjs "$PACKAGE"
+        run: node scripts/pack-release.mjs wahwah
       - name: Create the release with the tarball
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" release-assets/*.tgz --title "$GITHUB_REF_NAME" --notes "Install by URL. See packages/${PACKAGE}/CHANGELOG.md."
+        run: gh release create "$GITHUB_REF_NAME" release-assets/*.tgz --title "$GITHUB_REF_NAME" --notes "Install by URL. See packages/wahwah/CHANGELOG.md."
