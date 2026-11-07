@@ -18,7 +18,7 @@ Each step is its own PR.
 2. Move the host extras and model picking.
 3. Extract the visual and mouth experiments, replacement mouths before optional mouth modes.
 4. Remove what moved from `wahwah`, and update `vite.config.ts`, `scripts/check-pages.mjs` and the picker tests. The voice playground and its Pages workflow stay.
-5. Remove the VRM model view from the playground, and change the text that describes it: the VRM sentence in `README.md`, the VRM model and local `.vrm` instructions and the tofu-and-VRM camera sentence in `docs/playground.md`, and the VRM mentions in `docs/development-notes.md`. Until this step the guides describe the VRM view that still exists.
+5. Remove the generic VRM model picker and view from the playground, keeping the Tofu host and the Debug view, and change the text that describes it: the VRM sentence in `README.md`, the VRM model and local `.vrm` instructions and the tofu-and-VRM camera sentence in `docs/playground.md`, and the VRM mentions in `docs/development-notes.md`. Until this step the guides describe the VRM view that still exists.
 6. Build the Twitch/OBS app. It needs the hash voice interface from the roadmap.
 
 ## What stays in wahwah
@@ -30,3 +30,9 @@ Tofu: `scripts/tofu/`, `public/tofu/corner-cut.vrm`, `src/host/mappings.ts`, the
 - Host extras: `src/host/faceNavigation.ts`, `src/host/follower.ts`, `src/host/studyMotion.ts`, and any part of `src/host/host.ts`, `src/host/renderer.ts` and `src/host/vrm.ts` that only serves other models or styles. Decide the exact split when extracting.
 - Model picking and local model loading: the avatar parts of `src/ui/puppetView.ts`, the local-model manifest in `vite.config.ts`, `src/localModels.d.ts` and `tests/puppetView.test.ts`.
 - Experiments, from the preserved `codex/backup-puppet-experiments-2026-11-02` branch: `src/host/surfaceStyle.ts`, `src/host/inkDither.ts`, `src/host/comicPrint.ts`, `src/host/puppetMouth.ts`, `src/host/referenceMouth.ts`, `src/host/mouthModes.ts` and `scripts/remake-vrm-models.mjs`. Rework changes to `renderer.ts`, `vrm.ts`, `host.ts` and `puppetView.ts` against the current code. The snapshot also holds obsolete app code and private model archives, so do not merge it wholesale, and keep generated archives and sample model ZIPs local.
+- Visual direction notes, which were removed from `docs/goals.md`. Copy them into `wahwah-avatar`'s goals when it is created. The target is a stylized, front-facing character with readable mouth poses, small head turns and secondary motion, drawn in one of three ways:
+  - *Breath of the Wild*: painterly surfaces and toon shading.
+  - *Return of the Obra Dinn*: one-bit monochrome and dithering. [Dithering notes](https://dukope.com/devlogs/obra-dinn/tig-32/)
+  - *Into the Spider-Verse*: line work, halftones, and poses held over multiple frames. A held pose is worth trying on live speech because it may read more clearly than a mouth that changes shape on every frame. [Imageworks production notes](https://www.imageworks.com/node/1371)
+
+  A 2.5D puppet made from warped layers and a full 3D mesh could share the same look. Deform the rig first, then apply the visual style to its colors and masks. Whether the app ships one house style or several switchable styles remains open.
