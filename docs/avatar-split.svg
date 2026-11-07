@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="794" viewBox="0 0 680 794" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="12" role="img">
+<title>Avatar split swimlane</title>
+<desc>Three lanes (wahwah, wahwah-avatar, GitHub issues) with time flowing downward: the interface work in #23, the avatar repo setup, the six split steps, and publishing the package.</desc>
+<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#73726c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect width="680" height="794" fill="#ffffff"/>
+<rect x="62" y="40" width="190" height="730" rx="4" fill="none" stroke="#B4B2A9" stroke-width="0.5" stroke-dasharray="4 4"/><rect x="262" y="40" width="190" height="730" rx="4" fill="none" stroke="#B4B2A9" stroke-width="0.5" stroke-dasharray="4 4"/><rect x="462" y="40" width="190" height="730" rx="4" fill="none" stroke="#B4B2A9" stroke-width="0.5" stroke-dasharray="4 4"/><text x="157" y="58" text-anchor="middle" font-weight="500" fill="#2C2C2A">wahwah</text><text x="357" y="58" text-anchor="middle" font-weight="500" fill="#2C2C2A">wahwah-avatar</text><text x="557" y="58" text-anchor="middle" font-weight="500" fill="#2C2C2A">GitHub issues</text>
+<rect x="90" y="72" width="134" height="40" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+<text x="157" y="84.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">Merge boundary</text>
+<text x="157" y="100.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">docs (#21)</text>
+<rect x="90" y="126" width="134" height="40" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+<text x="157" y="138.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">Export types and</text>
+<text x="157" y="154.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">helpers (#23)</text>
+<rect x="90" y="180" width="134" height="40" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+<text x="157" y="192.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">Tofu example and</text>
+<text x="157" y="208.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">version policy</text>
+<rect x="90" y="234" width="134" height="40" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+<text x="157" y="246.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">Verify in separate</text>
+<text x="157" y="262.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">project (#23 done)</text>
+<rect x="290" y="288" width="134" height="40" rx="6" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+<text x="357" y="300.0" text-anchor="middle" dominant-baseline="central" fill="#085041">Repo, CI, Tofu</text>
+<text x="357" y="316.0" text-anchor="middle" dominant-baseline="central" fill="#085041">skeleton</text>
+<rect x="490" y="342" width="134" height="40" rx="6" fill="#F1EFE8" stroke="#5F5E5A" stroke-width="0.5"/>
+<text x="557" y="354.0" text-anchor="middle" dominant-baseline="central" fill="#444441">1 Move #6, #11;</text>
+<text x="557" y="370.0" text-anchor="middle" dominant-baseline="central" fill="#444441">#12 stays</text>
+<rect x="90" y="396" width="134" height="40" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+<text x="157" y="408.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">2 Move model picking</text>
+<text x="157" y="424.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">and generic VRM out</text>
+<rect x="290" y="396" width="134" height="40" rx="6" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+<text x="357" y="408.0" text-anchor="middle" dominant-baseline="central" fill="#085041">2 Receive picking</text>
+<text x="357" y="424.0" text-anchor="middle" dominant-baseline="central" fill="#085041">and generic VRM</text>
+<rect x="290" y="450" width="134" height="40" rx="6" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+<text x="357" y="462.0" text-anchor="middle" dominant-baseline="central" fill="#085041">3 Extract</text>
+<text x="357" y="478.0" text-anchor="middle" dominant-baseline="central" fill="#085041">experiments</text>
+<rect x="90" y="504" width="134" height="40" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+<text x="157" y="516.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">4 Remove moved</text>
+<text x="157" y="532.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">code, fix config</text>
+<rect x="90" y="558" width="134" height="40" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+<text x="157" y="570.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">5 Update guides</text>
+<text x="157" y="586.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">that mention VRM</text>
+<rect x="90" y="612" width="134" height="40" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+<text x="157" y="624.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">Hash voices</text>
+<text x="157" y="640.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">(roadmap 3)</text>
+<rect x="290" y="666" width="134" height="40" rx="6" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+<text x="357" y="686.0" text-anchor="middle" dominant-baseline="central" fill="#085041">6 Twitch/OBS app</text>
+<rect x="90" y="720" width="134" height="40" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+<text x="157" y="732.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">7 Publish the</text>
+<text x="157" y="748.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">interface as package</text>
+<path d="M157 112 L157 124" fill="none" stroke="#73726c" stroke-width="1.5" marker-end="url(#a)"/><path d="M157 166 L157 178" fill="none" stroke="#73726c" stroke-width="1.5" marker-end="url(#a)"/><path d="M157 220 L157 232" fill="none" stroke="#73726c" stroke-width="1.5" marker-end="url(#a)"/><path d="M157 274 L157 308 L288 308" fill="none" stroke="#73726c" stroke-width="1.5" marker-end="url(#a)"/><path d="M357 328 L357 362 L488 362" fill="none" stroke="#73726c" stroke-width="1.5" marker-end="url(#a)"/><path d="M557 382 L557 416 L426 416" fill="none" stroke="#73726c" stroke-width="1.5" marker-end="url(#a)"/><path d="M224 416 L288 416" fill="none" stroke="#73726c" stroke-width="1.5" marker-end="url(#a)"/><path d="M357 436 L357 448" fill="none" stroke="#73726c" stroke-width="1.5" marker-end="url(#a)"/><path d="M357 490 L357 524 L226 524" fill="none" stroke="#73726c" stroke-width="1.5" marker-end="url(#a)"/><path d="M157 544 L157 556" fill="none" stroke="#73726c" stroke-width="1.5" marker-end="url(#a)"/><path d="M157 652 L157 686 L288 686" fill="none" stroke="#73726c" stroke-width="1.5" marker-end="url(#a)"/><path d="M357 706 L357 740 L226 740" fill="none" stroke="#73726c" stroke-width="1.5" marker-end="url(#a)"/>
+</svg>

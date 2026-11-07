@@ -30,15 +30,20 @@ Neutral is all zeros. Width and rounding share a budget of one, with rounding ta
 
 ![Tofu mouth poses for neutral, AA, IY, UW and M](poses.jpg)
 
-## One stage, several faces
+## Hosts and the avatar app
 
 The studio keeps one puppet view mounted when the input changes. Each mode owns its controls and audio session. Switching inputs releases the previous session while preserving the selected face and camera. [Studio](../src/apps/studio.ts)
 
 | View | How it uses the controls |
 | --- | --- |
 | Tofu cube (default) | Uses a bundled VRM with vowel shapes, a hinged lower lip, and separate body, gaze, and brow expressions. |
-| VRM | Blends the five vowel expressions `aa`, `ih`, `ou`, `ee`, and `oh`. Lip shape selects a vowel family and jaw opening selects its more open member. |
 | Debug | Draws the control values, velocity, and acceleration on a 2D canvas. |
 
 Hosts own cosmetic motion such as blinking and sway. All character views share a Three.js renderer; Debug uses its own 2D canvas. While a character loads, the stage waits without a fallback face. Switching to Debug disconnects the 3D host and camera controls, so a pending model cannot replace that view.
 [Host mappings](../src/host/mappings.ts) · [VRM renderer](../src/host/vrm.ts)
+
+The playground keeps the Tofu reference host and the Debug view. Other models, model selection, and visual styles live in `wahwah-avatar`. `wahwah` keeps the input modes, audio player, synchronized performance timeline, and live microphone analysis.
+
+The integration boundary is the rendered performance and its timed controls. `RenderedUtterance` carries audio and a timeline. Its optional `FaceControlTrack` carries `jawOpen`, `lipWidth`, and `lipRound` samples for a host to map onto its own rig. The current TypeScript definitions are [`RenderedUtterance`](../src/voice/performance.ts) and [`FaceControlTrack`](../src/puppet/controls.ts). Making them a reusable package is later work; no cross-repository package has been published yet.
+
+Tofu is the reference example of how a VRM model links to those controls: its model, generator, and mapping. `wahwah-avatar` consumes the same controls for its own models.

@@ -1,47 +1,49 @@
 # Project goals and decisions
 
-How much character can a puppet get from a few well-timed mouth shapes? The playground is where we try voices, calibrate microphones, and watch the same performance on different faces. The longer-term goal is a small library that other projects can use to drive a puppet, starting with VTubing and extending to games and animation tools. [Original prototype brief](https://github.com/pomodorozhong/rabbit-holes/blob/master/learning-notes/08-mumble-voice-generator-handoff.md)
+How much character can a puppet get from a few well-timed mouth shapes? The playground is where we try voices, calibrate microphones, and inspect the model-independent puppet instructions. The longer-term goal is a small library that other projects can use to drive a puppet, starting with VTubing and extending to games and animation tools. [Original prototype brief](https://github.com/pomodorozhong/rabbit-holes/blob/master/learning-notes/08-mumble-voice-generator-handoff.md)
 
-## Visual direction
+## What wahwah provides
 
-The target is a stylized, front-facing character with readable mouth poses, small head turns, and secondary motion. Three references suggest different ways to draw it.
+`wahwah` is a voice engine and playground. It generates invented speech, analyzes a live microphone, keeps audio and mouth motion on one timeline, and describes the mouth movement in a format that does not depend on any model. Other projects build on that. [`wahwah-avatar`](avatar-split.md) is the first: it shows 3D characters, applies visual styles, and connects to Twitch and OBS.
 
-- *Breath of the Wild* uses painterly surfaces and toon shading.
-- *Return of the Obra Dinn* makes a scene readable with one-bit monochrome and dithering. [Dithering notes](https://dukope.com/devlogs/obra-dinn/tig-32/)
-- *Into the Spider-Verse* combines line work, halftones, and poses held over multiple frames. A held pose is worth trying on live speech because it may read more clearly than a mouth that changes shape on every frame. [Imageworks production notes](https://www.imageworks.com/node/1371)
+A consumer receives the generated audio and timeline plus timed `FaceControlTrack` samples. It can pass a stable hash to get repeatable voice settings, through a versioned mapping so that later changes to the voices do not alter existing characters. Twitch is only a documentation example: a consumer that hashes a viewer ID owns the account lookup, chat data, and character choice.
 
-A 2.5D puppet made from warped layers and a full 3D mesh could share the same look. The intended rendering order is to deform the rig first, then apply the visual style to its colors and masks. Whether the playground ships one house style or several switchable styles remains open.
+Tofu is the reference example of how a VRM model links to those instructions: its model, generator, and control-to-rig mapping live here. It shows the format in use and is not a voice feature. Its mouth-pose bug, [#12](https://github.com/pomodorozhong/wahwah/issues/12), stays here too. Other models, model selection, visual styles, and mouth experiments live in `wahwah-avatar`.
+
+Voice and live-input work lives here: real-microphone evaluation ([#8](https://github.com/pomodorozhong/wahwah/issues/8)), a trained viseme model ([#9](https://github.com/pomodorozhong/wahwah/issues/9)), live visualization ([#13](https://github.com/pomodorozhong/wahwah/issues/13)) and exact-duration fitting ([#20](https://github.com/pomodorozhong/wahwah/issues/20)).
 
 ## Design decisions
 
 | Choice | Reason |
 | --- | --- |
 | Keep input, mouth controls, and character rigs separate. | One utterance or microphone recording can exercise every rig. A future SDK can expose the controls independently of the renderer. |
-| Build the playground with TypeScript, Vite, Web Audio, and Three.js. | Voice synthesis, editing, and a live puppet preview can run together in a browser. |
-| Target VRM for the Rust/WASM migration. | Focus the supported playground on one avatar format. Keep general mouth controls separate from VRM expressions so a future adapter can consume the same performance. The playground keeps Tofu, VRM, and Debug views. |
-| Port the selected voice core before adding more behavior. | No users rely on the current output, so compatibility is not a release constraint. Establish one Rust implementation before adding multilingual input, viewer identities, and duration fitting. |
-| Start with a small mouth vocabulary. | Every host can support it. Future layers for blink, gaze, brows, head pose, and mood can be optional and map onto each rig's existing expressions. |
+| Share the performance interface by pinned git dependency during the split, then publish a package. | The split needs the interface now and has one consumer, so publishing can wait until the split is confirmed finished ([#23](https://github.com/pomodorozhong/wahwah/issues/23), [#25](https://github.com/pomodorozhong/wahwah/issues/25)). |
+| Keep voice output independent of avatar rigs. | One audio performance and timed controls can drive different hosts. `wahwah-avatar` owns 3D model rendering and rig mappings. |
+| Keep the voice playground browser-based. | TypeScript, Vite and Web Audio support voice synthesis, editing, microphone analysis and diagnostics. Tofu stays as the reference VRM example. |
+| Start with a small mouth vocabulary. | Every host can support it. Optional blink, gaze, body motion, and style controls belong to the avatar host that implements them. |
 | Evaluate live tracking on a real voice. | A synthetic test can measure lag and jitter. A speaker can judge whether the result looks right for the character and whether delaying the audio feels acceptable. |
 
 The [architecture guide](architecture.md) describes the current input paths, control format, and renderer mappings.
 
-## Next delivery: Rust/WASM and a hosted VRM playground
+## Shipped foundation
 
-The next task is [the Rust/WASM rewrite](https://github.com/pomodorozhong/wahwah/issues/10). The current TypeScript code is a proof of concept, and the Rust version becomes the new standard, so matching today's output exactly is not a goal.
+The [Rust/WASM port](https://github.com/pomodorozhong/wahwah/issues/10) is complete, and the MIT-licensed voice playground runs on [GitHub Pages](https://pomodorozhong.github.io/wahwah/). Rust owns generated speech, timing and pitch, synthesis, and synchronized puppet controls for all six voices. TypeScript hosts the UI, Web Audio playback, Three.js, VRM rendering, and live analysis. The playground shows the Tofu and Debug views; `wahwah-avatar` is the home for other 3D models, model selection, and styles.
 
-Rust will own invented speech, timing and pitch, synthesis, and synchronized puppet controls. TypeScript continues to host the UI, Web Audio playback, Three.js, VRM rendering, and live mode. Live analysis stays in TypeScript because porting it would only help a future native consumer.
+## Roadmap
 
-The end state keeps six sound choices: Wah-wah trombone, the klattsch formant voice with Trombone color, and Talking Instruments' Muted Horn, Trombone, Ooh Choir, and Kazoo from Babble Engine. The puppet views are Tofu, VRM, and Debug. The project is MIT-licensed and published on GitHub Pages under `/wahwah/`.
+1. **Standalone performance interface.** Make `RenderedUtterance` and `FaceControlTrack` importable without the playground, as a versioned package or a pinned git dependency, with a small example that plays a performance on Tofu. `wahwah-avatar` needs this before it can start.
+2. **Multilingual invented speech.** Support Chinese and mixed-language text, a general Unicode fallback, and language-specific rhythm improvements.
+3. **Deterministic character voices from a hash.** Expose a general-purpose interface that accepts a caller-provided hash and derives repeatable voice settings through a versioned mapping, so a later change to the mapping cannot silently change existing characters. Use Twitch as a documentation example. An external integration can hash a stable Twitch viewer ID and pass the result to wahwah. The external integration owns account lookup, authentication, and Twitch data handling.
+4. **Maximum output duration.** Fit longer lines within a caller-supplied cap while keeping audio and mouth motion synchronized. Shorter lines keep their natural duration.
 
-The work lands as six PRs, in the order listed on the issue: Rust voices in the playground, Rust performance, instruments, dependency cleanup, playground cleanup, and publishing. Rust now owns Mumble generation and synchronized audio and mouth performances, including the four Talking Instruments voices. Dependency and playground cleanup are complete. Licensing and Pages are the remaining step.
-
-After that, add multilingual invented speech including Chinese and mixed-language text, deterministic viewer-to-character profiles for Twitch, and configurable fixed-duration output. The distinction between an exact duration and a maximum duration remains a feature-design choice.
+[Exact-duration fitting](https://github.com/pomodorozhong/wahwah/issues/20) is a P2 follow-up after maximum duration. It should fit either shorter or longer performances exactly to a requested time on the shared audio and mouth timeline.
 
 ## Longer-term work
 
-- **Reusable packages.** Choose npm library scope and native Python or Apple bindings once a consumer needs them. Portability is the motivation for Rust; a current performance bottleneck has not been established.
-- **More inputs and hosts.** Webcam or ARKit tracking could drive the same controls. A custom 2.5D host is an option if the project needs an entirely open-source runtime. How much of the body to animate beyond the head remains open. [Inochi2D](https://github.com/Inochi2D/inochi2d-docs)
-- **Streaming output.** Explore a transparent window, NDI, or Syphon for sending a puppet to OBS. Measure the complete path from input to display before choosing performance work.
+- **Reusable packages.** Beyond the standalone interface ([#25](https://github.com/pomodorozhong/wahwah/issues/25) publishes it as a package after the split), choose npm library scope and native Python or Apple bindings once a consumer needs them. Portability is the motivation for Rust; a current performance bottleneck has not been established.
+- **More inputs.** Webcam or ARKit tracking could generate the same model-independent controls. Prioritize an input when a consumer needs it.
+- **Additional 3D and 2.5D hosts.** Rig support, model-specific expression mappings and renderer choices belong in `wahwah-avatar`. A custom 2.5D host is an option if that app needs an entirely open-source runtime.
+- **Streaming integrations.** Twitch chat and OBS Browser Source are part of the `wahwah-avatar` use case. Consider NDI or Syphon when a consumer needs it.
 
 See the [handoff](../HANDOFF.md) for the current work order.
 
