@@ -6,7 +6,7 @@ How the avatar work moves out of `wahwah` into `wahwah-avatar`. The resulting ow
 
 Do not create the repository or move code or issues until all three hold.
 
-1. **Consumable interface** (roadmap item 1, [#23](https://github.com/pomodorozhong/wahwah/issues/23); it comes before any step below). `RenderedUtterance` and `FaceControlTrack` can be imported without the playground, as a pinned git dependency during the split. A versioned package follows after the split is finished (step 7). Document a small example that plays a rendered performance on Tofu.
+1. **Consumable interface** (roadmap item 1, [#23](https://github.com/pomodorozhong/wahwah/issues/23); it comes before any step below). `RenderedUtterance` and `FaceControlTrack` can be imported without the playground, as a package from a GitHub release tarball during the split (see the [packaging plan](packaging.md)). Publishing to npm follows after the split is finished (step 7). Document a small example that plays a rendered performance on Tofu.
 2. **Boundary documented.** The goals and architecture docs describe the split.
 3. **Destination ready.** The repository exists with a license, CI, and a skeleton that renders Tofu from a `FaceControlTrack` using the interface in condition 1.
 
