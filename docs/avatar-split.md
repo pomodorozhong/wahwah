@@ -6,7 +6,7 @@ How the avatar work moves out of `wahwah` into `wahwah-avatar`. The resulting ow
 
 Do not create the repository or move code or issues until all three hold.
 
-1. **Consumable interface** (roadmap item 1). `RenderedUtterance` and `FaceControlTrack` can be imported without the playground, as a pinned git dependency during the split. A versioned package follows after the split is finished (step 7). Document a small example that plays a rendered performance on Tofu.
+1. **Consumable interface** (roadmap item 1, [#23](https://github.com/pomodorozhong/wahwah/issues/23); it comes before any step below). `RenderedUtterance` and `FaceControlTrack` can be imported without the playground, as a pinned git dependency during the split. A versioned package follows after the split is finished (step 7). Document a small example that plays a rendered performance on Tofu.
 2. **Boundary documented.** The goals and architecture docs describe the split.
 3. **Destination ready.** The repository exists with a license, CI, and a skeleton that renders Tofu from a `FaceControlTrack` using the interface in condition 1.
 
@@ -16,22 +16,28 @@ Each step is its own PR. The diagram shows who does what and in what order.
 
 ![Swimlane of the split: wahwah, wahwah-avatar and GitHub issues](avatar-split.svg)
 
-1. Transfer [#6](https://github.com/pomodorozhong/wahwah/issues/6) (line boil) and [#11](https://github.com/pomodorozhong/wahwah/issues/11) (visual styles). [#12](https://github.com/pomodorozhong/wahwah/issues/12) (Tofu M/B/P closure, P2) stays in `wahwah` because Tofu does.
-2. Move the host extras and model picking.
+1. Transfer [#6](https://github.com/pomodorozhong/wahwah/issues/6) (line boil) and [#11](https://github.com/pomodorozhong/wahwah/issues/11) (visual styles). [#12](https://github.com/pomodorozhong/wahwah/issues/12) (Tofu M/B/P closure, P2) stays in `wahwah` because Tofu does. A transfer gives each issue a new number in `wahwah-avatar`. The old URL redirects, but update links to the old numbers in `HANDOFF.md`, `docs/` and open PRs in the same step.
+2. Move model picking, local model loading and the generic VRM support in `vrm.ts`.
 3. Extract the visual and mouth experiments, replacement mouths before optional mouth modes.
 4. Remove what moved from `wahwah`, and update `vite.config.ts`, `scripts/check-pages.mjs` and the picker tests. The voice playground and its Pages workflow stay.
 5. Remove the generic VRM model picker and view from the playground, keeping the Tofu host and the Debug view, and change the text that describes it: the VRM sentence in `README.md`, the VRM model and local `.vrm` instructions and the tofu-and-VRM camera sentence in `docs/playground.md`, and the VRM mentions in `docs/development-notes.md`. Until this step the guides describe the VRM view that still exists.
 6. Build the Twitch/OBS app. It needs the hash voice interface from the roadmap.
 7. After the split is confirmed finished, publish the performance interface as a versioned package and move `wahwah-avatar` from the git pin to it ([#25](https://github.com/pomodorozhong/wahwah/issues/25)).
 
+## How code moves
+
+Copy files into `wahwah-avatar`; do not carry git history. The history stays in `wahwah`, and step 4 deletes the originals there. Note the source commit in the first commit message of each copied file set so `git blame` can be followed back.
+
 ## What stays in wahwah
 
-Tofu: `scripts/tofu/`, `public/tofu/corner-cut.vrm`, `src/host/mappings.ts`, the minimal VRM host the playground needs to show it, and their tests and pose images (`docs/face.jpg`, `docs/poses.jpg`, `tests/mappings.test.ts`, `tests/tofu.test.js`). Three.js and `@pixiv/three-vrm` stay with them.
+Tofu: `scripts/tofu/`, `public/tofu/corner-cut.vrm`, `src/host/mappings.ts`, and their tests and pose images (`docs/face.jpg`, `docs/poses.jpg`, `tests/mappings.test.ts`, `tests/tofu.test.js`). Three.js and `@pixiv/three-vrm` stay with them.
+
+The host code the Tofu view and the Debug view run on also stays whole: `src/host/host.ts`, `renderer.ts`, `vrm.ts`, `follower.ts`, `faceNavigation.ts`, `studyMotion.ts` and `debug.ts`. Tofu's body motion (`studyMotion.ts`), camera navigation, control smoothing and the Tofu branch of `VrmFace.load` all use them. Only the generic, non-Tofu parts of `vrm.ts` and `puppetView.ts` are trimmed in step 4, as listed below.
 
 ## What moves
 
-- Host extras: `src/host/faceNavigation.ts`, `src/host/follower.ts`, `src/host/studyMotion.ts`, and any part of `src/host/host.ts`, `src/host/renderer.ts` and `src/host/vrm.ts` that only serves other models or styles. Decide the exact split when extracting.
-- Model picking and local model loading: the avatar parts of `src/ui/puppetView.ts`, the local-model manifest in `vite.config.ts`, `src/localModels.d.ts` and `tests/puppetView.test.ts`.
+- Generic VRM support in `src/host/vrm.ts`: the non-Tofu branch of `VrmFace.load` (head-based framing, the default background, the `isTofu = false` path) and its tests. `host.ts` and `renderer.ts` have nothing that only serves other models.
+- Model picking and local model loading: the VRM view option, model list, local `.vrm` loading and `vrmHost()` in `src/ui/puppetView.ts`, the local-model manifest in `vite.config.ts`, `src/localModels.d.ts` and `tests/puppetView.test.ts`.
 - Experiments, from the preserved `codex/backup-puppet-experiments-2026-11-02` branch: `src/host/surfaceStyle.ts`, `src/host/inkDither.ts`, `src/host/comicPrint.ts`, `src/host/puppetMouth.ts`, `src/host/referenceMouth.ts`, `src/host/mouthModes.ts` and `scripts/remake-vrm-models.mjs`. Rework changes to `renderer.ts`, `vrm.ts`, `host.ts` and `puppetView.ts` against the current code. The snapshot also holds obsolete app code and private model archives, so do not merge it wholesale, and keep generated archives and sample model ZIPs local.
 - Visual direction notes, which were removed from `docs/goals.md`. Copy them into `wahwah-avatar`'s goals when it is created. The target is a stylized, front-facing character with readable mouth poses, small head turns and secondary motion, drawn in one of three ways:
   - *Breath of the Wild*: painterly surfaces and toon shading.

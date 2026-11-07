@@ -23,11 +23,11 @@
 <text x="557" y="354.0" text-anchor="middle" dominant-baseline="central" fill="#444441">1 Move #6, #11;</text>
 <text x="557" y="370.0" text-anchor="middle" dominant-baseline="central" fill="#444441">#12 stays</text>
 <rect x="90" y="396" width="134" height="40" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
-<text x="157" y="408.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">2 Move host extras</text>
-<text x="157" y="424.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">and picking out</text>
+<text x="157" y="408.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">2 Move model picking</text>
+<text x="157" y="424.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">and generic VRM out</text>
 <rect x="290" y="396" width="134" height="40" rx="6" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
-<text x="357" y="408.0" text-anchor="middle" dominant-baseline="central" fill="#085041">2 Receive extras</text>
-<text x="357" y="424.0" text-anchor="middle" dominant-baseline="central" fill="#085041">and picking</text>
+<text x="357" y="408.0" text-anchor="middle" dominant-baseline="central" fill="#085041">2 Receive picking</text>
+<text x="357" y="424.0" text-anchor="middle" dominant-baseline="central" fill="#085041">and generic VRM</text>
 <rect x="290" y="450" width="134" height="40" rx="6" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
 <text x="357" y="462.0" text-anchor="middle" dominant-baseline="central" fill="#085041">3 Extract</text>
 <text x="357" y="478.0" text-anchor="middle" dominant-baseline="central" fill="#085041">experiments</text>
