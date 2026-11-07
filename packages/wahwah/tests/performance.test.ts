@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NEUTRAL, lerpControls, normalizeControls, sampleFaceTrack, segmentAt, type FaceControlTrack, type Timeline } from '../src/index';
+import { NEUTRAL, lerpControls, normalizeControls, sampleFaceTrack, segmentAt, type FaceControlTrack, type Timeline } from '../src/performance/index';
 
 const track: FaceControlTrack = {
   sampleRateHz: 10,

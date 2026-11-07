@@ -1,11 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { rmsEnvelope, syncReport } from '../src/analysis';
-import { DEFAULT_TROMBONE } from '../src/voice/trombone';
-import { sampleFaceTrack, NEUTRAL } from '@wahwah/performance';
+import { DEFAULT_TROMBONE, STYLES, MOODS, DEFAULT_VOICE, renderMumble, renderPhonemes, type RustVoice } from 'wahwah';
+import { sampleFaceTrack, NEUTRAL } from 'wahwah/performance';
 import { VISEMES } from '../src/puppet/visemes';
-import { STYLES, MOODS } from '../src/mumble/styles';
-import { DEFAULT_VOICE } from '../src/voice/performance';
-import { renderMumble, renderPhonemes, type RustVoice } from '../src/voice/rustVoice';
 
 const SR = 24000;
 const voices: [string, RustVoice][] = [

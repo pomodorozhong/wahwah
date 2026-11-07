@@ -13,7 +13,7 @@
 // a critically damped spring on every weight and on the loudness.
 // Mode 'centroid' keeps the earlier brightness-only guess for comparison.
 
-import { NEUTRAL, lerpControls, normalizeControls, type FaceControls } from '@wahwah/performance';
+import { NEUTRAL, lerpControls, normalizeControls, type FaceControls } from 'wahwah/performance';
 import { VISEMES } from '../puppet/visemes';
 import { estimateFormants, fullCentroid, highBandRatio, periodicity } from './features';
 import { bestScale, matchVowel } from './vowels';

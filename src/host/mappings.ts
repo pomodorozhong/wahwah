@@ -1,7 +1,7 @@
 // Mappings from FaceControls to VRM expressions, plus shared cosmetic blinking.
 // No Three.js types, so the mapping can be tested and reused by any VRM runtime.
 
-import type { FaceControls } from '@wahwah/performance';
+import { type FaceControls } from 'wahwah/performance';
 
 /** VRM 1.0 preset viseme expressions (VRM 0.x's A/I/U/E/O). */
 export interface VrmVisemes {

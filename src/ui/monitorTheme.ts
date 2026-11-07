@@ -1,4 +1,4 @@
-import type { FaceControls } from '@wahwah/performance';
+import { type FaceControls } from 'wahwah/performance';
 
 // Match the line samples and meter colors to the signal they represent.
 export const MONITOR_SIGNALS: readonly [keyof FaceControls, string, readonly number[]][] = [

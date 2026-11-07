@@ -13,7 +13,11 @@
     "isolatedModules": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "paths": { "@wahwah/performance": ["./packages/performance/src/index.ts"] }
+    "paths": {
+      "wahwah": ["./packages/wahwah/src/index.ts"],
+      "wahwah/performance": ["./packages/wahwah/src/performance/index.ts"],
+      "wahwah/mumble": ["./packages/wahwah/src/mumble/index.ts"]
+    }
   },
-  "include": ["src", "tests", "packages/performance/src", "packages/performance/tests"]
+  "include": ["src", "tests", "packages/wahwah/src", "packages/wahwah/tests"]
 }

@@ -1,4 +1,4 @@
-import type { FaceControls } from '@wahwah/performance';
+import { type FaceControls } from 'wahwah/performance';
 
 interface Timing {
   attack: number;

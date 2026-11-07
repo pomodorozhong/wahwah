@@ -1,4 +1,4 @@
-import type { VoiceSettings } from './performance';
+import { type VoiceSettings } from 'wahwah';
 
 /** A preset is a phrase plus the voice settings it was written for. */
 export interface Preset {

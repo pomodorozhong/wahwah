@@ -1,5 +1,5 @@
 // The UI and Rust read the same Talking Instruments defaults.
-import presets from '../../data/instrument-presets.json';
+import { instrumentPresets as presets } from '../data/presets.js';
 
 export type InstrumentId = 'muted-horn' | 'talking-trombone' | 'ooh-choir' | 'kazoo';
 export interface InstrumentPreset {

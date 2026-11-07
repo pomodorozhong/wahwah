@@ -5,11 +5,11 @@ import { SmoothDamp, ULS, ulsInputLength, ulsMfcc, ulsScores } from '../src/live
 import { DEFAULT_LIVE, LiveMouthEstimator } from '../src/live/estimator';
 import { magnitudeSpectrumDb } from '../src/live/features';
 import { parseProfile, serializeProfile } from '../src/live/profile';
-import { DEFAULT_VOICE } from '../src/voice/performance';
+import { DEFAULT_VOICE } from 'wahwah';
+import { sampleFaceTrack } from 'wahwah/performance';
+import { generateMumble } from 'wahwah/mumble';
 import { renderFormant } from './helpers/voice';
 import { renderSweep, PT_VOWELS } from '../src/live/ptVoice';
-import { sampleFaceTrack } from '@wahwah/performance';
-import { generateMumble } from '../src/mumble/generate';
 import { pearson } from '../src/analysis';
 
 const SLOW = { timeout: 120000 };

@@ -3,7 +3,7 @@ import { Box3, Vector3 } from 'three';
 import { cubeStudies as designs } from '../scripts/tofu/cubes.mjs';
 import { actingChannels, jawWeights } from '../scripts/tofu/mesh.mjs';
 import { StudyMotion } from '../src/host/studyMotion';
-import { NEUTRAL } from '@wahwah/performance';
+import { NEUTRAL } from 'wahwah/performance';
 
 it.each(designs)('$name keeps its cube silhouette at rest', design => {
   const bounds = new Box3();

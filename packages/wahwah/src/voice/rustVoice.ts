@@ -1,10 +1,10 @@
 // One WASM render compiles one score and returns audio, timing and mouth movement.
-import init, { renderPerformance, renderInstrument as instrument } from '../wasm/wahwah_wasm';
-import { mumbleOptions, type MumbleOptions, type MumbleScript } from '../mumble/generate';
-import type { TromboneOptions } from './trombone';
-import type { VoiceSettings } from './performance';
-import type { RenderedUtterance } from '@wahwah/performance';
-import { INSTRUMENTS, type InstrumentNote, type InstrumentOptions } from './instruments';
+import init, { renderPerformance, renderInstrument as instrument, type InitInput } from '../wasm/wahwah_wasm.js';
+import { mumbleOptions, type MumbleOptions, type MumbleScript } from '../mumble/generate.js';
+import type { TromboneOptions } from './trombone.js';
+import type { VoiceSettings } from './settings.js';
+import type { RenderedUtterance } from '../performance/index.js';
+import { INSTRUMENTS, type InstrumentNote, type InstrumentOptions } from './instruments.js';
 
 export interface InstrumentPerformance extends RenderedUtterance {
   notes: InstrumentNote[];
@@ -16,8 +16,12 @@ export function renderInstrument(text: string, options: InstrumentOptions, sampl
 }
 
 let loading: Promise<unknown> | undefined;
-export function loadVoices(): Promise<unknown> {
-  loading ??= init();
+/**
+ * Loads the WASM voices once. A browser bundle needs no argument. In Node, or
+ * anywhere the binary is not fetched by URL, pass its bytes or a compiled module.
+ */
+export function loadVoices(source?: InitInput | Promise<InitInput>): Promise<unknown> {
+  loading ??= init(source === undefined ? undefined : { module_or_path: source });
   return loading;
 }
 

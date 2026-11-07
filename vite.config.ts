@@ -73,7 +73,13 @@ export default defineConfig(({ mode }) => ({
   // An ignored public/models file must never enter a Pages artifact or menu.
   publicDir: mode === 'pages' ? false : 'public',
   plugins: [localModels(mode !== 'pages'), distributionAssets(mode === 'pages')],
-  resolve: { alias: { '@wahwah/performance': resolve(import.meta.dirname, 'packages/performance/src/index.ts') } },
+  resolve: {
+    alias: [
+      { find: /^wahwah$/, replacement: resolve(import.meta.dirname, 'packages/wahwah/src/index.ts') },
+      { find: /^wahwah\/performance$/, replacement: resolve(import.meta.dirname, 'packages/wahwah/src/performance/index.ts') },
+      { find: /^wahwah\/mumble$/, replacement: resolve(import.meta.dirname, 'packages/wahwah/src/mumble/index.ts') },
+    ],
+  },
   // Lets tests load the WASM voices as a data URL; Node can't fetch a file URL.
   assetsInclude: ['**/*.wasm'],
   build: {

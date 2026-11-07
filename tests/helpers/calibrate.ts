@@ -1,7 +1,7 @@
 // Run the guided calibration on a synthetic voice, frame by frame like the live page.
 import { Calibration, CALIBRATION_STEPS, frameFeatures, type ProfileClassId, type VoiceProfile } from '../../src/live/profile';
 import { magnitudeSpectrumDb } from '../../src/live/features';
-import { DEFAULT_VOICE } from '../../src/voice/performance';
+import { DEFAULT_VOICE } from 'wahwah';
 import { renderFormant } from './voice';
 import { renderTract, PT_VOWELS, PT_M } from '../../src/live/ptVoice';
 import { SR, N, DT } from './liveEval';

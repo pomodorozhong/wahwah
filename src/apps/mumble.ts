@@ -1,12 +1,8 @@
 // Mumble playground: ordinary text becomes invented speech, audio and mouth
 // movement in Rust. Talking Instruments use their own explicit note score.
-import { DEFAULT_BRASS_COLOR, type VoiceSettings } from '../voice/performance';
-import { type RenderedUtterance } from '@wahwah/performance';
-import { renderMumble, renderInstrument, type InstrumentPerformance } from '../voice/rustVoice';
-import { wordAtPhonemeOffset, type MumbleScript } from '../mumble/generate';
-import { MOODS, STYLES } from '../mumble/styles';
-import { INSTRUMENTS, isInstrument, type InstrumentId } from '../voice/instruments';
-import { DEFAULT_TROMBONE } from '../voice/trombone';
+import { DEFAULT_BRASS_COLOR, renderMumble, renderInstrument, MOODS, STYLES, INSTRUMENTS, isInstrument, DEFAULT_TROMBONE, type VoiceSettings, type InstrumentPerformance, type MumbleScript, type InstrumentId } from 'wahwah';
+import { type RenderedUtterance } from 'wahwah/performance';
+import { wordAtPhonemeOffset } from 'wahwah/mumble';
 import type { PuppetView } from '../ui/puppetView';
 import { Stage, byId, section, restoreDraft } from '../ui/stage';
 

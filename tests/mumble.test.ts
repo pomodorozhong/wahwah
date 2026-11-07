@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { countSyllables, stressIndex, tokenizeText } from '../src/mumble/text';
-import { generateMumble, wordAtPhonemeOffset } from '../src/mumble/generate';
-import { MOODS, STYLES } from '../src/mumble/styles';
-import { DEFAULT_VOICE } from '../src/voice/performance';
+import { countSyllables, stressIndex, tokenizeText, generateMumble, wordAtPhonemeOffset } from 'wahwah/mumble';
+import { MOODS, STYLES, DEFAULT_VOICE, renderMumble } from 'wahwah';
 import { renderFormant } from './helpers/voice';
-import { renderMumble } from '../src/voice/rustVoice';
 import { rmsEnvelope } from '../src/analysis';
 
 const vowelCount = (phonemes: string) =>
