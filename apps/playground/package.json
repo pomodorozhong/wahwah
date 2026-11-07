@@ -1,0 +1,29 @@
+{
+  "name": "@wahwah/playground",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build:wasm": "npm run build:wasm --workspace wahwah",
+    "predev": "npm run --silent build:wasm",
+    "dev": "vite",
+    "build:tofu": "node scripts/tofu/build.mjs",
+    "prebuild": "npm run --silent build:wasm",
+    "build": "tsc --noEmit && vite build",
+    "build:pages": "npm run build -- --mode pages",
+    "pretypecheck": "npm run --silent build:wasm",
+    "typecheck": "tsc --noEmit",
+    "pretest": "npm run --silent build:wasm",
+    "test": "vitest run",
+    "pretest:pages": "npm run --silent build:wasm",
+    "test:pages": "node --test scripts/check-pages.mjs",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@pixiv/three-vrm": "^3.5.5",
+    "pink-trombone-mod": "^0.1.0",
+    "three": "^0.187.0",
+    "wahwah": "*"
+  }
+}

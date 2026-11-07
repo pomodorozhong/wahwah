@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import { build } from 'vite';
 
 const root = resolve(import.meta.dirname, '..');
+const repoRoot = resolve(root, '../..');
 
 test('Pages publishes the bundled model and notices without local public files or menu entries', async () => {
   const output = await mkdtemp(join(tmpdir(), 'wahwah-pages-'));
@@ -31,7 +32,7 @@ test('Pages publishes the bundled model and notices without local public files o
     const entries = await readdir(output);
     assert.deepEqual(entries.sort(), ['LICENSE', 'THIRD_PARTY_NOTICES.md', 'assets', 'babble', 'index.html', 'klattsch', 'live', 'mumble', 'tofu']);
     for (const file of ['LICENSE', 'THIRD_PARTY_NOTICES.md', 'tofu/corner-cut.vrm']) {
-      const source = file.endsWith('.vrm') ? join(publicDir, file) : join(root, file);
+      const source = file.endsWith('.vrm') ? join(publicDir, file) : join(repoRoot, file);
       assert.deepEqual(await readFile(join(output, file)), await readFile(source), file);
     }
     for (const entry of ['index.html', 'mumble/index.html', 'klattsch/index.html', 'babble/index.html', 'live/index.html']) {
