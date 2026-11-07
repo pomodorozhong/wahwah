@@ -32,7 +32,7 @@ jobs:
           fi
           echo "PACKAGE=$package" >> "$GITHUB_ENV"
       - name: Test the package
-        run: npx vitest run "packages/${PACKAGE}"
+        run: npm test --workspace "@wahwah/${PACKAGE}"
       - name: Build and pack
         run: node scripts/pack-release.mjs "$PACKAGE"
       - name: Create the release with the tarball

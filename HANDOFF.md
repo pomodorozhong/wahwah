@@ -2,14 +2,14 @@
 
 ## In progress
 
-### feat/performance-package
+### fix/release-package-tests
 
-- Task: ship `@wahwah/performance` as a workspace package with a release workflow and make the playground import it, for [#23](https://github.com/pomodorozhong/wahwah/issues/23). Related to #23, not closing it: #23 closes when `wahwah-avatar` builds against a released tarball. The branch is not linked to an issue.
-- PR: none yet. [PR #26](https://github.com/pomodorozhong/wahwah/pull/26) merged as `11a0e75`, and this branch starts from it.
-- State: the package is in `packages/performance` (controls, sampler, performance types), the playground and its tests import it directly with no shims, `scripts/pack-release.mjs` and `.github/workflows/release.yml` build and attach the tarball on a `performance-v*` tag, and `docs/interface.md` covers install, versions and releasing. The release workflow has not run: no tag exists. No release has been published.
-- Verification: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`, `npm run typecheck`, `npm test` (230 tests), `npm run build`, `npm run test:pages` and `git diff --check` passed. The packed tarball installed into a scratch project that type-checked and ran under Node ESM. The playground UI was not opened in a browser.
-- Next action: you review and merge the PR, then push the tag `performance-v0.1.0` to run the release workflow, then create `wahwah-avatar` against that tarball. Draft comments on #23 and #25 about the tarball decision for approval.
-- Do not: write Markdown with hard-wrapped lines; the repository keeps one line per paragraph. Do not install the package from a git URL: npm cannot install a subfolder of a git repository.
+- Task: fix the release workflow for `@wahwah/performance`, which failed on `performance-v0.1.0` because the package tests loaded the playground's WASM setup. Related to [#23](https://github.com/pomodorozhong/wahwah/issues/23); closes none. The branch is not linked to an issue.
+- PR: none yet. [PR #27](https://github.com/pomodorozhong/wahwah/pull/27) merged as `5eea198`. The tag `performance-v0.1.0` was pushed to that commit, the release run `42345652712` failed in "Test the package", and no release or tarball exists.
+- State: the package has its own `vitest.config.ts` and a `test` script, and the release workflow runs `npm test --workspace`. The package tests pass with `src/wasm` removed.
+- Verification: `npm test` (all suites), `npm run typecheck` and `git diff --check` passed. The release workflow has not run again.
+- Next action: you review and merge the PR, then delete the remote tag `performance-v0.1.0` (no release was published from it) and push it again on the fixed `main`, which needs your approval. Then confirm the release has the tarball. The move to `apps/playground/` waits for that and for your go.
+- Do not: write Markdown with hard-wrapped lines. Do not publish a tarball from a build that skipped the package tests.
 
 ## Ranked work
 
