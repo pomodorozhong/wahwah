@@ -14,7 +14,7 @@ Do not create the repository or move code or issues until all three hold.
 
 Each step is its own PR. The diagram shows who does what and in what order.
 
-![Swimlane of the split: you, wahwah, wahwah-avatar and GitHub issues](avatar-split.svg)
+![Swimlane of the split: wahwah, wahwah-avatar and GitHub issues](avatar-split.svg)
 
 1. Transfer [#6](https://github.com/pomodorozhong/wahwah/issues/6) (line boil) and [#11](https://github.com/pomodorozhong/wahwah/issues/11) (visual styles). [#12](https://github.com/pomodorozhong/wahwah/issues/12) (Tofu M/B/P closure, P2) stays in `wahwah` because Tofu does.
 2. Move the host extras and model picking.
