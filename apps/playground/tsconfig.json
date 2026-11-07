@@ -14,10 +14,10 @@
     "skipLibCheck": true,
     "noEmit": true,
     "paths": {
-      "wahwah": ["./packages/wahwah/src/index.ts"],
-      "wahwah/performance": ["./packages/wahwah/src/performance/index.ts"],
-      "wahwah/mumble": ["./packages/wahwah/src/mumble/index.ts"]
+      "wahwah": ["../../packages/wahwah/src/index.ts"],
+      "wahwah/performance": ["../../packages/wahwah/src/performance/index.ts"],
+      "wahwah/mumble": ["../../packages/wahwah/src/mumble/index.ts"]
     }
   },
-  "include": ["src", "tests", "packages/wahwah/src", "packages/wahwah/tests"]
+  "include": ["src", "tests", "../../packages/wahwah/src", "../../packages/wahwah/tests"]
 }

@@ -5,31 +5,21 @@
   "license": "MIT",
   "type": "module",
   "workspaces": [
+    "apps/*",
     "packages/*"
   ],
   "scripts": {
     "build:wasm": "npm run build:wasm --workspace wahwah",
-    "predev": "npm run --silent build:wasm",
-    "dev": "vite",
-    "build:tofu": "node scripts/tofu/build.mjs",
-    "prebuild": "npm run --silent build:wasm",
-    "build": "tsc --noEmit && vite build",
-    "build:pages": "npm run build -- --mode pages",
-    "pretypecheck": "npm run --silent build:wasm",
-    "typecheck": "tsc --noEmit",
-    "pretest": "npm run --silent build:wasm",
-    "test": "vitest run",
-    "pretest:pages": "npm run --silent build:wasm",
-    "test:pages": "node --test scripts/check-pages.mjs",
-    "preview": "vite preview",
+    "dev": "npm run dev --workspace @wahwah/playground --",
+    "build:tofu": "npm run build:tofu --workspace @wahwah/playground",
+    "build": "npm run build --workspace @wahwah/playground",
+    "build:pages": "npm run build:pages --workspace @wahwah/playground",
     "build:packages": "npm run build --workspace wahwah",
+    "typecheck": "npm run typecheck --workspace @wahwah/playground",
+    "test": "npm run test --workspaces --if-present",
+    "test:pages": "npm run test:pages --workspace @wahwah/playground",
+    "preview": "npm run preview --workspace @wahwah/playground --",
     "pack:wahwah": "node scripts/pack-release.mjs wahwah"
-  },
-  "dependencies": {
-    "@pixiv/three-vrm": "^3.5.5",
-    "pink-trombone-mod": "^0.1.0",
-    "three": "^0.187.0",
-    "wahwah": "*"
   },
   "devDependencies": {
     "@types/three": "^0.187.0",

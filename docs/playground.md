@@ -49,7 +49,7 @@ Under **Puppet → View**, choose **VRM model**. In **Model**, open a local `.vr
 To offer characters in the menu on startup, place their files in this layout before running or building the playground. Models are supplied locally. Use assets you have permission to use.
 
 ```text
-public/models/
+apps/playground/public/models/
   vrm/character.vrm
 ```
 

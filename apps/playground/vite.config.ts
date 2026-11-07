@@ -3,6 +3,7 @@ import { join, relative, resolve } from 'node:path';
 import type { Plugin } from 'vite';
 import { defineConfig } from 'vitest/config';
 
+const REPO_ROOT = resolve(import.meta.dirname, '../..');
 const MODELS_DIR = resolve(import.meta.dirname, 'public/models');
 const MODELS_ID = 'virtual:local-models';
 
@@ -57,12 +58,12 @@ function distributionAssets(pages: boolean): Plugin {
     apply: 'build',
     generateBundle() {
       const files = [
-        ['LICENSE', 'LICENSE'],
-        ['THIRD_PARTY_NOTICES.md', 'THIRD_PARTY_NOTICES.md'],
-        ...(pages ? [['public/tofu/corner-cut.vrm', 'tofu/corner-cut.vrm']] : []),
+        [resolve(REPO_ROOT, 'LICENSE'), 'LICENSE'],
+        [resolve(REPO_ROOT, 'THIRD_PARTY_NOTICES.md'), 'THIRD_PARTY_NOTICES.md'],
+        ...(pages ? [[resolve(import.meta.dirname, 'public/tofu/corner-cut.vrm'), 'tofu/corner-cut.vrm']] : []),
       ];
       for (const [source, fileName] of files) {
-        this.emitFile({ type: 'asset', fileName, source: readFileSync(resolve(import.meta.dirname, source)) });
+        this.emitFile({ type: 'asset', fileName, source: readFileSync(source) });
       }
     },
   };
@@ -75,9 +76,9 @@ export default defineConfig(({ mode }) => ({
   plugins: [localModels(mode !== 'pages'), distributionAssets(mode === 'pages')],
   resolve: {
     alias: [
-      { find: /^wahwah$/, replacement: resolve(import.meta.dirname, 'packages/wahwah/src/index.ts') },
-      { find: /^wahwah\/performance$/, replacement: resolve(import.meta.dirname, 'packages/wahwah/src/performance/index.ts') },
-      { find: /^wahwah\/mumble$/, replacement: resolve(import.meta.dirname, 'packages/wahwah/src/mumble/index.ts') },
+      { find: /^wahwah$/, replacement: resolve(REPO_ROOT, 'packages/wahwah/src/index.ts') },
+      { find: /^wahwah\/performance$/, replacement: resolve(REPO_ROOT, 'packages/wahwah/src/performance/index.ts') },
+      { find: /^wahwah\/mumble$/, replacement: resolve(REPO_ROOT, 'packages/wahwah/src/mumble/index.ts') },
     ],
   },
   // Lets tests load the WASM voices as a data URL; Node can't fetch a file URL.
@@ -96,7 +97,6 @@ export default defineConfig(({ mode }) => ({
     },
   },
   test: {
-    include: ['tests/**/*.test.{ts,js}', 'packages/*/tests/**/*.test.ts'],
     setupFiles: ['tests/setup.ts'],
     environment: 'node',
     // pink-trombone-mod uses extensionless relative imports that plain Node ESM
