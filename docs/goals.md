@@ -27,11 +27,11 @@ The [architecture guide](architecture.md) describes the current input paths, con
 
 ## Shipped foundation
 
-The [Rust/WASM port](https://github.com/pomodorozhong/wahwah/issues/10) is complete, and the MIT-licensed voice playground runs on [GitHub Pages](https://pomodorozhong.github.io/wahwah/). Rust owns generated speech, timing and pitch, synthesis, and synchronized puppet controls for all six voices. TypeScript hosts the UI, Web Audio playback, Three.js, VRM rendering, and live analysis. The playground shows the Tofu and Debug views; `wahwah-avatar` is the home for other 3D models, model selection, and styles.
+The [Rust/WASM port](https://github.com/pomodorozhong/wahwah/issues/10) is complete, and the MIT-licensed voice playground runs on [GitHub Pages](https://pomodorozhong.github.io/wahwah/). Rust owns generated speech, timing and pitch, synthesis, and synchronized puppet controls for all six voices. TypeScript hosts the UI, Web Audio playback, Three.js, VRM rendering, and live analysis. The `wahwah` package ships the voice engine and the `RenderedUtterance` and `FaceControlTrack` types as a [GitHub release tarball](interface.md), and the playground lives in `apps/playground/`. The playground shows the Tofu and Debug views; `wahwah-avatar` is the home for other 3D models, model selection, and styles.
 
 ## Roadmap
 
-1. **Standalone performance interface.** Make `RenderedUtterance` and `FaceControlTrack` importable without the playground, as a versioned package shared by release tarball (see the [packaging plan](packaging.md)), with the playground as the worked example that plays a performance on Tofu. `wahwah-avatar` needs this before it can start.
+1. **Start `wahwah-avatar`.** Create the repository with a license, CI and a Tofu skeleton that renders from a `FaceControlTrack` using the released `wahwah` tarball, then run the split steps in the [avatar split plan](avatar-split.md). The standalone interface it needs has shipped.
 2. **Multilingual invented speech.** Support Chinese and mixed-language text, a general Unicode fallback, and language-specific rhythm improvements.
 3. **Deterministic character voices from a hash.** Expose a general-purpose interface that accepts a caller-provided hash and derives repeatable voice settings through a versioned mapping, so a later change to the mapping cannot silently change existing characters. Use Twitch as a documentation example. An external integration can hash a stable Twitch viewer ID and pass the result to wahwah. The external integration owns account lookup, authentication, and Twitch data handling.
 4. **Maximum output duration.** Fit longer lines within a caller-supplied cap while keeping audio and mouth motion synchronized. Shorter lines keep their natural duration.
