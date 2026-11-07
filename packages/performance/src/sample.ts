@@ -1,5 +1,5 @@
 // Sample a Rust-generated face track on the host's playback clock.
-import { NEUTRAL, lerpControls, type FaceControlTrack, type FaceControls } from './controls';
+import { NEUTRAL, lerpControls, type FaceControlTrack, type FaceControls } from './controls.js';
 
 /** Controls at an arbitrary time; neutral outside the track. */
 export function sampleFaceTrack(track: FaceControlTrack, timeSeconds: number): FaceControls {

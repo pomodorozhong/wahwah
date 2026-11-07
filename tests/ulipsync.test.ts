@@ -8,7 +8,7 @@ import { parseProfile, serializeProfile } from '../src/live/profile';
 import { DEFAULT_VOICE } from '../src/voice/performance';
 import { renderFormant } from './helpers/voice';
 import { renderSweep, PT_VOWELS } from '../src/live/ptVoice';
-import { sampleFaceTrack } from '../src/puppet/generate';
+import { sampleFaceTrack } from '@wahwah/performance';
 import { generateMumble } from '../src/mumble/generate';
 import { pearson } from '../src/analysis';
 

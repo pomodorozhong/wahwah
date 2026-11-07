@@ -2,7 +2,7 @@
 // (velocity) and how hard it is being pushed (acceleration, i.e. force for a
 // unit-mass control). Works on any stream of FaceControls, whatever produced it.
 
-import type { FaceControls } from './controls';
+import type { FaceControls } from '@wahwah/performance';
 
 export const CHANNELS = ['jawOpen', 'lipWidth', 'lipRound'] as const;
 export type Channel = (typeof CHANNELS)[number];

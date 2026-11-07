@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { rmsEnvelope, syncReport } from '../src/analysis';
 import { DEFAULT_TROMBONE } from '../src/voice/trombone';
-import { sampleFaceTrack } from '../src/puppet/generate';
-import { NEUTRAL } from '../src/puppet/controls';
+import { sampleFaceTrack, NEUTRAL } from '@wahwah/performance';
 import { VISEMES } from '../src/puppet/visemes';
 import { STYLES, MOODS } from '../src/mumble/styles';
 import { DEFAULT_VOICE } from '../src/voice/performance';

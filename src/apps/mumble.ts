@@ -1,6 +1,7 @@
 // Mumble playground: ordinary text becomes invented speech, audio and mouth
 // movement in Rust. Talking Instruments use their own explicit note score.
-import { DEFAULT_BRASS_COLOR, type RenderedUtterance, type VoiceSettings } from '../voice/performance';
+import { DEFAULT_BRASS_COLOR, type VoiceSettings } from '../voice/performance';
+import { type RenderedUtterance } from '@wahwah/performance';
 import { renderMumble, renderInstrument, type InstrumentPerformance } from '../voice/rustVoice';
 import { wordAtPhonemeOffset, type MumbleScript } from '../mumble/generate';
 import { MOODS, STYLES } from '../mumble/styles';

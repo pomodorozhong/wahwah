@@ -1,0 +1,41 @@
+name: Release package
+
+on:
+  push:
+    tags:
+      - 'performance-v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install JavaScript dependencies
+        run: npm ci
+      - name: Check the tag matches the package version
+        run: |
+          package="${GITHUB_REF_NAME%%-v*}"
+          version="${GITHUB_REF_NAME#*-v}"
+          actual=$(node -p "require('./packages/${package}/package.json').version")
+          if [ "$version" != "$actual" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match packages/${package}/package.json version $actual" >&2
+            exit 1
+          fi
+          echo "PACKAGE=$package" >> "$GITHUB_ENV"
+      - name: Test the package
+        run: npx vitest run "packages/${PACKAGE}"
+      - name: Build and pack
+        run: node scripts/pack-release.mjs "$PACKAGE"
+      - name: Create the release with the tarball
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" release-assets/*.tgz --title "$GITHUB_REF_NAME" --notes "Install by URL. See packages/${PACKAGE}/CHANGELOG.md."

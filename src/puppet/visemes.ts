@@ -1,5 +1,5 @@
 import poses from '../../data/mouth-poses.json';
-import type { FaceControls } from './controls';
+import type { FaceControls } from '@wahwah/performance';
 
 export interface Viseme {
   pose: FaceControls;

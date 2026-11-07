@@ -1,0 +1,28 @@
+{
+  "name": "@wahwah/performance",
+  "version": "0.1.0",
+  "description": "Host-agnostic types and helpers for playing a wahwah performance: mouth controls, a timed face track and the rendered utterance.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pomodorozhong/wahwah.git",
+    "directory": "packages/performance"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  }
+}

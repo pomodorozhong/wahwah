@@ -26,7 +26,7 @@ The estimator can run on the audio thread in 256-sample steps or on the page at 
 | `lipWidth` | Relaxed | Spread, as in “ee” |
 | `lipRound` | Unrounded | Puckered, as in “oo” |
 
-Neutral is all zeros. Width and rounding share a budget of one, with rounding taking priority. A generated track defaults to 100 samples per second. Each sample carries a time in seconds from playback start and an optional phoneme label. Hosts can interpolate between samples. Outside the track the mouth returns to neutral. [Control types and normalization](../src/puppet/controls.ts)
+Neutral is all zeros. Width and rounding share a budget of one, with rounding taking priority. A generated track defaults to 100 samples per second. Each sample carries a time in seconds from playback start and an optional phoneme label. Hosts can interpolate between samples. Outside the track the mouth returns to neutral. [Control types and normalization](../packages/performance/src/controls.ts)
 
 ![Tofu mouth poses for neutral, AA, IY, UW and M](poses.jpg)
 
@@ -44,6 +44,6 @@ Hosts own cosmetic motion such as blinking and sway. All character views share a
 
 The playground keeps the Tofu reference host and the Debug view. Other models, model selection, and visual styles live in `wahwah-avatar`. `wahwah` keeps the input modes, audio player, synchronized performance timeline, and live microphone analysis.
 
-The integration boundary is the rendered performance and its timed controls. `RenderedUtterance` carries audio and a timeline. Its optional `FaceControlTrack` carries `jawOpen`, `lipWidth`, and `lipRound` samples for a host to map onto its own rig. The current TypeScript definitions are [`RenderedUtterance`](../src/voice/performance.ts) and [`FaceControlTrack`](../src/puppet/controls.ts). Making them a reusable package is later work; no cross-repository package has been published yet.
+The integration boundary is the rendered performance and its timed controls. `RenderedUtterance` carries audio and a timeline. Its optional `FaceControlTrack` carries `jawOpen`, `lipWidth`, and `lipRound` samples for a host to map onto its own rig. The TypeScript definitions are [`RenderedUtterance`](../packages/performance/src/performance.ts) and [`FaceControlTrack`](../packages/performance/src/controls.ts), shipped as the `@wahwah/performance` package described in the [interface guide](interface.md).
 
 Tofu is the reference example of how a VRM model links to those controls: its model, generator, and mapping. `wahwah-avatar` consumes the same controls for its own models.

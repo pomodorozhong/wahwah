@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { NEUTRAL } from '../src/puppet/controls';
+import { NEUTRAL } from '@wahwah/performance';
 import { VrmFace } from '../src/host/vrm';
 
 // Keep model loading pending so view changes can run before Tofu is ready.

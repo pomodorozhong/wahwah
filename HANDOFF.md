@@ -2,14 +2,14 @@
 
 ## In progress
 
-### docs/packaging-plan
+### feat/performance-package
 
-- Task: document the package layout, release-tarball distribution and the future Swift and Python packages in `docs/packaging.md`. Related to [#23](https://github.com/pomodorozhong/wahwah/issues/23) and [#25](https://github.com/pomodorozhong/wahwah/issues/25); closes none. The branch is not linked to an issue.
-- PR: none yet. [PR #21](https://github.com/pomodorozhong/wahwah/pull/21) merged as `0df612f`, and this branch starts from it.
-- State: docs only. `docs/packaging.md` describes a planned layout (`apps/playground`, `packages/performance`, `packages/voice`, Python and Swift bindings), GitHub release tarballs now and npm later, the SwiftPM root constraint, and Rust as the source of truth for the format. Nothing in it is built. `docs/goals.md`, `docs/avatar-split.md` and `docs/README.md` link to it and no longer say "pinned git dependency".
-- Verification: `git diff --check` to run before publishing. Application suites do not apply to a docs-only change.
-- Next action: show the title and body for publish approval, then start the `packages/performance` PR for #23.
-- Do not: write Markdown with hard-wrapped lines; the repository keeps one line per paragraph. Do not use a pinned git dependency for the package layout: npm cannot install a subfolder of a git repository.
+- Task: ship `@wahwah/performance` as a workspace package with a release workflow and make the playground import it, for [#23](https://github.com/pomodorozhong/wahwah/issues/23). Related to #23, not closing it: #23 closes when `wahwah-avatar` builds against a released tarball. The branch is not linked to an issue.
+- PR: none yet. [PR #26](https://github.com/pomodorozhong/wahwah/pull/26) merged as `11a0e75`, and this branch starts from it.
+- State: the package is in `packages/performance` (controls, sampler, performance types), the playground and its tests import it directly with no shims, `scripts/pack-release.mjs` and `.github/workflows/release.yml` build and attach the tarball on a `performance-v*` tag, and `docs/interface.md` covers install, versions and releasing. The release workflow has not run: no tag exists. No release has been published.
+- Verification: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`, `npm run typecheck`, `npm test` (230 tests), `npm run build`, `npm run test:pages` and `git diff --check` passed. The packed tarball installed into a scratch project that type-checked and ran under Node ESM. The playground UI was not opened in a browser.
+- Next action: you review and merge the PR, then push the tag `performance-v0.1.0` to run the release workflow, then create `wahwah-avatar` against that tarball. Draft comments on #23 and #25 about the tarball decision for approval.
+- Do not: write Markdown with hard-wrapped lines; the repository keeps one line per paragraph. Do not install the package from a git URL: npm cannot install a subfolder of a git repository.
 
 ## Ranked work
 

@@ -5,7 +5,7 @@ import './style.css';
 import './writing-spread.css';
 import './settings.css';
 import './script-editor.css';
-import type { FaceControls } from '../puppet/controls';
+import type { FaceControls } from '@wahwah/performance';
 import { MotionTracker, type FaceMotion } from '../puppet/motion';
 import localModels from 'virtual:local-models';
 import { ControlFollower } from '../host/follower';

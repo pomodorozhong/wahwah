@@ -2,9 +2,7 @@
 // puppet view from its face-control track. Each playground page supplies its
 // own panel and a compile() callback that returns a rendered Rust performance.
 
-import { segmentAt, type PerformanceSegment, type RenderedUtterance, type Timeline } from '../voice/performance';
-import { sampleFaceTrack } from '../puppet/generate';
-import type { FaceControlTrack, FaceControls } from '../puppet/controls';
+import { segmentAt, sampleFaceTrack, type PerformanceSegment, type RenderedUtterance, type Timeline, type FaceControlTrack, type FaceControls } from '@wahwah/performance';
 import { rmsEnvelope, syncReport, type SyncReport } from '../analysis';
 import { Player } from '../playback';
 import { beginMonitor, drawMonitorLegend, drawMonitorPlayhead, MONITOR_COLORS, MONITOR_SIGNALS } from './monitorTheme';

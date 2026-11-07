@@ -38,6 +38,8 @@ jobs:
         run: cargo test
       - name: Check TypeScript
         run: npm run typecheck
+      - name: Build workspace packages
+        run: npm run build:packages
       - name: Test playground
         run: npm test
       - name: Build playground

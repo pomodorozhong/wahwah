@@ -4,8 +4,7 @@
 // delay holds the audio back so the (late) mouth can catch up, the way a
 // stream delays its audio to match an avatar.
 
-import type { FaceControls } from '../puppet/controls';
-import { NEUTRAL, lerpControls } from '../puppet/controls';
+import { NEUTRAL, lerpControls, type FaceControls } from '@wahwah/performance';
 import { pearson } from '../analysis';
 import { LiveMouthEstimator, type LiveSettings } from './estimator';
 import { magnitudeSpectrumDb } from './features';

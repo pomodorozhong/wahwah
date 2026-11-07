@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { rmsEnvelope } from '../src/analysis';
-import { NEUTRAL } from '../src/puppet/controls';
-import { sampleFaceTrack } from '../src/puppet/generate';
+import { NEUTRAL, sampleFaceTrack } from '@wahwah/performance';
 import { INSTRUMENTS, type InstrumentOptions } from '../src/voice/instruments';
 import { renderInstrument } from '../src/voice/rustVoice';
 
