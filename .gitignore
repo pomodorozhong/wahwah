@@ -4,3 +4,4 @@ target/
 src/wasm/
 public/models/
 .DS_Store
+release-assets/
