@@ -1,7 +1,10 @@
 node_modules/
 dist/
 target/
-src/wasm/
+packages/wahwah/src/wasm/
+packages/wahwah/src/data/
+packages/wahwah/LICENSE
+packages/wahwah/THIRD_PARTY_NOTICES.md
 public/models/
 .DS_Store
 release-assets/

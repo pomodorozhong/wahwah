@@ -1,7 +1,6 @@
 // klattsch playground: ARPABET phoneme input into the Rust formant voice.
 
-import { DEFAULT_BRASS_COLOR, type VoiceSettings } from '../voice/performance';
-import { renderPhonemes } from '../voice/rustVoice';
+import { DEFAULT_BRASS_COLOR, renderPhonemes, type VoiceSettings } from 'wahwah';
 import { PRESETS } from '../voice/presets';
 import type { PuppetView } from '../ui/puppetView';
 import { Stage, byId, section, restoreDraft } from '../ui/stage';

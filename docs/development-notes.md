@@ -13,7 +13,7 @@ npm test
 npm run build
 ```
 
-The npm commands, including `npm run dev`, first run `npm run build:wasm`. It writes the generated package to `src/wasm/`, which is ignored by Git. Keep the `wasm-bindgen-cli` version equal to the `wasm-bindgen` crate version.
+The npm commands, including `npm run dev`, first run `npm run build:wasm`. It writes the generated package to `packages/wahwah/src/wasm/` and copies the shared presets into `packages/wahwah/src/data/`, which is ignored by Git. Keep the `wasm-bindgen-cli` version equal to the `wasm-bindgen` crate version.
 
 The tests exercise synthesis, mouth tracks, host mappings, and live analysis in Node. To inspect the production build in a browser, run `npm run preview`. For microphone checks, follow the [calibration and playback guide](playground.md#calibrate-a-microphone).
 
@@ -66,7 +66,7 @@ Open the preview URL ending in `/wahwah/`. Check Tofu playback, each sound engin
 
 ## Rust voices
 
-- `crates/wahwah-core` has no browser dependency. `crates/wahwah-wasm` is the stateless boundary, and `src/voice/rustVoice.ts` requests a complete `RenderedUtterance`: typed audio, timeline, warnings and optional mouth track.
+- `crates/wahwah-core` has no browser dependency. `crates/wahwah-wasm` is the stateless boundary, and `packages/wahwah/src/voice/rustVoice.ts` requests a complete `RenderedUtterance`: typed audio, timeline, warnings and optional mouth track.
 - All six text-mode voices render in Rust. Text to mumble and Phoneme script use Rust for Mumble generation, synthesis and mouth tracks. Live mode's Mumble test sentence, Demo voice and calibration responses use the same WASM renderer with mouth generation disabled: the TypeScript estimator must infer their movement from the audio, just as it does for microphone input.
 - The klattsch and babble-engine npm packages and their old synthesis adapters are removed. Their upstream notices remain in THIRD_PARTY_NOTICES.md.
 - Live formant matching uses the ten Klatt (1980) F1/F2 reference pairs copied from klattsch in `src/live/vowels.ts`, including UW's rounded glide endpoint. These reference values and the mouth poses load synchronously without WASM.

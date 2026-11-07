@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { analyseRecording, measureMouthLagMs, mouthAt, planPlayback } from '../src/live/delayTest';
 import { DEFAULT_LIVE } from '../src/live/estimator';
-import { DEFAULT_VOICE } from '../src/voice/performance';
+import { DEFAULT_VOICE } from 'wahwah';
+import { generateMumble } from 'wahwah/mumble';
 import { renderFormant } from './helpers/voice';
-import { generateMumble } from '../src/mumble/generate';
 import { calibrate, formantVoice, roomNoise } from './helpers/calibrate';
 
 const SR = 48000;

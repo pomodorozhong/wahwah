@@ -1,0 +1,40 @@
+{
+  "name": "wahwah",
+  "version": "0.1.0",
+  "description": "Invented, stylized speech for puppets: a Rust/WASM voice engine and the host-agnostic performance contract it produces.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pomodorozhong/wahwah.git",
+    "directory": "packages/wahwah"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./performance": {
+      "types": "./dist/performance/index.d.ts",
+      "default": "./dist/performance/index.js"
+    },
+    "./mumble": {
+      "types": "./dist/mumble/index.d.ts",
+      "default": "./dist/mumble/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "scripts": {
+    "build:wasm": "node scripts/build-wasm.mjs",
+    "build": "npm run --silent build:wasm && tsc -p tsconfig.build.json && node scripts/finish-dist.mjs",
+    "pretest": "npm run --silent build:wasm",
+    "test": "vitest run"
+  }
+}

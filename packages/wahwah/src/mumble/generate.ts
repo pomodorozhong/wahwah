@@ -1,6 +1,6 @@
 // Mumble generation belongs to Rust. Call after loadVoices().
-import { generateMumble as generate } from '../wasm/wahwah_wasm';
-import type { MumbleStyle, Mood } from './styles';
+import { generateMumble as generate } from '../wasm/wahwah_wasm.js';
+import type { MumbleStyle, Mood } from './styles.js';
 
 export interface MumbleOptions {
   seed: number;

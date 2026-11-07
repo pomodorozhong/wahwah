@@ -4,7 +4,7 @@
 // vocal tracts, formants ~10-30% higher) map onto the same vowels.
 
 import { VISEMES } from '../puppet/visemes';
-import { lerpControls, NEUTRAL, type FaceControls } from '@wahwah/performance';
+import { lerpControls, NEUTRAL, type FaceControls } from 'wahwah/performance';
 
 export interface ReferenceVowel {
   code: string;

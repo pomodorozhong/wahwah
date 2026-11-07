@@ -4,11 +4,11 @@ import { calibrate, formantVoice, lowpass, pinkTromboneVoice, roomNoise, type St
 import { Calibration, CALIBRATION_STEPS, classify, argmax, parseProfile, serializeProfile } from '../src/live/profile';
 import { mfcc } from '../src/live/mfcc';
 import { magnitudeSpectrumDb } from '../src/live/features';
-import { DEFAULT_VOICE } from '../src/voice/performance';
+import { DEFAULT_VOICE } from 'wahwah';
+import { sampleFaceTrack } from 'wahwah/performance';
+import { generateMumble } from 'wahwah/mumble';
 import { renderFormant } from './helpers/voice';
 import { renderSweep, PT_VOWELS } from '../src/live/ptVoice';
-import { sampleFaceTrack } from '@wahwah/performance';
-import { generateMumble } from '../src/mumble/generate';
 import { pearson } from '../src/analysis';
 
 const SLOW = { timeout: 60000 };

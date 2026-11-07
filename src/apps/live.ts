@@ -12,7 +12,7 @@ import type { FromWorklet, ToWorklet } from '../live/analysisWorklet';
 import recorderWorkletUrl from '../live/recorderWorklet.ts?worker&url';
 import { analyseRecording, measureMouthLagMs, mouthAt, planPlayback, type AnalysedRecording, type PlaybackPlan } from '../live/delayTest';
 import { magnitudeSpectrumDb } from '../live/features';
-import { NEUTRAL, type FaceControls } from '@wahwah/performance';
+import { NEUTRAL, type FaceControls } from 'wahwah/performance';
 import { demoStepAudio, liveSpeechAudio } from '../live/demoVoice';
 import { PuppetView, byId, fitCanvas, renderMode, disclosure, section } from '../ui/puppetView';
 import { rmsEnvelope } from '../analysis';

@@ -4,7 +4,7 @@ import { byId, PuppetView, renderShell } from '../ui/puppetView';
 import { mountMumble } from './mumble';
 import { mountKlattsch } from './klattsch';
 import { mountLive } from './live';
-import { loadVoices } from '../voice/rustVoice';
+import { loadVoices } from 'wahwah';
 
 const modes = { mumble: mountMumble, klattsch: mountKlattsch, live: mountLive };
 type Mode = keyof typeof modes;

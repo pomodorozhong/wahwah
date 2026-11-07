@@ -5,10 +5,10 @@ import { matchVowel, bestScale, REFERENCE_VOWELS } from '../src/live/vowels';
 import { LiveMouthEstimator, DEFAULT_LIVE } from '../src/live/estimator';
 import { renderSweep, renderTract, PT_VOWELS } from '../src/live/ptVoice';
 import { magnitudeSpectrumDb } from '../src/live/features';
-import { DEFAULT_VOICE } from '../src/voice/performance';
+import { DEFAULT_VOICE } from 'wahwah';
+import { sampleFaceTrack } from 'wahwah/performance';
+import { generateMumble } from 'wahwah/mumble';
 import { renderFormant } from './helpers/voice';
-import { sampleFaceTrack } from '@wahwah/performance';
-import { generateMumble } from '../src/mumble/generate';
 import { pearson } from '../src/analysis';
 import { VISEMES } from '../src/puppet/visemes';
 

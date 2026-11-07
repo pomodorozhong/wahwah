@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_VOICE, type VoiceSettings } from '../src/voice/performance';
-import { DEFAULT_TROMBONE } from '../src/voice/trombone';
-import { renderPhonemes, renderMumble } from '../src/voice/rustVoice';
+import { DEFAULT_VOICE, DEFAULT_TROMBONE, renderPhonemes, renderMumble, type VoiceSettings } from 'wahwah';
 import { rmsEnvelope, syncReport } from '../src/analysis';
 
 const SR = 48000;

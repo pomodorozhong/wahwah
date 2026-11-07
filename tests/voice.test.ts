@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_VOICE } from '../src/voice/performance';
-import { segmentAt } from '@wahwah/performance';
+import { DEFAULT_VOICE } from 'wahwah';
+import { segmentAt } from 'wahwah/performance';
 import { renderFormant } from './helpers/voice';
 import { PRESETS } from '../src/voice/presets';
 import { rmsEnvelope } from '../src/analysis';

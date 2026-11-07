@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_LIVE, LiveMouthEstimator, rmsDb, spectralCentroid } from '../src/live/estimator';
-import { DEFAULT_VOICE } from '../src/voice/performance';
+import { DEFAULT_VOICE } from 'wahwah';
 import { renderFormant } from './helpers/voice';
 import { rmsEnvelope, pearson } from '../src/analysis';
 

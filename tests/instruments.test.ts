@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { rmsEnvelope } from '../src/analysis';
-import { NEUTRAL, sampleFaceTrack } from '@wahwah/performance';
-import { INSTRUMENTS, type InstrumentOptions } from '../src/voice/instruments';
-import { renderInstrument } from '../src/voice/rustVoice';
+import { NEUTRAL, sampleFaceTrack } from 'wahwah/performance';
+import { INSTRUMENTS, renderInstrument, type InstrumentOptions } from 'wahwah';
 
 const SR = 24000;
 

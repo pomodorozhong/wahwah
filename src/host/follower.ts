@@ -2,7 +2,7 @@
 // track exactly while playing and eases back to neutral after stop, so no
 // host is ever left stuck in an active mouth pose.
 
-import { NEUTRAL, lerpControls, type FaceControls } from '@wahwah/performance';
+import { NEUTRAL, lerpControls, type FaceControls } from 'wahwah/performance';
 
 export class ControlFollower {
   private current: FaceControls = { ...NEUTRAL };

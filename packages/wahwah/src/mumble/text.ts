@@ -1,5 +1,5 @@
 // English text analysis in Rust, with UTF-16 offsets at the WASM boundary.
-import { countSyllables, stressIndex, tokenizeText as tokenize } from '../wasm/wahwah_wasm';
+import { countSyllables, stressIndex, tokenizeText as tokenize } from '../wasm/wahwah_wasm.js';
 export { countSyllables, stressIndex };
 
 type Tone = 'statement' | 'question' | 'exclaim' | 'none';

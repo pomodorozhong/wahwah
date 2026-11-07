@@ -1,5 +1,5 @@
 // Shared with Rust; imported at build time, with no WASM dependency.
-import presets from '../../data/mumble-presets.json';
+import { mumblePresets as presets } from '../data/presets.js';
 
 type Weighted = readonly [code: string, weight: number];
 

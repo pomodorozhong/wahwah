@@ -1,7 +1,6 @@
 // Synthetic live inputs render audio through WASM, then enter the same
 // TypeScript analyzer as the microphone. Call after loadVoices().
-import { DEFAULT_VOICE } from '../voice/performance';
-import { renderMumble, renderPhonemes } from '../voice/rustVoice';
+import { DEFAULT_VOICE, renderMumble, renderPhonemes } from 'wahwah';
 import type { ProfileClassId } from './profile';
 
 // Deliberately unlike the formant analyzer's adult-male reference.

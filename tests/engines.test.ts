@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MotionTracker } from '../src/puppet/motion';
-import { NEUTRAL } from '@wahwah/performance';
+import { NEUTRAL } from 'wahwah/performance';
 
 describe('motion tracker (debug puppet input)', () => {
   const dt = 1 / 60;

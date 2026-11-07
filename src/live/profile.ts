@@ -3,7 +3,7 @@
 // themselves instead of with a textbook reference. The same idea as uLipSync's
 // calibrated profiles: MFCC templates per sound, nearest-neighbour matching.
 
-import { NEUTRAL, lerpControls, type FaceControls } from '@wahwah/performance';
+import { NEUTRAL, lerpControls, type FaceControls } from 'wahwah/performance';
 import { VISEMES } from '../puppet/visemes';
 import { fullCentroid, highBandRatio } from './features';
 import { MFCC_COEFFS, mfcc } from './mfcc';

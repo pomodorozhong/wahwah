@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_VOICE } from '../src/voice/performance';
+import { DEFAULT_VOICE } from 'wahwah';
+import { sampleFaceTrack, NEUTRAL, normalizeControls } from 'wahwah/performance';
 import { renderFormant } from './helpers/voice';
-import { sampleFaceTrack, NEUTRAL, normalizeControls } from '@wahwah/performance';
 import { syncReport } from '../src/analysis';
 import { PRESETS } from '../src/voice/presets';
 
