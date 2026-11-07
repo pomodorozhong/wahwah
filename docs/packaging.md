@@ -108,7 +108,7 @@ During development, link a package with a `file:` path.
 
 ## Source of truth
 
-Rust defines the format of the mouth controls, the track and the timeline. Shared JSON fixtures, such as a sample `FaceControlTrack`, are loaded by the tests of every language. The TypeScript `performance` package is the JavaScript view of that format, so adding Swift and Python does not create a third definition.
+Rust defines the format of the mouth controls, the track and the timeline. Shared JSON fixtures, such as a sample `FaceControlTrack`, are loaded by the tests of every language. The TypeScript `wahwah/performance` entry point is the JavaScript view of that format, so adding Swift and Python does not create a third definition.
 
 ## Order
 
