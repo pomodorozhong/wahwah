@@ -3,7 +3,7 @@
 // switching faces never creates a second WebGL context.
 
 import type * as THREE from 'three';
-import type { FaceControls } from '../puppet/controls';
+import type { FaceControls } from '@wahwah/performance';
 import type { FaceNavigation } from './faceNavigation';
 
 export interface FaceHost {

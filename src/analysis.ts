@@ -1,7 +1,6 @@
 // Objective checks used by the tests and the in-app diagnostics panel.
 
-import type { FaceControlTrack } from './puppet/controls';
-import { sampleFaceTrack } from './puppet/generate';
+import { sampleFaceTrack, type FaceControlTrack } from '@wahwah/performance';
 
 /** RMS of consecutive windows. */
 export function rmsEnvelope(samples: Float32Array, sampleRate: number, windowSeconds = 0.01): number[] {

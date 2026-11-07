@@ -12,7 +12,8 @@
     "noFallthroughCasesInSwitch": true,
     "isolatedModules": true,
     "skipLibCheck": true,
-    "noEmit": true
+    "noEmit": true,
+    "paths": { "@wahwah/performance": ["./packages/performance/src/index.ts"] }
   },
-  "include": ["src", "tests"]
+  "include": ["src", "tests", "packages/performance/src", "packages/performance/tests"]
 }

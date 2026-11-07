@@ -4,6 +4,9 @@
   "version": "0.1.0",
   "license": "MIT",
   "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "build:wasm": "node scripts/build-wasm.mjs",
     "predev": "npm run --silent build:wasm",
@@ -18,10 +21,13 @@
     "test": "vitest run",
     "pretest:pages": "npm run --silent build:wasm",
     "test:pages": "node --test scripts/check-pages.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:packages": "npm run build --workspaces --if-present",
+    "pack:performance": "node scripts/pack-release.mjs performance"
   },
   "dependencies": {
     "@pixiv/three-vrm": "^3.5.5",
+    "@wahwah/performance": "*",
     "pink-trombone-mod": "^0.1.0",
     "three": "^0.187.0"
   },

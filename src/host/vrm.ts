@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { VRMExpressionMorphTargetBind, VRMLoaderPlugin, VRMUtils, type VRM } from '@pixiv/three-vrm';
-import { NEUTRAL, type FaceControls } from '../puppet/controls';
+import { NEUTRAL, type FaceControls } from '@wahwah/performance';
 import type { FaceHost } from './host';
 import { Blinker, controlsToVrmVisemes } from './mappings';
 import { FaceNavigation } from './faceNavigation';

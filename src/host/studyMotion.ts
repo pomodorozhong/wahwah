@@ -1,4 +1,4 @@
-import type { FaceControls } from '../puppet/controls';
+import type { FaceControls } from '@wahwah/performance';
 
 interface Timing {
   attack: number;

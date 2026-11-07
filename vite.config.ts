@@ -73,6 +73,7 @@ export default defineConfig(({ mode }) => ({
   // An ignored public/models file must never enter a Pages artifact or menu.
   publicDir: mode === 'pages' ? false : 'public',
   plugins: [localModels(mode !== 'pages'), distributionAssets(mode === 'pages')],
+  resolve: { alias: { '@wahwah/performance': resolve(import.meta.dirname, 'packages/performance/src/index.ts') } },
   // Lets tests load the WASM voices as a data URL; Node can't fetch a file URL.
   assetsInclude: ['**/*.wasm'],
   build: {
@@ -89,6 +90,7 @@ export default defineConfig(({ mode }) => ({
     },
   },
   test: {
+    include: ['tests/**/*.test.{ts,js}', 'packages/*/tests/**/*.test.ts'],
     setupFiles: ['tests/setup.ts'],
     environment: 'node',
     // pink-trombone-mod uses extensionless relative imports that plain Node ESM
