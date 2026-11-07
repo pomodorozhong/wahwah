@@ -2,18 +2,18 @@
 
 ## In progress
 
-### codex/docs-avatar-repo-boundary
+### docs/packaging-plan
 
-- Task: document the split between the voice playground and `wahwah-avatar`. Related to [#6](https://github.com/pomodorozhong/wahwah/issues/6), [#11](https://github.com/pomodorozhong/wahwah/issues/11) and [#12](https://github.com/pomodorozhong/wahwah/issues/12); closes none.
-- PR: [#21](https://github.com/pomodorozhong/wahwah/pull/21), open, ready, awaiting your review and merge. Based on main at `7936d2b` after the merged [#22](https://github.com/pomodorozhong/wahwah/pull/22) unwrapped the Markdown. No merge is authorized.
-- State: docs only. `docs/goals.md` and `docs/architecture.md` describe the split as done and keep Tofu, with its bug #12, in `wahwah` as the reference VRM example. `docs/avatar-split.md` holds the starting conditions, a swimlane diagram (`docs/avatar-split.svg`), seven steps (including removing the VRM view and rewording the `README.md`, `docs/playground.md` and `docs/development-notes.md` text that still describes it) and the file lists. The standalone performance interface is now roadmap item 1. The plan is copy-only (no git history), keeps the Tofu host files whole (`host.ts`, `renderer.ts`, `vrm.ts`, `follower.ts`, `faceNavigation.ts`, `studyMotion.ts`, `debug.ts`), and moves only model picking and the non-Tofu branch of `VrmFace.load`; the issue transfers renumber #6 and #11, so their links need updating. Nothing has moved: the repository, the issue transfers (#6 and #11 only) and the code are all still to do. The visual direction notes removed from `docs/goals.md` are kept under "What moves" in `docs/avatar-split.md` for the avatar repository.
-- Verification: `git diff --check` passed. Application suites do not apply to a docs-only change.
-- Next action: you review and merge #21, then start the standalone interface ([#23](https://github.com/pomodorozhong/wahwah/issues/23)) as a pinned git dependency.
-- Do not: write Markdown with hard-wrapped lines; the repository now keeps one line per paragraph.
+- Task: document the package layout, release-tarball distribution and the future Swift and Python packages in `docs/packaging.md`. Related to [#23](https://github.com/pomodorozhong/wahwah/issues/23) and [#25](https://github.com/pomodorozhong/wahwah/issues/25); closes none. The branch is not linked to an issue.
+- PR: none yet. [PR #21](https://github.com/pomodorozhong/wahwah/pull/21) merged as `0df612f`, and this branch starts from it.
+- State: docs only. `docs/packaging.md` describes a planned layout (`apps/playground`, `packages/performance`, `packages/voice`, Python and Swift bindings), GitHub release tarballs now and npm later, the SwiftPM root constraint, and Rust as the source of truth for the format. Nothing in it is built. `docs/goals.md`, `docs/avatar-split.md` and `docs/README.md` link to it and no longer say "pinned git dependency".
+- Verification: `git diff --check` to run before publishing. Application suites do not apply to a docs-only change.
+- Next action: show the title and body for publish approval, then start the `packages/performance` PR for #23.
+- Do not: write Markdown with hard-wrapped lines; the repository keeps one line per paragraph. Do not use a pinned git dependency for the package layout: npm cannot install a subfolder of a git repository.
 
 ## Ranked work
 
-1. Make `RenderedUtterance` and `FaceControlTrack` a standalone interface shared as a pinned git dependency, with a small example that plays a performance on Tofu. The avatar repository cannot start without it. Tracked in [#23](https://github.com/pomodorozhong/wahwah/issues/23). Publishing it as a package waits until the split is confirmed finished ([#25](https://github.com/pomodorozhong/wahwah/issues/25)).
+1. Make `RenderedUtterance` and `FaceControlTrack` a standalone `@wahwah/performance` package shared by GitHub release tarball, with the playground as the worked example. The avatar repository cannot start without it. Tracked in [#23](https://github.com/pomodorozhong/wahwah/issues/23). Publishing to npm waits until the split is confirmed finished ([#25](https://github.com/pomodorozhong/wahwah/issues/25)). Order after it: create `wahwah-avatar`, split steps 1, 2, 4, 5 then 3, `packages/voice` (licence check first), the move to `apps/playground/`, npm, then Python and Swift ([plan](docs/packaging.md)).
 2. Add multilingual invented-speech input, including Chinese and mixed-language text, a general Unicode fallback, and language-specific rhythm improvements.
 3. Add a general-purpose caller-provided hash for deterministic voice settings through a versioned mapping. Document Twitch as an example; account and chat handling belong to the external integration.
 4. Add maximum output duration with synchronized audio and mouth timing. Shorter lines retain their natural duration. Exact-duration fitting is the P2 follow-up in [#20](https://github.com/pomodorozhong/wahwah/issues/20).
