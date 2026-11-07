@@ -19,7 +19,7 @@ Each step is its own PR. The diagram shows who does what and in what order.
 1. Transfer [#6](https://github.com/pomodorozhong/wahwah/issues/6) (line boil) and [#11](https://github.com/pomodorozhong/wahwah/issues/11) (visual styles). [#12](https://github.com/pomodorozhong/wahwah/issues/12) (Tofu M/B/P closure, P2) stays in `wahwah` because Tofu does. A transfer gives each issue a new number in `wahwah-avatar`. The old URL redirects, but update links to the old numbers in `HANDOFF.md`, `docs/` and open PRs in the same step.
 2. Move model picking, local model loading and the generic VRM support in `vrm.ts`.
 3. Extract the visual and mouth experiments, replacement mouths before optional mouth modes.
-4. Remove what moved from `wahwah`, including the VRM model picker, its view option and the generic VRM loading path, and update `vite.config.ts`, `scripts/check-pages.mjs` and the picker tests. The voice playground and its Pages workflow stay.
+4. Remove what moved from `wahwah`, including the VRM model picker, its view option and the generic VRM loading path, and update `apps/playground/vite.config.ts`, `apps/playground/scripts/check-pages.mjs` and the picker tests. The voice playground and its Pages workflow stay.
 5. Update the text that still describes the removed VRM view; the playground keeps the Tofu host and the Debug view: the VRM sentence in `README.md`, the VRM model and local `.vrm` instructions and the tofu-and-VRM camera sentence in `docs/playground.md`, and the VRM mentions in `docs/development-notes.md`. Until this step the guides still describe the VRM view.
 6. Build the Twitch/OBS app. It needs the hash voice interface from the roadmap.
 7. After the split is confirmed finished, publish the performance interface as a versioned package and move `wahwah-avatar` from the git pin to it ([#25](https://github.com/pomodorozhong/wahwah/issues/25)).
@@ -30,14 +30,14 @@ Copy files into `wahwah-avatar`; do not carry git history. The history stays in 
 
 ## What stays in wahwah
 
-Tofu: `scripts/tofu/`, `public/tofu/corner-cut.vrm`, `src/host/mappings.ts`, and their tests and pose images (`docs/face.jpg`, `docs/poses.jpg`, `tests/mappings.test.ts`, `tests/tofu.test.js`). Three.js and `@pixiv/three-vrm` stay with them.
+Tofu: `apps/playground/scripts/tofu/`, `apps/playground/public/tofu/corner-cut.vrm`, `apps/playground/src/host/mappings.ts`, and their tests and pose images (`docs/face.jpg`, `docs/poses.jpg`, `apps/playground/tests/mappings.test.ts`, `apps/playground/tests/tofu.test.js`). Three.js and `@pixiv/three-vrm` stay with them.
 
-The host code the Tofu view runs on also stays whole: `src/host/host.ts`, `renderer.ts`, `vrm.ts`, `follower.ts`, `faceNavigation.ts` and `studyMotion.ts`. `src/host/debug.ts` stays for the Debug view, which draws on its own 2D canvas. Tofu's body motion (`studyMotion.ts`), camera navigation, control smoothing and the Tofu branch of `VrmFace.load` all use them. Only the generic, non-Tofu parts of `vrm.ts` and `puppetView.ts` are trimmed in step 4, as listed below.
+The host code the Tofu view runs on also stays whole: `apps/playground/src/host/host.ts`, `renderer.ts`, `vrm.ts`, `follower.ts`, `faceNavigation.ts` and `studyMotion.ts`. `apps/playground/src/host/debug.ts` stays for the Debug view, which draws on its own 2D canvas. Tofu's body motion (`studyMotion.ts`), camera navigation, control smoothing and the Tofu branch of `VrmFace.load` all use them. Only the generic, non-Tofu parts of `vrm.ts` and `puppetView.ts` are trimmed in step 4, as listed below.
 
 ## What moves
 
-- Generic VRM support in `src/host/vrm.ts`: the non-Tofu branch of `VrmFace.load` (head-based framing, the default background, the `isTofu = false` path) and its tests. `host.ts` and `renderer.ts` have nothing that only serves other models.
-- Model picking and local model loading: the VRM view option, model list, local `.vrm` loading and `vrmHost()` in `src/ui/puppetView.ts`, the local-model manifest in `vite.config.ts`, `src/localModels.d.ts` and `tests/puppetView.test.ts`.
+- Generic VRM support in `apps/playground/src/host/vrm.ts`: the non-Tofu branch of `VrmFace.load` (head-based framing, the default background, the `isTofu = false` path) and its tests. `host.ts` and `renderer.ts` have nothing that only serves other models.
+- Model picking and local model loading: the VRM view option, model list, local `.vrm` loading and `vrmHost()` in `apps/playground/src/ui/puppetView.ts`, the local-model manifest in `apps/playground/vite.config.ts`, `apps/playground/src/localModels.d.ts` and `apps/playground/tests/puppetView.test.ts`.
 - Experiments, from the preserved `codex/backup-puppet-experiments-2026-11-02` branch: `src/host/surfaceStyle.ts`, `src/host/inkDither.ts`, `src/host/comicPrint.ts`, `src/host/puppetMouth.ts`, `src/host/referenceMouth.ts`, `src/host/mouthModes.ts` and `scripts/remake-vrm-models.mjs`. Rework changes to `renderer.ts`, `vrm.ts`, `host.ts` and `puppetView.ts` against the current code. The snapshot also holds obsolete app code and private model archives, so do not merge it wholesale, and keep generated archives and sample model ZIPs local.
 - Visual direction notes, which were removed from `docs/goals.md`. Copy them into `wahwah-avatar`'s goals when it is created. The target is a stylized, front-facing character with readable mouth poses, small head turns and secondary motion, drawn in one of three ways:
   - *Breath of the Wild*: painterly surfaces and toon shading.

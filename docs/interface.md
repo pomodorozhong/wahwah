@@ -47,7 +47,7 @@ const utterance = renderMumble('Hello there!', { seed: 3 }, DEFAULT_VOICE, 48000
 const controlsNow = (startedAt: number, now: number) => sampleFaceTrack(utterance.track!, now - startedAt);
 ```
 
-The playground is the worked example. [`src/ui/stage.ts`](../src/ui/stage.ts) runs the playback clock and samples the track. [`src/host/vrm.ts`](../src/host/vrm.ts) and [`src/host/mappings.ts`](../src/host/mappings.ts) drive the Tofu VRM from the controls. A test keeps the host files off the voice engine, live input and UI, so the example uses only what an outside project also has.
+The playground is the worked example. [`apps/playground/src/ui/stage.ts`](../apps/playground/src/ui/stage.ts) runs the playback clock and samples the track. [`apps/playground/src/host/vrm.ts`](../apps/playground/src/host/vrm.ts) and [`apps/playground/src/host/mappings.ts`](../apps/playground/src/host/mappings.ts) drive the Tofu VRM from the controls. A test keeps the host files off the voice engine, live input and UI, so the example uses only what an outside project also has.
 
 ## Versions
 

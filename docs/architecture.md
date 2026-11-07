@@ -9,14 +9,14 @@ Every input drives the same three mouth controls. A generated line has a known s
    [Rust core](../crates/wahwah-core/src/lib.rs) · [Note score](../crates/wahwah-core/src/instruments/score.rs) · [Voice adapter](../packages/wahwah/src/voice/rustVoice.ts)
 3. One WASM call compiles the Rust score and returns audio at the device sample rate, its timeline, and an optional face track. With puppet output disabled, the track generator does not run. Talking Instruments mouth tracks follow individual note attacks and releases, including several notes in a word. Ooh Choir uses a rounded pose; brass and Kazoo use an open pose. Mouths articulate again at each onset while short audio release tails may overlap. Neither path infers the mouth timing from rendered audio. Vowels and visible closures such as M carry more weight than consonants formed mainly with the tongue. Blending neighbouring poses keeps the jaw from closing on every consonant. Rust's track generator, the trombone's plunger and TypeScript live analysis read the same mouth-pose data. The live audio thread imports it directly, without loading WASM.
    [Track generator](../crates/wahwah-core/src/mouth.rs) · [Shared mouth poses](../data/mouth-poses.json)
-4. The player schedules the rendered buffer on the Web Audio clock. The face samples its track at the time audible at the speakers, using the output timestamp when available. Longer lines take longer to prepare because the entire line renders before playback. [Player](../src/playback.ts)
+4. The player schedules the rendered buffer on the Web Audio clock. The face samples its track at the time audible at the speakers, using the output timestamp when available. Longer lines take longer to prepare because the entire line renders before playback. [Player](../apps/playground/src/playback.ts)
 
 ## Live input
 
-Microphone and test sources feed the same estimator. Loudness above the room noise floor drives the jaw. Formant mode uses vowel resonances to estimate width and rounding. Calibration provides another way to identify the sound by comparing each frame with examples from that speaker. Profile mode blends the matching poses. The uLipSync-style option smooths its vowel weights with a spring. [Estimator](../src/live/estimator.ts) · [Voice profile](../src/live/profile.ts)
+Microphone and test sources feed the same estimator. Loudness above the room noise floor drives the jaw. Formant mode uses vowel resonances to estimate width and rounding. Calibration provides another way to identify the sound by comparing each frame with examples from that speaker. Profile mode blends the matching poses. The uLipSync-style option smooths its vowel weights with a spring. [Estimator](../apps/playground/src/live/estimator.ts) · [Voice profile](../apps/playground/src/live/profile.ts)
 
 The estimator can run on the audio thread in 256-sample steps or on the page at display cadence. The delay test reuses the estimator on a recording and shifts audio playback relative to the resulting mouth movement.
-[Audio worklet](../src/live/analysisWorklet.ts) · [Delay test](../src/live/delayTest.ts)
+[Audio worklet](../apps/playground/src/live/analysisWorklet.ts) · [Delay test](../apps/playground/src/live/delayTest.ts)
 
 ## Mouth controls
 
@@ -32,7 +32,7 @@ Neutral is all zeros. Width and rounding share a budget of one, with rounding ta
 
 ## Hosts and the avatar app
 
-The studio keeps one puppet view mounted when the input changes. Each mode owns its controls and audio session. Switching inputs releases the previous session while preserving the selected face and camera. [Studio](../src/apps/studio.ts)
+The studio keeps one puppet view mounted when the input changes. Each mode owns its controls and audio session. Switching inputs releases the previous session while preserving the selected face and camera. [Studio](../apps/playground/src/apps/studio.ts)
 
 | View | How it uses the controls |
 | --- | --- |
@@ -40,7 +40,7 @@ The studio keeps one puppet view mounted when the input changes. Each mode owns 
 | Debug | Draws the control values, velocity, and acceleration on a 2D canvas. |
 
 Hosts own cosmetic motion such as blinking and sway. All character views share a Three.js renderer; Debug uses its own 2D canvas. While a character loads, the stage waits without a fallback face. Switching to Debug disconnects the 3D host and camera controls, so a pending model cannot replace that view.
-[Host mappings](../src/host/mappings.ts) · [VRM renderer](../src/host/vrm.ts)
+[Host mappings](../apps/playground/src/host/mappings.ts) · [VRM renderer](../apps/playground/src/host/vrm.ts)
 
 The playground keeps the Tofu reference host and the Debug view. Other models, model selection, and visual styles live in `wahwah-avatar`. `wahwah` keeps the input modes, audio player, synchronized performance timeline, and live microphone analysis.
 
