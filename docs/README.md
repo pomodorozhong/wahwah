@@ -9,4 +9,5 @@ Start with the [project README](../README.md) to run the playground locally.
 | Understand how audio drives a rig | [Architecture](architecture.md) |
 | Understand voice goals and decisions | [Project goals and decisions](goals.md) |
 | See how the avatar app was split out | [Avatar split plan](avatar-split.md) |
+| See how the packages will be shared | [Packaging plan](packaging.md) |
 | Work on the code or evaluate a change | [Development notes](development-notes.md) |
