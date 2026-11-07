@@ -17,6 +17,7 @@ Voice and live-input work lives here: real-microphone evaluation ([#8](https://g
 | Choice | Reason |
 | --- | --- |
 | Keep input, mouth controls, and character rigs separate. | One utterance or microphone recording can exercise every rig. A future SDK can expose the controls independently of the renderer. |
+| Share the performance interface by pinned git dependency during the split, then publish a package. | The split needs the interface now and has one consumer, so publishing can wait until the split is confirmed finished ([#23](https://github.com/pomodorozhong/wahwah/issues/23), [#25](https://github.com/pomodorozhong/wahwah/issues/25)). |
 | Keep voice output independent of avatar rigs. | One audio performance and timed controls can drive different hosts. `wahwah-avatar` owns 3D model rendering and rig mappings. |
 | Keep the voice playground browser-based. | TypeScript, Vite and Web Audio support voice synthesis, editing, microphone analysis and diagnostics. Tofu stays as the reference VRM example. |
 | Start with a small mouth vocabulary. | Every host can support it. Optional blink, gaze, body motion, and style controls belong to the avatar host that implements them. |
@@ -39,7 +40,7 @@ The [Rust/WASM port](https://github.com/pomodorozhong/wahwah/issues/10) is compl
 
 ## Longer-term work
 
-- **Reusable packages.** Beyond the standalone interface, choose npm library scope and native Python or Apple bindings once a consumer needs them. Portability is the motivation for Rust; a current performance bottleneck has not been established.
+- **Reusable packages.** Beyond the standalone interface ([#25](https://github.com/pomodorozhong/wahwah/issues/25) publishes it as a package after the split), choose npm library scope and native Python or Apple bindings once a consumer needs them. Portability is the motivation for Rust; a current performance bottleneck has not been established.
 - **More inputs.** Webcam or ARKit tracking could generate the same model-independent controls. Prioritize an input when a consumer needs it.
 - **Additional 3D and 2.5D hosts.** Rig support, model-specific expression mappings and renderer choices belong in `wahwah-avatar`. A custom 2.5D host is an option if that app needs an entirely open-source runtime.
 - **Streaming integrations.** Twitch chat and OBS Browser Source are part of the `wahwah-avatar` use case. Consider NDI or Syphon when a consumer needs it.

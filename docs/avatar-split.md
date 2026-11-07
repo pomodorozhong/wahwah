@@ -6,13 +6,15 @@ How the avatar work moves out of `wahwah` into `wahwah-avatar`. The resulting ow
 
 Do not create the repository or move code or issues until all three hold.
 
-1. **Consumable interface** (roadmap item 1). `RenderedUtterance` and `FaceControlTrack` can be imported without the playground, as a versioned package or a pinned git dependency. Choose which, and document a small example that plays a rendered performance on Tofu.
+1. **Consumable interface** (roadmap item 1). `RenderedUtterance` and `FaceControlTrack` can be imported without the playground, as a pinned git dependency during the split. A versioned package follows after the split is finished (step 7). Document a small example that plays a rendered performance on Tofu.
 2. **Boundary documented.** The goals and architecture docs describe the split.
 3. **Destination ready.** The repository exists with a license, CI, and a skeleton that renders Tofu from a `FaceControlTrack` using the interface in condition 1.
 
 ## Steps
 
-Each step is its own PR.
+Each step is its own PR. The diagram shows who does what and in what order.
+
+![Swimlane of the split: you, wahwah, wahwah-avatar and GitHub issues](avatar-split.svg)
 
 1. Transfer [#6](https://github.com/pomodorozhong/wahwah/issues/6) (line boil) and [#11](https://github.com/pomodorozhong/wahwah/issues/11) (visual styles). [#12](https://github.com/pomodorozhong/wahwah/issues/12) (Tofu M/B/P closure, P2) stays in `wahwah` because Tofu does.
 2. Move the host extras and model picking.
@@ -20,6 +22,7 @@ Each step is its own PR.
 4. Remove what moved from `wahwah`, and update `vite.config.ts`, `scripts/check-pages.mjs` and the picker tests. The voice playground and its Pages workflow stay.
 5. Remove the generic VRM model picker and view from the playground, keeping the Tofu host and the Debug view, and change the text that describes it: the VRM sentence in `README.md`, the VRM model and local `.vrm` instructions and the tofu-and-VRM camera sentence in `docs/playground.md`, and the VRM mentions in `docs/development-notes.md`. Until this step the guides describe the VRM view that still exists.
 6. Build the Twitch/OBS app. It needs the hash voice interface from the roadmap.
+7. After the split is confirmed finished, publish the performance interface as a versioned package and move `wahwah-avatar` from the git pin to it ([#25](https://github.com/pomodorozhong/wahwah/issues/25)).
 
 ## What stays in wahwah
 
