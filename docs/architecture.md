@@ -42,7 +42,7 @@ The studio keeps one puppet view mounted when the input changes. Each mode owns 
 Hosts own cosmetic motion such as blinking and sway. All character views share a Three.js renderer; Debug uses its own 2D canvas. While a character loads, the stage waits without a fallback face. Switching to Debug disconnects the 3D host and camera controls, so a pending model cannot replace that view.
 [Host mappings](../src/host/mappings.ts) · [VRM renderer](../src/host/vrm.ts)
 
-The playground keeps the Tofu reference host and the Debug view. Other models, model selection, renderer-specific motion, and visual styles live in `wahwah-avatar`. `wahwah` keeps the input modes, audio player, synchronized performance timeline, and live microphone analysis.
+The playground keeps the Tofu reference host and the Debug view. Other models, model selection, and visual styles live in `wahwah-avatar`. `wahwah` keeps the input modes, audio player, synchronized performance timeline, and live microphone analysis.
 
 The integration boundary is the rendered performance and its timed controls. `RenderedUtterance` carries audio and a timeline. Its optional `FaceControlTrack` carries `jawOpen`, `lipWidth`, and `lipRound` samples for a host to map onto its own rig. The current TypeScript definitions are [`RenderedUtterance`](../src/voice/performance.ts) and [`FaceControlTrack`](../src/puppet/controls.ts). Making them a reusable package is later work; no cross-repository package has been published yet.
 

@@ -19,8 +19,8 @@ Each step is its own PR. The diagram shows who does what and in what order.
 1. Transfer [#6](https://github.com/pomodorozhong/wahwah/issues/6) (line boil) and [#11](https://github.com/pomodorozhong/wahwah/issues/11) (visual styles). [#12](https://github.com/pomodorozhong/wahwah/issues/12) (Tofu M/B/P closure, P2) stays in `wahwah` because Tofu does. A transfer gives each issue a new number in `wahwah-avatar`. The old URL redirects, but update links to the old numbers in `HANDOFF.md`, `docs/` and open PRs in the same step.
 2. Move model picking, local model loading and the generic VRM support in `vrm.ts`.
 3. Extract the visual and mouth experiments, replacement mouths before optional mouth modes.
-4. Remove what moved from `wahwah`, and update `vite.config.ts`, `scripts/check-pages.mjs` and the picker tests. The voice playground and its Pages workflow stay.
-5. Remove the generic VRM model picker and view from the playground, keeping the Tofu host and the Debug view, and change the text that describes it: the VRM sentence in `README.md`, the VRM model and local `.vrm` instructions and the tofu-and-VRM camera sentence in `docs/playground.md`, and the VRM mentions in `docs/development-notes.md`. Until this step the guides describe the VRM view that still exists.
+4. Remove what moved from `wahwah`, including the VRM model picker, its view option and the generic VRM loading path, and update `vite.config.ts`, `scripts/check-pages.mjs` and the picker tests. The voice playground and its Pages workflow stay.
+5. Update the text that still describes the removed VRM view; the playground keeps the Tofu host and the Debug view: the VRM sentence in `README.md`, the VRM model and local `.vrm` instructions and the tofu-and-VRM camera sentence in `docs/playground.md`, and the VRM mentions in `docs/development-notes.md`. Until this step the guides still describe the VRM view.
 6. Build the Twitch/OBS app. It needs the hash voice interface from the roadmap.
 7. After the split is confirmed finished, publish the performance interface as a versioned package and move `wahwah-avatar` from the git pin to it ([#25](https://github.com/pomodorozhong/wahwah/issues/25)).
 
@@ -32,7 +32,7 @@ Copy files into `wahwah-avatar`; do not carry git history. The history stays in 
 
 Tofu: `scripts/tofu/`, `public/tofu/corner-cut.vrm`, `src/host/mappings.ts`, and their tests and pose images (`docs/face.jpg`, `docs/poses.jpg`, `tests/mappings.test.ts`, `tests/tofu.test.js`). Three.js and `@pixiv/three-vrm` stay with them.
 
-The host code the Tofu view and the Debug view run on also stays whole: `src/host/host.ts`, `renderer.ts`, `vrm.ts`, `follower.ts`, `faceNavigation.ts`, `studyMotion.ts` and `debug.ts`. Tofu's body motion (`studyMotion.ts`), camera navigation, control smoothing and the Tofu branch of `VrmFace.load` all use them. Only the generic, non-Tofu parts of `vrm.ts` and `puppetView.ts` are trimmed in step 4, as listed below.
+The host code the Tofu view runs on also stays whole: `src/host/host.ts`, `renderer.ts`, `vrm.ts`, `follower.ts`, `faceNavigation.ts` and `studyMotion.ts`. `src/host/debug.ts` stays for the Debug view, which draws on its own 2D canvas. Tofu's body motion (`studyMotion.ts`), camera navigation, control smoothing and the Tofu branch of `VrmFace.load` all use them. Only the generic, non-Tofu parts of `vrm.ts` and `puppetView.ts` are trimmed in step 4, as listed below.
 
 ## What moves
 

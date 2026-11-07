@@ -35,8 +35,8 @@
 <text x="157" y="516.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">4 Remove moved</text>
 <text x="157" y="532.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">code, fix config</text>
 <rect x="90" y="558" width="134" height="40" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
-<text x="157" y="570.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">5 Remove VRM</text>
-<text x="157" y="586.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">picker, fix guides</text>
+<text x="157" y="570.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">5 Update guides</text>
+<text x="157" y="586.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">that mention VRM</text>
 <rect x="90" y="612" width="134" height="40" rx="6" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
 <text x="157" y="624.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">Hash voices</text>
 <text x="157" y="640.0" text-anchor="middle" dominant-baseline="central" fill="#3C3489">(roadmap 3)</text>
