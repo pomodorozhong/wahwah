@@ -40,19 +40,12 @@ Open **Analysis → Delay test**. Choose **Record**, say a few spaced “ah” s
 
 If timing improves but the shapes still look jumpy, compare **Your voice profile** with **uLipSync-style** under **Voice**. Try the latter with **uLipSync smoothness** at 50 ms and 20 ms. The clip is analysed again when you change settings. The best tradeoff between smoothness and delay on a physical microphone remains an open question.
 
-## Load a character
+## Watch the puppet
 
 The playground starts with **Tofu cube**, the white, clipped-corner puppet. It follows the same mouth controls in text, phoneme, and microphone modes.
 
-Under **Puppet → View**, choose **VRM model**. In **Model**, open a local `.vrm` file or choose one of the models supplied at startup. This option has been tested with pixiv’s `VRM1_Constraint_Twist_Sample`; other VRM models may behave differently. The sample is supplied locally, separately from the bundled Tofu puppet.
+To drive other characters, use [`wahwah-avatar`](https://github.com/pomodorozhong/wahwah-avatar), which plays the same performance on your own VRM models.
 
-To offer characters in the menu on startup, place their files in this layout before running or building the playground. Models are supplied locally. Use assets you have permission to use.
-
-```text
-apps/playground/public/models/
-  vrm/character.vrm
-```
-
-In the tofu and VRM views, drag to orbit, Shift-drag or right-drag to pan, and scroll to zoom. On touchscreens, drag with one finger to orbit or use two to pan and pinch. **Reset view** restores the initial framing.
+In the Tofu view, drag to orbit, Shift-drag or right-drag to pan, and scroll to zoom. On touchscreens, drag with one finger to orbit or use two to pan and pinch. **Reset view** restores the initial framing.
 
 To see exactly what an input sends, choose **Debug (instructions)** and replay the line. The solid arrows show how fast each mouth control is changing. The outlined arrows show its acceleration.

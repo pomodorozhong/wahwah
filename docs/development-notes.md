@@ -31,9 +31,9 @@ npm run preview
 
 Open the preview URL ending in `/wahwah/`. Check Tofu playback, each sound engine, Phoneme script and Live microphone's Demo voice. The legacy `/wahwah/mumble/`, `/wahwah/klattsch/`, `/wahwah/babble/` and `/wahwah/live/` URLs should select their corresponding input in the shared playground.
 
-`build:pages` uses Vite's `pages` mode. It disables automatic `public/` copying and the local-model manifest, then explicitly includes the bundled `tofu/corner-cut.vrm`, `LICENSE` and `THIRD_PARTY_NOTICES.md`. Files under `apps/playground/public/models/`, including the tested external sample, stay local. Other files placed under `public/` are excluded too. The ordinary `npm run build` continues to include local models for private builds. On Pages, visitors can choose **Open .vrm file** to load their own model in the browser.
+`build:pages` uses Vite's `pages` mode. It disables automatic `public/` copying, then explicitly includes the bundled `tofu/corner-cut.vrm`, `LICENSE` and `THIRD_PARTY_NOTICES.md`. Other files placed under `public/` are excluded.
 
-`test:pages` builds into a temporary directory with disposable model and public-file fixtures. It checks their inclusion in ordinary builds and exclusion from the Pages artifact and picker, bundled Tofu and notice contents, prefixed HTML asset URLs, WASM and both audio worklets. It removes its fixtures and leaves existing models alone.
+`test:pages` builds into a temporary directory with a disposable public-file fixture. It checks its inclusion in ordinary builds and exclusion from the Pages artifact, bundled Tofu and notice contents, prefixed HTML asset URLs, WASM and both audio worklets. It removes its fixtures and leaves existing models alone.
 
 `.github/workflows/pages.yml` runs all six repository checks plus the Pages test and build on pull requests and pushes to `main`. Only `main` can deploy; manual runs on other branches perform checks without publishing. Deployment uses the `github-pages` environment, and the Pages source must be set to **GitHub Actions** under repository **Settings → Pages**. After a successful deployment, verify the hosted WASM, Tofu and worklet requests and repeat the playback checks in a browser. The deployment job reports the site URL.
 
@@ -88,7 +88,5 @@ Open the preview URL ending in `/wahwah/`. Check Tofu playback, each sound engin
 ## Face host gotchas
 
 - **The stage has no 3D host while loading or in Debug.** Disconnect the previous host's camera controls when switching views, and check the selected view after asynchronous loading before attaching the next host.
-- **Model files are listed by a Vite plugin** (`virtual:local-models` in `apps/playground/vite.config.ts`) that scans the git-ignored `apps/playground/public/models/` for VRMs. Adding files triggers a full reload in dev; a production build lists what was there at build time.
-- **Local model files are copied into ordinary production output.** Git-ignoring `apps/playground/public/models/` does not keep Vite from copying it into `dist/models/`. Use `npm run build:pages` for deployment; it excludes local models from both the output and picker even in a checkout containing them. The tested external VRM is pixiv’s `VRM1_Constraint_Twist_Sample`; its local file and the preserved experiment models are not repository assets. If a newly created model directory is missing from the menu, restart Vite to refresh its manifest.
 - **A host that throws inside `update()` stops the page's frame loop**, since the stage schedules the next frame after rendering. Hosts catch their own errors and report them through `status`.
 
