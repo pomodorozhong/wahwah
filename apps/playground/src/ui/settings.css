@@ -96,8 +96,7 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  #group-2 .view-opts label:has(> :is(#view, #model)),
-  #group-2 #vrmModelHint { grid-column: 1 / -1; }
+  #group-2 .view-opts label:has(> #view) { grid-column: 1 / -1; }
 }
 
 @container settings (max-width: 26.99rem) {

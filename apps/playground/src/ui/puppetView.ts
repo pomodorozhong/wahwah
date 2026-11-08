@@ -1,4 +1,4 @@
-// Page shell and the puppet view shared by every playground: a VRM avatar or
+// Page shell and the puppet view shared by every playground: the Tofu avatar or
 // the debug puppet, the input mode and puppet controls, and the live meters.
 
 import './style.css';
@@ -7,7 +7,6 @@ import './settings.css';
 import './script-editor.css';
 import { type FaceControls } from 'wahwah/performance';
 import { MotionTracker, type FaceMotion } from '../puppet/motion';
-import localModels from 'virtual:local-models';
 import { ControlFollower } from '../host/follower';
 import { DebugPuppet } from '../host/debug';
 import { FaceRenderer } from '../host/renderer';
@@ -59,10 +58,7 @@ export function renderShell(root: HTMLElement): void {
     { label: 'Script', body: '' },
     { label: 'Voice', body: '' },
     { label: 'Puppet', body: section('Appearance and motion', `<div class="view-opts">
-            <label>View <select id="view"><option value="tofu">Tofu cube</option><option value="vrm">VRM model</option><option value="debug">Debug (instructions)</option></select></label>
-            <label id="modelLabel" hidden>Model <select id="model" aria-describedby="vrmModelHint"></select></label>
-            <p id="vrmModelHint" class="hint" hidden>This VRM option has only been tested with pixiv’s VRM1_Constraint_Twist_Sample. Other VRM models may behave differently.</p>
-            <input id="vrmFile" type="file" accept=".vrm" hidden />
+            <label>View <select id="view"><option value="tofu">Tofu cube</option><option value="debug">Debug (instructions)</option></select></label>
             <label><input id="puppet" type="checkbox" checked /> Puppet output</label>
             <label><input id="idle" type="checkbox" checked /> Idle motion</label>
           </div>`) },
@@ -138,10 +134,7 @@ export function renderShell(root: HTMLElement): void {
   }
 }
 
-export type PuppetViewMode = 'tofu' | 'vrm' | 'debug';
-
-const MODELS_URL = `${import.meta.env.BASE_URL}models/`;
-const OPEN_FILE = '__open__';
+export type PuppetViewMode = 'tofu' | 'debug';
 
 export class PuppetView {
   readonly renderer: FaceRenderer;
@@ -151,14 +144,9 @@ export class PuppetView {
   readonly puppetEl: HTMLInputElement;
   private mode: PuppetViewMode = 'tofu';
   private host: FaceHost | null = null;
-  private vrm: VrmFace | null = null;
   private tofu: Promise<VrmFace> | null = null;
   private idle = true;
-  private readonly modelEl: HTMLSelectElement;
   private readonly statusEl: HTMLElement;
-  /** The VRM model selection survives switching views. */
-  private pickedVrm = localModels.vrm[0] ?? '';
-  private loadingVrm = false;
 
   constructor() {
     const container = byId('face');
@@ -166,15 +154,12 @@ export class PuppetView {
     byId('resetView').addEventListener('click', () => this.host?.navigation?.reset());
     this.debugPuppet = new DebugPuppet(container);
     this.puppetEl = byId('puppet');
-    this.modelEl = byId('model');
     this.statusEl = byId('faceStatus');
     byId<HTMLSelectElement>('view').addEventListener('change', (e) => void this.setMode((e.target as HTMLSelectElement).value as PuppetViewMode));
     byId<HTMLInputElement>('idle').addEventListener('change', (e) => {
       this.idle = (e.target as HTMLInputElement).checked;
       if (this.host) this.host.idleMotion = this.idle;
     });
-    this.modelEl.addEventListener('change', () => this.onModelPicked());
-    byId<HTMLInputElement>('vrmFile').addEventListener('change', (e) => this.openVrmFile(e.target as HTMLInputElement));
     void this.setMode('tofu');
   }
 
@@ -191,8 +176,6 @@ export class PuppetView {
     byId<HTMLSelectElement>('view').value = mode;
     this.renderer.canvas.hidden = mode === 'debug';
     this.debugPuppet.visible = mode === 'debug';
-    byId('modelLabel').hidden = mode !== 'vrm';
-    byId('vrmModelHint').hidden = mode !== 'vrm';
     this.host = null;
     this.renderer.setHost(null, false);
     byId('cameraTools').hidden = true;
@@ -200,13 +183,6 @@ export class PuppetView {
     if (mode === 'tofu') {
       const host = await this.tofuHost();
       if (this.mode === mode) this.useHost(host);
-    } else if (mode === 'vrm') {
-      this.fillModelList();
-      const host = await this.vrmHost();
-      if (this.mode !== mode) return;
-      this.useHost(host);
-      const picked = this.pickedVrm;
-      if (host.status && picked && !picked.startsWith('blob:') && !this.loadingVrm) this.loadLocal(picked);
     }
   }
 
@@ -218,68 +194,13 @@ export class PuppetView {
     this.renderer.setHost(host, interactive);
   }
 
-  private async vrmHost(): Promise<VrmFace> {
-    if (!this.vrm) {
-      const { VrmFace } = await import('../host/vrm');
-      this.vrm ??= new VrmFace();
-    }
-    return this.vrm;
-  }
-
   private tofuHost(): Promise<VrmFace> {
     this.tofu ??= import('../host/vrm').then(async ({ VrmFace }) => {
       const host = new VrmFace();
-      await host.load(`${import.meta.env.BASE_URL}tofu/corner-cut.vrm`, 'Tofu cube', true);
+      await host.load(`${import.meta.env.BASE_URL}tofu/corner-cut.vrm`, 'Tofu cube');
       return host;
     });
     return this.tofu;
-  }
-
-  private fillModelList(): void {
-    const files = localModels.vrm;
-    const name = (f: string) => f.split('/').pop()!.replace(/\.vrm$/i, '');
-    this.modelEl.innerHTML =
-      files.map((f) => `<option value="${f}">${name(f)}</option>`).join('') + `<option value="${OPEN_FILE}">Open .vrm file…</option>`;
-    const picked = this.pickedVrm;
-    this.modelEl.value = picked && (files.includes(picked) || picked.startsWith('blob:')) ? picked : files[0] ?? OPEN_FILE;
-    if (picked.startsWith('blob:')) {
-      this.modelEl.insertAdjacentHTML('afterbegin', `<option value="${picked}">opened file</option>`);
-      this.modelEl.value = picked;
-    }
-  }
-
-  private onModelPicked(): void {
-    if (this.mode !== 'vrm') return;
-    const value = this.modelEl.value;
-    if (value === OPEN_FILE) {
-      this.modelEl.value = this.pickedVrm || OPEN_FILE;
-      byId('vrmFile').click();
-      return;
-    }
-    if (value.startsWith('blob:')) return;
-    this.pickedVrm = value;
-    this.loadLocal(value);
-  }
-
-  private loadLocal(file: string): void {
-    const label = file.split('/').pop()!;
-    const url = MODELS_URL + file;
-    this.loadingVrm = true;
-    void this.vrmHost().then((h) => h.load(url, label)).finally(() => { this.loadingVrm = false; });
-  }
-
-  private openVrmFile(input: HTMLInputElement): void {
-    const file = input.files?.[0];
-    input.value = '';
-    if (!file) return;
-    const url = this.blobUrl(file);
-    this.pickedVrm = url;
-    this.fillModelList();
-    void this.vrmHost().then((h) => h.load(url, file.name));
-  }
-
-  private blobUrl(file: File): string {
-    return URL.createObjectURL(file);
   }
 
   private showStatus(text: string): void {

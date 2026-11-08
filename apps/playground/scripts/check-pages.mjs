@@ -8,25 +8,17 @@ import { build } from 'vite';
 const root = resolve(import.meta.dirname, '..');
 const repoRoot = resolve(root, '../..');
 
-test('Pages publishes the bundled model and notices without local public files or menu entries', async () => {
+test('Pages publishes the bundled model and notices without local public files', async () => {
   const output = await mkdtemp(join(tmpdir(), 'wahwah-pages-'));
   const publicDir = join(root, 'public');
-  const modelsDir = join(publicDir, 'models');
-  await mkdir(modelsDir, { recursive: true });
-  const modelFixture = await mkdtemp(join(modelsDir, 'pages-private-model-'));
   const publicFixture = await mkdtemp(join(publicDir, 'pages-private-asset-'));
   try {
-    const marker = 'DO_NOT_PUBLISH_THIS_LOCAL_MODEL';
-    await writeFile(join(modelFixture, `${marker}.vrm`), marker);
+    const marker = 'DO_NOT_PUBLISH_THIS_LOCAL_FILE';
     await writeFile(join(publicFixture, 'private.txt'), marker);
-    // Private builds still support startup models. Then replace that output
-    // with Pages to catch stale public files as well as accidental new copies.
+    // Ordinary builds copy public/. Then replace that output with Pages to
+    // catch stale public files as well as accidental new copies.
     await build({ root, mode: 'production', logLevel: 'warn', build: { outDir: output, emptyOutDir: true } });
-    assert.equal(await readFile(join(output, 'models', basename(modelFixture), `${marker}.vrm`), 'utf8'), marker);
     assert.equal(await readFile(join(output, basename(publicFixture), 'private.txt'), 'utf8'), marker);
-    const privateAssets = await readdir(join(output, 'assets'));
-    const privateCode = await Promise.all(privateAssets.filter(file => file.endsWith('.js')).map(file => readFile(join(output, 'assets', file), 'utf8')));
-    assert.ok(privateCode.some(code => code.includes(marker)), 'ordinary builds retain the local model picker');
     await build({ root, mode: 'pages', logLevel: 'warn', build: { outDir: output, emptyOutDir: true } });
 
     const entries = await readdir(output);
@@ -48,12 +40,8 @@ test('Pages publishes the bundled model and notices without local public files o
     assert.ok(assets.some(file => file.endsWith('.wasm')), 'WASM binary is published');
     assert.ok(assets.some(file => file.startsWith('analysisWorklet-')), 'live analysis worklet is published');
     assert.ok(assets.some(file => file.startsWith('recorderWorklet-')), 'recording worklet is published');
-    for (const file of assets.filter(file => file.endsWith('.js'))) {
-      const code = await readFile(join(output, 'assets', file), 'utf8');
-      assert.ok(!code.includes(marker), `${file}: private model is absent from the picker`);
-    }
   } finally {
-    await Promise.all([output, modelFixture, publicFixture].map(path => rm(path, { recursive: true, force: true })));
+    await Promise.all([output, publicFixture].map(path => rm(path, { recursive: true, force: true })));
     // Leave an existing models directory and all user-supplied files alone.
   }
 });
