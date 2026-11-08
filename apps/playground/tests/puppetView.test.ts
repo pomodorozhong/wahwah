@@ -4,7 +4,6 @@ import { VrmFace } from '../src/host/vrm';
 
 // Keep model loading pending so view changes can run before Tofu is ready.
 const pending = vi.hoisted(() => ({ finishTofu: () => {} }));
-vi.mock('virtual:local-models', () => ({ default: { vrm: [] } }));
 vi.mock('../src/host/renderer', () => ({
   FaceRenderer: class {
     canvas = { hidden: false };
@@ -38,8 +37,7 @@ describe('puppet view loading', () => {
 
   beforeEach(() => {
     pending.finishTofu = () => {};
-    vi.spyOn(VrmFace.prototype, 'load').mockImplementation(function (this: VrmFace, _url, _label, isTofu = false) {
-      if (!isTofu) { this.status = ''; return Promise.resolve(); }
+    vi.spyOn(VrmFace.prototype, 'load').mockImplementation(function (this: VrmFace) {
       return new Promise<void>(resolve => {
         pending.finishTofu = () => { this.status = ''; resolve(); };
       });
@@ -86,45 +84,21 @@ describe('puppet view loading', () => {
     expect(view.debugPuppet.render).toHaveBeenCalled();
   });
 
-  it('keeps the selected VRM host after Tofu loads, then applies current idle settings on return', async () => {
+  it('applies current idle settings when returning to Tofu', async () => {
     const view = new PuppetView();
-    await view.setMode('vrm');
     await vi.dynamicImportSettled();
-    const renderer = vi.mocked(view.renderer.setHost);
-    const vrmHost = renderer.mock.lastCall![0]!;
     pending.finishTofu();
-    await vi.dynamicImportSettled();
-    expect(renderer).toHaveBeenLastCalledWith(vrmHost, true);
-    expect(elements.get('modelLabel')!.hidden).toBe(false);
+    await vi.waitFor(() => expect(elements.get('cameraTools')!.hidden).toBe(false));
+    const renderer = vi.mocked(view.renderer.setHost);
+    const tofuHost = renderer.mock.lastCall![0]!;
+    await view.setMode('debug');
     const idle = elements.get('idle')!;
     idle.checked = false;
     idle.dispatchEvent(new Event('change'));
     await view.setMode('tofu');
-    const tofuHost = renderer.mock.lastCall![0]!;
-    expect(tofuHost).not.toBe(vrmHost);
+    expect(renderer.mock.lastCall![0]).toBe(tofuHost);
     expect(tofuHost.idleMotion).toBe(false);
     expect(view.debugPuppet.visible).toBe(false);
     expect(view.renderer.canvas.hidden).toBe(false);
-    expect(elements.get('modelLabel')!.hidden).toBe(true);
-  });
-
-  it('loads an opened VRM and retains its selection when switching views', async () => {
-    const view = new PuppetView();
-    await view.setMode('vrm');
-    const renderer = vi.mocked(view.renderer.setHost);
-    const host = renderer.mock.lastCall![0] as VrmFace;
-    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:opened-vrm');
-    const input = Object.assign(elements.get('vrmFile')!, {
-      files: [new File(['local VRM'], 'character.vrm')],
-    });
-    input.dispatchEvent(new Event('change'));
-    await vi.dynamicImportSettled();
-    expect(host.load).toHaveBeenCalledWith('blob:opened-vrm', 'character.vrm');
-    await view.setMode('debug');
-    await view.setMode('vrm');
-    expect(elements.get('model')!.value).toBe('blob:opened-vrm');
-    expect(renderer).toHaveBeenLastCalledWith(host, true);
-    pending.finishTofu();
-    await vi.dynamicImportSettled();
   });
 });

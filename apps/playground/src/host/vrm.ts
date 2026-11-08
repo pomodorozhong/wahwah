@@ -1,5 +1,5 @@
-// VRM host: a VRM avatar (three-vrm) driven through its standard viseme
-// expressions. Any VRM 0.x or 1.0 model works; see controlsToVrmVisemes.
+// Tofu host: the bundled Tofu VRM (three-vrm) driven through its viseme and
+// body expressions; see controlsToVrmVisemes.
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -10,8 +10,6 @@ import { Blinker, controlsToVrmVisemes } from './mappings';
 import { FaceNavigation } from './faceNavigation';
 import { StudyMotion } from './studyMotion';
 
-/** Vertical extent of the framed face, in metres. */
-const FRAME_HEIGHT = 0.42;
 const TOFU_CAMERA = new THREE.Vector3(0.43, 0.31, 1).normalize();
 
 export class VrmFace implements FaceHost {
@@ -19,7 +17,7 @@ export class VrmFace implements FaceHost {
   readonly camera = new THREE.PerspectiveCamera(20, 1, 0.05, 20);
   readonly navigation = new FaceNavigation(this.camera);
   idleMotion = true;
-  status = 'Choose a VRM model.';
+  status = '';
   private vrm: VRM | null = null;
   private readonly focus = new THREE.Vector3(0, 1.4, 0);
   private readonly blinker = new Blinker();
@@ -32,7 +30,6 @@ export class VrmFace implements FaceHost {
     new THREE.CircleGeometry(1, 48),
     new THREE.MeshBasicMaterial({ color: 0xc8a784, side: THREE.DoubleSide, depthWrite: false }),
   );
-  private isStudy = false;
   private body: StudyMotion | null = null;
   private jaw?: THREE.Object3D;
   private readonly jawAngles = new Map<string, number>();
@@ -40,22 +37,20 @@ export class VrmFace implements FaceHost {
   private poseClock = 0;
 
   constructor() {
-    this.scene.background = new THREE.Color(0x1d2230);
+    this.scene.background = new THREE.Color(0xf4dab2);
     this.shadow.renderOrder = -1; // The illustrated shadow stays behind every deformed pose.
     this.shadow.rotation.x = -Math.PI / 2;
-    this.shadow.visible = false;
     this.scene.add(this.stage, this.shadow);
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0x445066, 1.2));
     const key = new THREE.DirectionalLight(0xffffff, 2);
     key.position.set(1, 2, 3);
     this.scene.add(key);
     this.softbox.position.set(-2, 3, 5);
-    this.softbox.visible = false;
     this.scene.add(this.softbox);
     this.scene.add(this.camera); // so lookAt can target it
   }
 
-  async load(url: string, label: string, isTofu = false): Promise<void> {
+  async load(url: string, label: string): Promise<void> {
     const id = ++this.loadId;
     this.status = `Loading ${label}…`;
     const loader = new GLTFLoader();
@@ -77,33 +72,23 @@ export class VrmFace implements FaceHost {
       this.stage.add(vrm.scene);
       if (vrm.lookAt) vrm.lookAt.target = this.camera;
       vrm.update(0);
-      this.isStudy = isTofu;
-      this.softbox.visible = isTofu;
       const timing = gltf.scene.userData.tofuMotion;
-      this.body = isTofu && timing ? new StudyMotion(timing) : null;
-      this.bindJaw(isTofu ? vrm.scene.getObjectByName('DialogueJaw') : undefined);
+      this.body = timing ? new StudyMotion(timing) : null;
+      this.bindJaw(vrm.scene.getObjectByName('DialogueJaw'));
       this.poseClock = 0;
-      this.shadow.visible = isTofu;
-      (this.scene.background as THREE.Color).setHex(isTofu ? 0xf4dab2 : 0x1d2230);
-      if (isTofu) {
-        const bounds = new THREE.Box3().setFromObject(vrm.scene, true);
+      const bounds = new THREE.Box3().setFromObject(vrm.scene, true);
+      bounds.getSize(this.extent);
+      bounds.getCenter(this.focus);
+      this.shadow.position.set(this.focus.x, bounds.min.y - 0.002, this.focus.z);
+      this.shadow.scale.set(this.extent.x * 0.47, this.extent.z * 0.46, 1);
+      // Place the shadow under the resting cube, then frame its full
+      // range of speaking poses and delayed weight shifts.
+      const frame = gltf.scene.userData.tofuFrame;
+      if (frame) {
+        bounds.min.fromArray(frame.min);
+        bounds.max.fromArray(frame.max);
         bounds.getSize(this.extent);
         bounds.getCenter(this.focus);
-        this.shadow.position.set(this.focus.x, bounds.min.y - 0.002, this.focus.z);
-        this.shadow.scale.set(this.extent.x * 0.47, this.extent.z * 0.46, 1);
-        // Place the shadow under the resting cube, then frame its full
-        // range of speaking poses and delayed weight shifts.
-        const frame = gltf.scene.userData.tofuFrame;
-        if (frame) {
-          bounds.min.fromArray(frame.min);
-          bounds.max.fromArray(frame.max);
-          bounds.getSize(this.extent);
-          bounds.getCenter(this.focus);
-        }
-      } else {
-        const head = vrm.humanoid.getNormalizedBoneNode('head');
-        if (head) head.getWorldPosition(this.focus);
-        this.focus.y += 0.06; // bone sits at the skull base; centre on the face
       }
       this.frame(this.focus);
       this.status = '';
@@ -116,8 +101,8 @@ export class VrmFace implements FaceHost {
     this.controls = c;
   }
 
-  /** Generic VRM viewers use the embedded vowel morph. Here the mandible
-   * travels on its hinge arc, so remove just that positional fallback. */
+  /** The mandible travels on its hinge arc, so remove the embedded vowel
+   * morph's positional fallback. */
   private bindJaw(jaw?: THREE.Object3D): void {
     this.jaw = jaw;
     this.jawAngles.clear();
@@ -172,12 +157,7 @@ export class VrmFace implements FaceHost {
     }
     const neck = this.vrm.humanoid.getNormalizedBoneNode('neck');
     this.vrm.expressionManager?.setValue('blink', blink);
-    if (neck) {
-      if (this.idleMotion && !this.isStudy) {
-        neck.rotation.y = Math.sin(this.elapsed * 0.7) * 0.08;
-        neck.rotation.x = Math.sin(this.elapsed * 0.45) * 0.04;
-      } else neck.rotation.set(0, 0, 0);
-    }
+    neck?.rotation.set(0, 0, 0);
     this.vrm.update(dtSeconds);
   }
 
@@ -188,11 +168,9 @@ export class VrmFace implements FaceHost {
 
   private frame(newCenter?: THREE.Vector3): void {
     const halfFov = THREE.MathUtils.degToRad(this.camera.fov / 2);
-    const height = this.isStudy
-      ? 1.12 * Math.max(this.extent.y + this.extent.z * 0.32, (this.extent.x + this.extent.z * 0.43) / this.camera.aspect)
-      : Math.max(FRAME_HEIGHT, (FRAME_HEIGHT * 0.9) / this.camera.aspect);
+    const height = 1.12 * Math.max(this.extent.y + this.extent.z * 0.32, (this.extent.x + this.extent.z * 0.43) / this.camera.aspect);
     const dist = height / 2 / Math.tan(halfFov);
-    this.navigation.frame(dist, newCenter, this.isStudy ? TOFU_CAMERA : undefined);
+    this.navigation.frame(dist, newCenter, TOFU_CAMERA);
     this.camera.updateProjectionMatrix();
   }
 }
