@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { DEFAULT_VOICE, VOICE_MAPPING_V1, deriveVoice, loadVoices, renderMumble, sampleFaceTrack, NEUTRAL } from '../src/index';
+import { INSTRUMENTS, renderInstrument, DEFAULT_VOICE, VOICE_MAPPING_V1, deriveVoice, loadVoices, renderMumble, sampleFaceTrack, NEUTRAL } from '../src/index';
 
 const SAMPLE_RATE = 24000;
 
@@ -48,5 +48,25 @@ describe('deriveVoice', () => {
     expect(() => deriveVoice(new Uint8Array(15), 1)).toThrow(/at least 16/);
     expect(() => deriveVoice('zz'.repeat(16), 1)).toThrow(/hex/);
     expect(() => deriveVoice(hex, 2)).toThrow(/mapping/i);
+  });
+});
+
+describe('multilingual input', () => {
+  const voice = { engine: 'formant', brassColor: 0 };
+
+  it('speaks Chinese and mixed text with source ranges in UTF-16', () => {
+    const text = 'Hello 你好，世界！😀 мир';
+    const u = renderMumble(text, { seed: 3 }, DEFAULT_VOICE, SAMPLE_RATE, voice);
+    expect(u.audio.length).toBeGreaterThan(SAMPLE_RATE / 2);
+    expect(u.script.words.map(w => w.text)).toEqual(['Hello', '你', '好', '世', '界', 'мир']);
+    for (const w of u.script.words) expect(text.slice(w.srcStart, w.srcEnd)).toBe(w.text);
+  });
+
+  it('speaks Chinese with Talking Instruments', () => {
+    const preset = INSTRUMENTS[0];
+    const options = { instrument: preset.id, pitchHz: preset.pitchHz, speed: preset.speed, expression: preset.expression, brightness: preset.brightness, seed: 1, moodId: 'neutral' };
+    const u = renderInstrument('你好，世界', options, SAMPLE_RATE);
+    expect(u.notes).toHaveLength(4);
+    expect(u.audio.some(v => Math.abs(v) > 0.01)).toBe(true);
   });
 });
