@@ -4,6 +4,7 @@
 
 mod bank;
 mod brass;
+pub mod character;
 mod formant;
 pub mod instruments;
 pub mod mouth;

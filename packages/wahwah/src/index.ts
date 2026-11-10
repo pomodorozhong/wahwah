@@ -18,6 +18,7 @@ export {
   type InstrumentOptions,
   type InstrumentPreset,
 } from './voice/instruments.js';
+export { VOICE_MAPPING_V1, deriveVoice, type CharacterVoice } from './voice/character.js';
 export { DEFAULT_TROMBONE, type TromboneOptions } from './voice/trombone.js';
 export { MOODS, STYLES, type Mood, type MumbleStyle } from './mumble/styles.js';
 export type { MumbleOptions, MumbleScript, MumbleWord } from './mumble/generate.js';

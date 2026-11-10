@@ -31,6 +31,7 @@ The tarball includes the compiled WASM, the licence and the third-party notices,
 | `FaceControlTrack`, `FaceControlSample` | Timed controls at a fixed rate. |
 | `RenderedUtterance` | `engine`, `warnings`, `audio`, a `Timeline` and an optional face track. |
 | `Timeline`, `PerformanceSegment` | The sounds on a timeline, with source text ranges. |
+| `deriveVoice(hash, mapping)` | A repeatable character voice from a caller-provided hash. See [Character voices from a hash](#character-voices-from-a-hash). |
 | `sampleFaceTrack(track, seconds)` | Controls at a time on the playback clock. Neutral outside the track. |
 | `segmentAt(timeline, seconds)` | The sound or pause at a time. |
 | `normalizeControls`, `lerpControls`, `NEUTRAL`, `CONTROL_RANGES` | Range rules and interpolation. |
@@ -48,6 +49,22 @@ const controlsNow = (startedAt: number, now: number) => sampleFaceTrack(utteranc
 ```
 
 The playground is the worked example. [`apps/playground/src/ui/stage.ts`](../apps/playground/src/ui/stage.ts) runs the playback clock and samples the track. [`apps/playground/src/host/vrm.ts`](../apps/playground/src/host/vrm.ts) and [`apps/playground/src/host/mappings.ts`](../apps/playground/src/host/mappings.ts) drive the Tofu VRM from the controls. A test keeps the host files off the voice engine, live input and UI, so the example uses only what an outside project also has.
+
+## Character voices from a hash
+
+`deriveVoice(hash, mapping)` turns a hash into voice settings that always come out the same, so a viewer, player or save slot keeps one voice. Call it after `loadVoices()`.
+
+```ts
+const voice = deriveVoice(hexDigest, VOICE_MAPPING_V1);
+renderMumble('Hello there!', { seed: voice.seed, styleId: voice.styleId }, voice.settings, 48000, { engine: 'formant', brassColor: voice.brassColor });
+```
+
+- **The hash is yours.** Hash a stable identifier with a salt of your own, so the same identifier gives a different voice in each app. Pass at least 16 bytes, as a `Uint8Array` or as hex digits in either case, with no prefix. A shorter hash, bad hex or an unknown mapping throws. wahwah never sees the identifier. Account lookup and chat data stay with the caller.
+- **The mapping version is required.** A released mapping never changes its ranges, its style list or its results, and tests pin one output. A change ships as a new mapping number, and callers move to it when they choose.
+- **Each setting is drawn on its own.** HKDF-SHA256 ([RFC 5869](https://www.rfc-editor.org/rfc/rfc5869)) expands the hash under one label per setting, such as `wahwah/character-voice/v1/pitch`. A setting added later gets a new label and cannot move the others.
+- **What comes back** is plain data: pitch 85–220 Hz, 85–140 ms per phoneme, formant scale 0.85–1.25, one of the `bubbly`, `chirpy` and `grumbly` styles, a seed, a brass color, and trombone settings. The mood is not part of it. Choose one per line.
+
+A Twitch example: hash the viewer's numeric user ID with your own salt, using SHA-256, and pass the digest. wahwah does not know about Twitch.
 
 ## Versions
 

@@ -2,6 +2,7 @@
 //! Rust uses UTF-8 byte ranges; JavaScript receives UTF-16 string positions.
 
 use serde::{Deserialize, Serialize};
+use wahwah_core::character;
 use wahwah_core::{
     ScoreOptions, TromboneOptions, Voice, compile_score,
     instruments::{
@@ -214,6 +215,20 @@ pub fn tokenize_text(source: &str) -> Result<JsValue, JsError> {
         }
     }
     to_js(&tokens)
+}
+
+/// A repeatable character voice from hash bytes. The mapping version is required.
+#[wasm_bindgen(js_name = deriveVoice)]
+pub fn derive_voice(hash: &[u8], mapping: u32) -> Result<JsValue, JsError> {
+    let voice = character::derive_voice(hash, mapping).map_err(|e| JsError::new(&e.to_string()))?;
+    to_js(&voice)
+}
+
+/// The same, with the hash as hex digits.
+#[wasm_bindgen(js_name = deriveVoiceHex)]
+pub fn derive_voice_hex(hash: &str, mapping: u32) -> Result<JsValue, JsError> {
+    let bytes = character::parse_hash_hex(hash).map_err(|e| JsError::new(&e.to_string()))?;
+    derive_voice(&bytes, mapping)
 }
 
 #[wasm_bindgen(js_name = renderPerformance)]
