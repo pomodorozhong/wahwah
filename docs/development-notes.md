@@ -83,7 +83,7 @@ Open the preview URL ending in `/wahwah/`. Check Tofu playback, each sound engin
 - Input drafts and settings survive switching within a visit through module-local state; this does not promise persistence across reloads. Root URLs use `?mode=mumble|klattsch|live`, with `engine` for Mumble's selected engine. Legacy playground paths resolve to the same shell; `/babble/` and `?mode=babble` still select Mumble.
 - The approved design uses the Mustard Block colors and Writing Spread layout: visible script, grouped settings, a persistent rounded square puppet and a persistent playback monitor. The preview title and Reset view sit inside the square's bottom edge. The product title is Voice playground.
 - `apps/playground/src/ui/monitorTheme.ts` defines the shared plot palette and line styles: cream solid jaw, teal dashed width, gold dotted rounding and a translucent gold level envelope. Keep canvas plots, legends and CSS meters consistent. These plots show audio level and face controls; live levels use dBFS. Recorded playback draws the retained take against the mouth clock and applies the selected delay to its audio envelope.
-- The merged UI deliberately excludes the later shader-style and mouth-mode experiments. Their source and local model archives are on `codex/backup-puppet-experiments-2026-11-02` at a5bbc48. Extract source onto current main for each feature; do not merge the backup wholesale or publish the local model archives.
+- The shader-style and mouth-mode experiments now live in `wahwah-avatar`, not here. The original source and local model archives stay on `codex/backup-puppet-experiments-2026-11-02` at a5bbc48 for reference; do not merge the backup wholesale or publish the local model archives.
 
 ## Face host gotchas
 
