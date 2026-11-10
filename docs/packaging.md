@@ -1,6 +1,6 @@
 # Packaging plan
 
-How `wahwah` becomes importable by other projects, and how that extends to Swift and Python. The `wahwah` package exists in `packages/wahwah/` and the playground lives in `apps/playground/`; the Python and Swift crates below are planned. The ownership boundary with `wahwah-avatar` is in [Project goals](goals.md) and the [avatar split plan](avatar-split.md).
+How `wahwah` becomes importable by other projects, and how that extends to Swift and Python. The `wahwah` package exists in `packages/wahwah/` and the playground lives in `apps/playground/`; the Python and Swift crates below are planned. The ownership boundary with `wahwah-avatar` is in [Project goals](goals.md).
 
 ## Target layout
 
@@ -67,7 +67,6 @@ wahwah/
     ├── README.md
     ├── goals.md
     ├── architecture.md
-    ├── avatar-split.md
     ├── packaging.md
     ├── interface.md
     ├── playground.md
@@ -115,6 +114,6 @@ Rust defines the format of the mouth controls, the track and the timeline. Share
 1. Done: this plan, and the `wahwah` package with its release workflow ([#23](https://github.com/pomodorozhong/wahwah/issues/23)).
 2. Done: the playground moved into `apps/playground/`, before the split, so the split steps use the final paths from the start.
 3. Done: `wahwah-avatar` exists and its playground builds against the package.
-4. Done: split steps 1 to 5 (see the [avatar split plan](avatar-split.md)).
+4. Done: the avatar split.
 5. Publish to npm ([#25](https://github.com/pomodorozhong/wahwah/issues/25)).
 6. Python and Swift, when a consumer needs them.
