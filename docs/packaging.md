@@ -114,7 +114,7 @@ Rust defines the format of the mouth controls, the track and the timeline. Share
 
 1. Done: this plan, and the `wahwah` package with its release workflow ([#23](https://github.com/pomodorozhong/wahwah/issues/23)).
 2. Done: the playground moved into `apps/playground/`, before the split, so the split steps use the final paths from the start.
-3. Create `wahwah-avatar` and build its Tofu skeleton against the package.
-4. Split steps 1, 2, 4 and 5, then step 3 (see the [avatar split plan](avatar-split.md)).
+3. Done: `wahwah-avatar` exists and its playground builds against the package.
+4. Done: split steps 1 to 5 (see the [avatar split plan](avatar-split.md)).
 5. Publish to npm ([#25](https://github.com/pomodorozhong/wahwah/issues/25)).
 6. Python and Swift, when a consumer needs them.

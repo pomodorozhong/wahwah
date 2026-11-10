@@ -31,7 +31,7 @@ The [Rust/WASM port](https://github.com/pomodorozhong/wahwah/issues/10) is compl
 
 ## Roadmap
 
-1. **Start `wahwah-avatar`.** Create the repository with a license, CI and a Tofu skeleton that renders from a `FaceControlTrack` using the released `wahwah` tarball, then run the split steps in the [avatar split plan](avatar-split.md). The standalone interface it needs has shipped.
+1. **Start `wahwah-avatar`.** Done: the repository exists with a license, CI and a playground that renders from a `FaceControlTrack` using the released `wahwah` tarball, and the [avatar split plan](avatar-split.md) is finished. What remains is publishing the package to npm ([#25](https://github.com/pomodorozhong/wahwah/issues/25)) and the Twitch/OBS app.
 2. **Multilingual invented speech.** Support Chinese and mixed-language text, a general Unicode fallback, and language-specific rhythm improvements.
 3. **Deterministic character voices from a hash.** Expose a general-purpose interface that accepts a caller-provided hash and derives repeatable voice settings through a versioned mapping, so a later change to the mapping cannot silently change existing characters. Use Twitch as a documentation example. An external integration can hash a stable Twitch viewer ID and pass the result to wahwah. The external integration owns account lookup, authentication, and Twitch data handling.
 4. **Maximum output duration.** Fit longer lines within a caller-supplied cap while keeping audio and mouth motion synchronized. Shorter lines keep their natural duration.

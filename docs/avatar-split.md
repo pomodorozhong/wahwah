@@ -18,11 +18,13 @@ Each step is its own PR. The diagram shows who does what and in what order.
 
 1. Done: [#6](https://github.com/pomodorozhong/wahwah/issues/6) (line boil) is now [wahwah-avatar#3](https://github.com/pomodorozhong/wahwah-avatar/issues/3) and [#11](https://github.com/pomodorozhong/wahwah/issues/11) (visual styles) is [wahwah-avatar#4](https://github.com/pomodorozhong/wahwah-avatar/issues/4). [#12](https://github.com/pomodorozhong/wahwah/issues/12) (Tofu M/B/P closure, P2) stays in `wahwah` because Tofu does. A transfer gives each issue a new number; the old URL redirects, and the links in `HANDOFF.md` and `docs/` now use the new numbers.
 2. Done: [`wahwah-avatar`](https://github.com/pomodorozhong/wahwah-avatar) lists local `.vrm` models at startup and loads any VRM file, so the picker, local model loading and generic VRM support now live there.
-3. Extract the visual and mouth experiments, replacement mouths before optional mouth modes.
+3. Done: the visual and mouth experiments are in `wahwah-avatar` ([#6](https://github.com/pomodorozhong/wahwah-avatar/pull/6) replacement mouths, [#8](https://github.com/pomodorozhong/wahwah-avatar/pull/8) optional mouth modes, [#9](https://github.com/pomodorozhong/wahwah-avatar/pull/9) painted, ink and comic print styles). `mouthModes.ts` became `mouthPlan.ts` there.
 4. Done: remove what moved from `wahwah`, including the VRM model picker, its view option and the generic VRM loading path, and update `apps/playground/vite.config.ts`, `apps/playground/scripts/check-pages.mjs` and the picker tests. The voice playground and its Pages workflow stay.
 5. Done: update the text that described the removed VRM view; the playground keeps the Tofu host and the Debug view: the VRM sentence in `README.md`, the VRM model and local `.vrm` instructions and the tofu-and-VRM camera sentence in `docs/playground.md`, and the VRM mentions in `docs/development-notes.md`.
 6. Build the Twitch/OBS app. It needs the hash voice interface from the roadmap.
-7. After the split is confirmed finished, publish the performance interface as a versioned package and move `wahwah-avatar` from the git pin to it ([#25](https://github.com/pomodorozhong/wahwah/issues/25)).
+7. Publish the performance interface as a versioned package and move `wahwah-avatar` from the git pin to it ([#25](https://github.com/pomodorozhong/wahwah/issues/25)).
+
+The split is finished: steps 1 to 5 are done. Step 6 is new work that builds on it, and step 7 comes next.
 
 ## How code moves
 
@@ -38,12 +40,12 @@ The host code the Tofu view runs on also stays whole: `apps/playground/src/host/
 
 ## What moved
 
-Steps 2, 4 and 5 are done; the experiments (step 3) and the visual direction notes are still to move.
+Steps 2 to 5 are done. Everything below has moved to `wahwah-avatar`, and its `docs/goals.md` carries the visual direction notes. The new work they started ([wahwah-avatar#3](https://github.com/pomodorozhong/wahwah-avatar/issues/3) line boil, [#4](https://github.com/pomodorozhong/wahwah-avatar/issues/4) visual styles) is not part of the move.
 
 - Generic VRM support in `apps/playground/src/host/vrm.ts`: the non-Tofu branch of `VrmFace.load` (head-based framing, the default background, the `isTofu = false` path) and its tests. `host.ts` and `renderer.ts` have nothing that only serves other models.
 - Model picking and local model loading: the VRM view option, model list, local `.vrm` loading and `vrmHost()` in `apps/playground/src/ui/puppetView.ts`, the local-model manifest in `apps/playground/vite.config.ts`, `apps/playground/src/localModels.d.ts` and `apps/playground/tests/puppetView.test.ts`.
 - Experiments, from the preserved `codex/backup-puppet-experiments-2026-11-02` branch: `src/host/surfaceStyle.ts`, `src/host/inkDither.ts`, `src/host/comicPrint.ts`, `src/host/puppetMouth.ts`, `src/host/referenceMouth.ts`, `src/host/mouthModes.ts` and `scripts/remake-vrm-models.mjs`. Rework changes to `renderer.ts`, `vrm.ts`, `host.ts` and `puppetView.ts` against the current code. The snapshot also holds obsolete app code and private model archives, so do not merge it wholesale, and keep generated archives and sample model ZIPs local.
-- Visual direction notes, which were removed from `docs/goals.md`. Copy them into `wahwah-avatar`'s goals when it is created. The target is a stylized, front-facing character with readable mouth poses, small head turns and secondary motion, drawn in one of three ways:
+- Visual direction notes, which were removed from `docs/goals.md` and now live in `wahwah-avatar`'s `docs/goals.md`. The target is a stylized, front-facing character with readable mouth poses, small head turns and secondary motion, drawn in one of three ways:
   - *Breath of the Wild*: painterly surfaces and toon shading.
   - *Return of the Obra Dinn*: one-bit monochrome and dithering. [Dithering notes](https://dukope.com/devlogs/obra-dinn/tig-32/)
   - *Into the Spider-Verse*: line work, halftones, and poses held over multiple frames. A held pose is worth trying on live speech because it may read more clearly than a mouth that changes shape on every frame. [Imageworks production notes](https://www.imageworks.com/node/1371)
