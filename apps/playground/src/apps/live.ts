@@ -53,7 +53,7 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
         `<label class="field">Input
           <select id="source">
             <option value="mic">Microphone</option>
-            <option value="test">Test signal: Mumble sentence (klattsch, played aloud)</option>
+            <option value="test">Test signal: Mumble sentence (played aloud)</option>
             <option value="sweep">Test signal: vowel sweep ah·ee·oo·eh (Pink Trombone, played aloud)</option>
             <option value="demo">Demo voice: a synthetic speaker who also answers the calibration prompts</option>
           </select>
