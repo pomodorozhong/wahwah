@@ -29,7 +29,8 @@ The tarball includes the compiled WASM, the licence and the third-party notices,
 | `STYLES`, `MOODS`, `INSTRUMENTS`, `DEFAULT_VOICE`, `DEFAULT_TROMBONE` | The voice settings and presets. |
 | `FaceControls` | `jawOpen`, `lipWidth` and `lipRound`, each in [0, 1]. Neutral is all zeros. |
 | `FaceControlTrack`, `FaceControlSample` | Timed controls at a fixed rate. |
-| `RenderedUtterance` | `engine`, `warnings`, `audio`, a `Timeline` and an optional face track. |
+| `RenderedUtterance` | `engine`, `warnings`, `audio`, a `Timeline`, an optional face track, and `fit` when a maximum duration shortened the line. |
+| `DurationFit` | What a maximum duration did: `naturalSeconds`, `speed` and `truncated`. |
 | `Timeline`, `PerformanceSegment` | The sounds on a timeline, with source text ranges. |
 | `deriveVoice(hash, mapping)` | A repeatable character voice from a caller-provided hash. See [Character voices from a hash](#character-voices-from-a-hash). |
 | `sampleFaceTrack(track, seconds)` | Controls at a time on the playback clock. Neutral outside the track. |
@@ -65,6 +66,21 @@ renderMumble('Hello there!', { seed: voice.seed, styleId: voice.styleId }, voice
 - **What comes back** is plain data: pitch 85–220 Hz, 85–140 ms per phoneme, formant scale 0.85–1.25, one of the `bubbly`, `chirpy` and `grumbly` styles, a seed, a brass color, and trombone settings. The mood is not part of it. Choose one per line.
 
 A Twitch example: hash the viewer's numeric user ID with your own salt, using SHA-256, and pass the digest. wahwah does not know about Twitch.
+
+## Maximum duration
+
+Every render call (`renderMumble`, `renderPhonemes`, `renderInstrument`) takes an optional last argument, `maxDurationSeconds`, from 0.1 to 600.
+
+```ts
+const utterance = renderMumble(text, options, voice, 48000, { engine: 'formant', brassColor: 0.75 }, true, 4);
+utterance.fit; // { naturalSeconds: 9.3, speed: 1.6, truncated: true }
+```
+
+- **A line that fits is untouched.** It renders exactly as without a cap, and `fit` is empty.
+- **A longer line is sped up first,** by at most 1.6 times, without changing pitch. Every time on the score is scaled together, so the audio, the timeline and the face track still line up.
+- **If that is not enough, the end is cut** at the cap with an 80 ms fade, the mouth closes at the cut, and `warnings` says so. The words after the cut are not in the timeline.
+- **The cap counts everything,** including the pauses and the synthesis tail. The audio is never longer than `floor(cap × sampleRate)` samples, and the timeline and track end by the cap.
+- **Exact durations are separate.** Stretching a short line to a requested length is [#20](https://github.com/pomodorozhong/wahwah/issues/20).
 
 ## Versions
 

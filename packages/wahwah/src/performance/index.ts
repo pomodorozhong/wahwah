@@ -8,4 +8,4 @@ export {
   type FaceControls,
 } from './controls.js';
 export { sampleFaceTrack } from './sample.js';
-export { segmentAt, type PerformanceSegment, type RenderedUtterance, type Timeline } from './performance.js';
+export { segmentAt, type DurationFit, type PerformanceSegment, type RenderedUtterance, type Timeline } from './performance.js';

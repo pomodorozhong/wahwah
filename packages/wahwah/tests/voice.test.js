@@ -70,3 +70,41 @@ describe('multilingual input', () => {
     expect(u.audio.some(v => Math.abs(v) > 0.01)).toBe(true);
   });
 });
+
+describe('maximum duration', () => {
+  const long = 'Hello there my friend, how are you doing on this fine morning? '.repeat(6);
+  const voice = { engine: 'formant', brassColor: 0 };
+  let natural;
+  beforeAll(() => {
+    natural = renderMumble(long, { seed: 3 }, DEFAULT_VOICE, SAMPLE_RATE, voice);
+  });
+
+  it('leaves a line that fits exactly as it was', () => {
+    const u = renderMumble(long, { seed: 3 }, DEFAULT_VOICE, SAMPLE_RATE, voice, true, 600);
+    expect(u.audio).toEqual(natural.audio);
+    expect(u.fit ?? null).toBeNull();
+  });
+
+  it('keeps audio, timeline and face track inside the cap', () => {
+    for (const cap of [natural.timeline.durationSeconds / 1.3, 3]) {
+      const u = renderMumble(long, { seed: 3 }, DEFAULT_VOICE, SAMPLE_RATE, voice, true, cap);
+      expect(u.audio.length).toBeLessThanOrEqual(Math.floor(cap * SAMPLE_RATE));
+      expect(u.timeline.durationSeconds).toBeLessThanOrEqual(cap + 1e-9);
+      expect(u.track.durationSeconds).toBeCloseTo(u.timeline.durationSeconds, 9);
+      expect(u.fit.naturalSeconds).toBeCloseTo(natural.timeline.durationSeconds, 9);
+    }
+    const cut = renderMumble(long, { seed: 3 }, DEFAULT_VOICE, SAMPLE_RATE, voice, true, 3);
+    expect(cut.fit).toMatchObject({ truncated: true, speed: 1.6 });
+    expect(Math.abs(cut.audio.at(-1))).toBe(0);
+  });
+
+  it('applies to Talking Instruments and rejects a bad cap', () => {
+    const preset = INSTRUMENTS[0];
+    const options = { instrument: preset.id, pitchHz: preset.pitchHz, speed: preset.speed, expression: preset.expression, brightness: preset.brightness, seed: 1, moodId: 'neutral' };
+    const u = renderInstrument(long, options, SAMPLE_RATE, true, 2);
+    expect(u.audio.length).toBeLessThanOrEqual(2 * SAMPLE_RATE);
+    expect(u.fit).not.toBeNull();
+    expect(() => renderMumble('Hi', { seed: 1 }, DEFAULT_VOICE, SAMPLE_RATE, voice, true, 0.01)).toThrow(/between 0.1 and 600/);
+    expect(() => renderMumble('Hi', { seed: 1 }, DEFAULT_VOICE, SAMPLE_RATE, voice, true, Number.NaN)).toThrow();
+  });
+});
