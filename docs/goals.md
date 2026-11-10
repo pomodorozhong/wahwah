@@ -4,7 +4,7 @@ How much character can a puppet get from a few well-timed mouth shapes? The play
 
 ## What wahwah provides
 
-`wahwah` is a voice engine and playground. It generates invented speech, analyzes a live microphone, keeps audio and mouth motion on one timeline, and describes the mouth movement in a format that does not depend on any model. Other projects build on that. [`wahwah-avatar`](avatar-split.md) is the first: it shows 3D characters, applies visual styles, and connects to Twitch and OBS.
+`wahwah` is a voice engine and playground. It generates invented speech, analyzes a live microphone, keeps audio and mouth motion on one timeline, and describes the mouth movement in a format that does not depend on any model. Other projects build on that. [`wahwah-avatar`](https://github.com/pomodorozhong/wahwah-avatar) is the first: it shows 3D characters, applies visual styles, and connects to Twitch and OBS.
 
 A consumer receives the generated audio and timeline plus timed `FaceControlTrack` samples. It can pass a stable hash to get repeatable voice settings, through a versioned mapping so that later changes to the voices do not alter existing characters. Twitch is only a documentation example: a consumer that hashes a viewer ID owns the account lookup, chat data, and character choice.
 
@@ -31,7 +31,7 @@ The [Rust/WASM port](https://github.com/pomodorozhong/wahwah/issues/10) is compl
 
 ## Roadmap
 
-1. **Start `wahwah-avatar`.** Done: the repository exists with a license, CI and a playground that renders from a `FaceControlTrack` using the released `wahwah` tarball, and the [avatar split plan](avatar-split.md) is finished. What remains is publishing the package to npm ([#25](https://github.com/pomodorozhong/wahwah/issues/25)) and the Twitch/OBS app.
+1. **Start `wahwah-avatar`.** Done: the repository exists with a license, CI and a playground that renders from a `FaceControlTrack` using the released `wahwah` tarball, and the split from `wahwah` is finished. What remains is publishing the package to npm ([#25](https://github.com/pomodorozhong/wahwah/issues/25)) and the Twitch/OBS app.
 2. **Multilingual invented speech.** Support Chinese and mixed-language text, a general Unicode fallback, and language-specific rhythm improvements.
 3. **Deterministic character voices from a hash.** Expose a general-purpose interface that accepts a caller-provided hash and derives repeatable voice settings through a versioned mapping, so a later change to the mapping cannot silently change existing characters. Use Twitch as a documentation example. An external integration can hash a stable Twitch viewer ID and pass the result to wahwah. The external integration owns account lookup, authentication, and Twitch data handling.
 4. **Maximum output duration.** Fit longer lines within a caller-supplied cap while keeping audio and mouth motion synchronized. Shorter lines keep their natural duration.

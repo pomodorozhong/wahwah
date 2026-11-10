@@ -46,4 +46,4 @@ The playground keeps the Tofu reference host and the Debug view. Other models, m
 
 The integration boundary is the rendered performance and its timed controls. `RenderedUtterance` carries audio and a timeline. Its optional `FaceControlTrack` carries `jawOpen`, `lipWidth`, and `lipRound` samples for a host to map onto its own rig. The TypeScript definitions are [`RenderedUtterance`](../packages/wahwah/src/performance/performance.ts) and [`FaceControlTrack`](../packages/wahwah/src/performance/controls.ts), shipped in the `wahwah` package described in the [interface guide](interface.md).
 
-Tofu is the reference example of how a VRM model links to those controls: its model, generator, and mapping. `wahwah-avatar` consumes the same controls for its own models.
+Tofu is the reference example of how a VRM model links to those controls: its model, generator, and mapping. They live in `apps/playground/scripts/tofu/`, `apps/playground/public/tofu/corner-cut.vrm` and `apps/playground/src/host/`. `wahwah-avatar` consumes the same controls for its own models.
