@@ -25,22 +25,6 @@ body { margin: 0; background: var(--bg); color: var(--text); }
 .face-status { position: absolute; inset: auto 16px 16px; margin: 0; padding: 8px 12px; border-radius: 8px; background: #20262aeb; color: white; font-size: 13px; z-index: 1; }
 .face-status[hidden] { display: none; }
 
-.transport {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 16px;
-  padding: 8px 10px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  font-size: 13px;
-}
-.transport .buttons { display: flex; gap: 6px; }
-.transport button { flex: none; padding: 8px 16px; }
-.transport .status { display: flex; gap: 14px; font-variant-numeric: tabular-nums; }
-.transport .status span { color: var(--muted); margin-right: 4px; }
-.transport .status b { font-weight: 500; display: inline-block; min-width: 3.5em; }
 .meters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .meter { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto 6px; gap: 3px 8px; font-size: 11px; }
 .meter span { color: var(--muted); font-family: ui-monospace, monospace; }

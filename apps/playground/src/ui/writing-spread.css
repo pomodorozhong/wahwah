@@ -12,11 +12,10 @@
 .mast-actions { display: flex; align-items: center; gap: 10px; min-width: 0; }
 
 /* Segmented pickers: the input mode in the masthead and the view on the stage */
-.segmented { display: inline-flex; margin: 0; padding: 0; border: 1.5px solid var(--ink); border-radius: 10px; overflow: hidden; background: var(--panel); min-width: 0; }
-.segmented label { position: relative; display: flex; min-width: 0; min-height: calc(var(--control-h) - 3px); cursor: pointer; }
-.segmented label + label { border-left: 1px solid #b39c68; }
+.segmented { display: inline-flex; gap: 2px; margin: 0; padding: 2px; border: 1.5px solid var(--ink); border-radius: 10px; overflow: hidden; background: var(--panel); min-width: 0; }
+.segmented label { position: relative; display: flex; min-width: 0; min-height: calc(var(--control-h) - 7px); cursor: pointer; }
 .segmented input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
-.segmented span { display: flex; flex: 1; align-items: center; justify-content: center; padding: 0 13px; font-size: 13px; font-weight: 700; white-space: nowrap; color: var(--text); }
+.segmented span { display: flex; flex: 1; align-items: center; justify-content: center; padding: 0 12px; border-radius: 7px; font-size: 13px; font-weight: 700; white-space: nowrap; color: var(--text); }
 .segmented input:checked + span, .segmented input:checked + span + span { background: var(--ink); color: var(--on-accent); }
 .segmented input:focus-visible ~ span { outline: 2px solid var(--ink); outline-offset: -4px; border-radius: 6px; }
 .segmented .short { display: none; }
@@ -27,9 +26,9 @@
 .stage { container: portrait / inline-size; min-width: 0; }
 .face { position: relative; width: 100%; aspect-ratio: 1; overflow: hidden; background: #1d2230; border: var(--card-border); border-radius: var(--radius); box-sizing: border-box; }
 .preview-head { position: absolute; z-index: 2; inset: auto 10px 10px; display: flex; flex-wrap: nowrap; align-items: center; gap: 6px; }
-.preview-head .segmented label { min-height: 27px; }
+.preview-head .segmented label { min-height: 23px; }
 .preview-head > .segmented, .preview-head > .puppet-menu, #resetView { flex: none; }
-.preview-head .segmented span { padding: 0 9px; font-size: 12px; }
+.preview-head .segmented span { padding: 0 8px; font-size: 12px; border-radius: 6px; }
 .face-status { bottom: 56px; }
 .puppet-menu { position: relative; }
 .puppet-menu summary { list-style: none; display: flex; align-items: center; height: 30px; box-sizing: border-box; padding: 0 9px; border: 1.5px solid var(--ink); border-radius: 10px; background: var(--panel); font: 700 12px system-ui, sans-serif; cursor: pointer; }
@@ -62,7 +61,7 @@
 /* A mode with a single column (Phoneme script, Live microphone) flows its controls into a grid. */
 .studio .controls #group-1 > .section:only-child > .section-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px 28px; align-items: start; }
 
-.transport { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 12px var(--pad); border-top: 1px solid #d4c399; background: #faebba; border-radius: 0 0 calc(var(--radius) - 2px) calc(var(--radius) - 2px); font-size: 13px; }
+.transport { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 12px var(--pad); border: 0; border-top: 1px solid #d4c399; background: #faebba; border-radius: 0 0 calc(var(--radius) - 2px) calc(var(--radius) - 2px); font-size: 13px; }
 .transport .buttons { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
 .transport .buttons button { min-height: 40px; padding: 0 16px; border-radius: 8px; background: #fff2bf; border: 1px solid #8d7439; font-weight: 650; }
 .transport .buttons button.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
@@ -93,7 +92,7 @@
 @media (min-width: 1100px) {
   .studio { height: 100vh; height: 100dvh; }
   .layout {
-    --top: clamp(200px, 34dvh, 440px);
+    --top: clamp(220px, 38dvh, 440px);
     display: grid; grid-template-columns: var(--top) minmax(0,1fr); grid-template-rows: var(--top) minmax(0,1fr);
     grid-template-areas: 'portrait editor' 'controls controls';
     gap: var(--gap); padding: var(--gap) var(--gutter); width: min(1480px,100%); margin-inline: auto; min-height: 0;
@@ -109,7 +108,14 @@
   .show-analysis .analysis { display: block; }
   .show-analysis .controls { display: none; }
   .editor .script-heading h2 { font-size: clamp(20px, 2vw, 28px); }
-  #group-0 .writing-sheet textarea { min-height: 80px; }
+  /* Let the writing box take the room the card has, so the card does not scroll it out of view. */
+  .editor > .panel { display: flex; flex-direction: column; }
+  #group-0 .script-editor { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; }
+  #group-0 .writing-sheet { flex: 1; min-height: 84px; display: flex; flex-direction: column; }
+  .editor #group-0 .writing-sheet textarea { flex: 1; min-height: 0; resize: none; padding: 10px 14px 0; font-size: 22px; }
+  .editor #group-0 .writing-sheet #phonemes { font-size: 19px; }
+  #group-0 .word-preview { display: flex; align-items: baseline; gap: 12px; padding-top: 10px; }
+  #group-0 .word-preview h3 { flex: none; margin: 0; }
 }
 
 /* Tablet: the same columns, two to a row, and the page scrolls */
