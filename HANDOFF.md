@@ -4,12 +4,15 @@
 
 ### feat/playground-layout
 
-- Task: redesign the playground layout, to close [#46](https://github.com/pomodorozhong/wahwah/issues/46) (the Voice tab crowded by the maximum-duration controls) and [#34](https://github.com/pomodorozhong/wahwah/issues/34) (the nearly empty Puppet tab).
-- PR: none. The branch is local only, created from `main` at `1543c37`, and not yet linked to either issue.
-- Code checkpoint: none yet; only this `docs:` handoff commit.
-- State: not started. The Voice tab markup is `voiceHtml` in `apps/playground/src/apps/mumble.ts`; the user guide is `docs/playground.md`.
-- Next action: draft the redesign plan with the `open-pr` skill and get it approved before changing code.
-- Pending: **P-06** push `feat/playground-layout` and link it to [#46](https://github.com/pomodorozhong/wahwah/issues/46) and [#34](https://github.com/pomodorozhong/wahwah/issues/34) (`gh issue develop`). Why: pushing and linking need approval. Blocks: resuming from another computer.
+- Task: redesign the playground layout, closing [#46](https://github.com/pomodorozhong/wahwah/issues/46) (the crowded Voice tab) and [#34](https://github.com/pomodorozhong/wahwah/issues/34) (the nearly empty Puppet tab).
+- PR: none yet. The branch is local only and not yet linked to either issue.
+- Code checkpoint: `a7a5267` feat(playground): responsive layout with the fit plot in the playback monitor.
+- State: implemented as approved (P-07). Wide screens show the stage and line on top with control columns below; tablets fold the columns two per row; phones use Script, Voice and Analysis tabs. A segmented input picker replaces the dropdown, the Puppet tab's controls sit on the stage, and the fit curves (speed, reached, fade, markers and the faint cut tail) are drawn in the playback monitor with chips, hidden on phones. The separate fade plot is gone (`fadePlot.ts` became `fitCurves.ts`). Design mockups: https://claude.ai/artifact/EVXvkhAS4HcnfMrRACsHWV (private).
+- Verification at `a7a5267`: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`, `npm run typecheck`, `npm test` (226 + 18 tests), `npm run build` and `npm run test:pages` pass. Checked in the browser at 1280×800, 834×1194 and 375×812: all three input modes, every sound engine in Text to mumble (four columns, no horizontal scroll), the Analysis switch, phone tabs, and the cap with fade and cut tail, including Kazoo playback.
+- Not checked: real phone hardware, touch use of the Puppet menu, and landscape phones (they get the tablet layout).
+- Next action: get approval to push and open the PR (P-06, P-08).
+- Pending: **P-06** push `feat/playground-layout` and link it to [#46](https://github.com/pomodorozhong/wahwah/issues/46) and [#34](https://github.com/pomodorozhong/wahwah/issues/34) (`gh issue develop`). Why: pushing and linking need approval. Blocks: the PR.
+- Pending: **P-08** open the PR with the drafted title and body. Why: publishing needs approval. Blocks: review.
 
 ## Ranked work
 
