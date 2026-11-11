@@ -113,13 +113,102 @@ pub enum Tone {
     Exclaim,
 }
 
+/// How a character is spoken. Scripts without spaces get a word per sound.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Script {
+    /// ASCII, plus accented Latin letters.
+    Latin,
+    /// One Chinese character, one syllable.
+    Han,
+    /// A Hangul syllable block, one syllable.
+    Hangul,
+    /// A kana, one mora.
+    Kana,
+    /// Any other letter or digit: Cyrillic, Greek, Arabic, Thai and the rest.
+    Other,
+}
+
+fn is_latin_letter(c: char) -> bool {
+    c.is_ascii_alphabetic()
+        || (c.is_alphabetic() && matches!(c as u32, 0xC0..=0x24F | 0x1E00..=0x1EFF))
+}
+
+fn script_of(c: char) -> Option<Script> {
+    if c.is_ascii_digit() || is_latin_letter(c) {
+        return Some(Script::Latin);
+    }
+    Some(match c as u32 {
+        0x3400..=0x4DBF
+        | 0x4E00..=0x9FFF
+        | 0xF900..=0xFAFF
+        | 0x20000..=0x323AF
+        | 0x3005
+        | 0x3007 => Script::Han,
+        0x3041..=0x3096 | 0x30A1..=0x30FA | 0x31F0..=0x31FF | 0xFF66..=0xFF9D => Script::Kana,
+        0x1100..=0x11FF | 0x3131..=0x318E | 0xAC00..=0xD7AF => Script::Hangul,
+        _ if c.is_alphanumeric() => Script::Other,
+        _ => return None,
+    })
+}
+
+/// Small kana and the long-vowel mark join the mora before them. The sokuon `っ`
+/// is a mora of its own.
+fn extends_kana(c: char) -> bool {
+    matches!(
+        c,
+        'ゃ' | 'ゅ'
+            | 'ょ'
+            | 'ャ'
+            | 'ュ'
+            | 'ョ'
+            | 'ぁ'
+            | 'ぃ'
+            | 'ぅ'
+            | 'ぇ'
+            | 'ぉ'
+            | 'ァ'
+            | 'ィ'
+            | 'ゥ'
+            | 'ェ'
+            | 'ォ'
+            | 'ー'
+            | 'ｰ'
+    )
+}
+
+/// Marks that attach to the letter before them: accents, Hebrew points, Arabic
+/// harakat, and the vowel signs and viragas of the Indic scripts.
+fn is_combining(c: char) -> bool {
+    matches!(
+        c as u32,
+        0x0300..=0x036F | 0x0483..=0x0489 | 0x0591..=0x05BD | 0x064B..=0x065F | 0x0670
+            | 0x1AB0..=0x1AFF | 0x1DC0..=0x1DFF | 0x20D0..=0x20FF | 0xFE20..=0xFE2F
+    ) || (matches!(c as u32, 0x0900..=0x0DFF)
+        && !c.is_alphanumeric()
+        && !matches!(c as u32, 0x0964 | 0x0965 | 0x0970))
+}
+
+fn sentence_end(c: char) -> bool {
+    matches!(
+        c,
+        '.' | '!' | '?' | '。' | '！' | '？' | '．' | '｡' | '؟' | '‼' | '⁇' | '⁈' | '⁉'
+    )
+}
+
+fn clause_break(c: char) -> bool {
+    matches!(
+        c,
+        ',' | ';' | ':' | '，' | '、' | '；' | '：' | '､' | '،' | '؛'
+    )
+}
+
 pub fn tokenize_text(text: &str) -> Vec<TextToken<'_>> {
     let mut tokens = Vec::new();
     let mut i = 0;
-    let bytes = text.as_bytes();
     while i < text.len() {
         let tail = &text[i..];
-        if let Some(mark) = ["...", "…", "—", "–", "--"]
+        let c = tail.chars().next().expect("nonempty tail");
+        if let Some(mark) = ["...", "…", "—", "–", "--", "⋯"]
             .iter()
             .find(|mark| tail.starts_with(**mark))
         {
@@ -128,29 +217,58 @@ pub fn tokenize_text(text: &str) -> Vec<TextToken<'_>> {
                 tone: Tone::None,
             });
             i += mark.len();
-        } else if bytes[i].is_ascii_alphanumeric() {
+        } else if let Some(script) = script_of(c) {
             let start = i;
-            while i < bytes.len() && bytes[i].is_ascii_alphanumeric() {
-                i += 1;
-            }
-            loop {
-                let apostrophe = if text[i..].starts_with("’") {
-                    3
-                } else if text[i..].starts_with("'") {
-                    1
-                } else {
-                    0
-                };
-                if apostrophe == 0
-                    || !bytes
-                        .get(i + apostrophe)
-                        .is_some_and(u8::is_ascii_alphabetic)
-                {
-                    break;
+            match script {
+                Script::Latin => {
+                    while let Some(c) = text[i..]
+                        .chars()
+                        .next()
+                        .filter(|c| script_of(*c) == Some(Script::Latin) || is_combining(*c))
+                    {
+                        i += c.len_utf8();
+                    }
+                    loop {
+                        let apostrophe = if text[i..].starts_with('’') {
+                            3
+                        } else if text[i..].starts_with('\'') {
+                            1
+                        } else {
+                            0
+                        };
+                        if apostrophe == 0
+                            || !text[i + apostrophe..]
+                                .chars()
+                                .next()
+                                .is_some_and(is_latin_letter)
+                        {
+                            break;
+                        }
+                        i += apostrophe;
+                        while let Some(c) = text[i..]
+                            .chars()
+                            .next()
+                            .filter(|c| is_latin_letter(*c) || is_combining(*c))
+                        {
+                            i += c.len_utf8();
+                        }
+                    }
                 }
-                i += apostrophe;
-                while i < bytes.len() && bytes[i].is_ascii_alphabetic() {
-                    i += 1;
+                Script::Han | Script::Hangul => i += c.len_utf8(),
+                Script::Kana => {
+                    i += c.len_utf8();
+                    while let Some(c) = text[i..].chars().next().filter(|c| extends_kana(*c)) {
+                        i += c.len_utf8();
+                    }
+                }
+                Script::Other => {
+                    while let Some(c) = text[i..]
+                        .chars()
+                        .next()
+                        .filter(|c| script_of(*c) == Some(Script::Other) || is_combining(*c))
+                    {
+                        i += c.len_utf8();
+                    }
                 }
             }
             tokens.push(TextToken::Word {
@@ -158,28 +276,28 @@ pub fn tokenize_text(text: &str) -> Vec<TextToken<'_>> {
                 start,
                 end: i,
             });
-        } else if b".!?".contains(&bytes[i]) {
+        } else if sentence_end(c) {
             let start = i;
-            while i < bytes.len() && b".!?".contains(&bytes[i]) {
-                i += 1;
+            while let Some(c) = text[i..].chars().next().filter(|c| sentence_end(*c)) {
+                i += c.len_utf8();
             }
             let mark = &text[start..i];
-            let tone = if mark.contains('?') {
+            let tone = if mark.contains(['?', '？', '؟', '⁇', '⁈', '⁉']) {
                 Tone::Question
-            } else if mark.contains('!') {
+            } else if mark.contains(['!', '！', '‼']) {
                 Tone::Exclaim
             } else {
                 Tone::Statement
             };
             tokens.push(TextToken::Break { mark: '.', tone });
-        } else if b",;:".contains(&bytes[i]) {
-            i += 1;
+        } else if clause_break(c) {
+            i += c.len_utf8();
             tokens.push(TextToken::Break {
                 mark: ',',
                 tone: Tone::None,
             });
-        } else if bytes[i] == b'\n' {
-            while i < bytes.len() && bytes[i] == b'\n' {
+        } else if c == '\n' {
+            while text[i..].starts_with('\n') {
                 i += 1;
             }
             tokens.push(TextToken::Break {
@@ -187,35 +305,75 @@ pub fn tokenize_text(text: &str) -> Vec<TextToken<'_>> {
                 tone: Tone::Statement,
             });
         } else {
-            i += tail.chars().next().expect("nonempty tail").len_utf8();
+            i += c.len_utf8();
         }
     }
     tokens
 }
 
 fn vowel(c: u8) -> bool {
-    b"aeiouy".contains(&c)
+    b"aeiouyAEIOU".contains(&c)
 }
 
-/// English heuristics, deliberately independent of pronunciation dictionaries.
+/// A Latin letter as the plain letter the English rules understand. An accented
+/// vowel becomes its capital vowel, which counts as a vowel but is never a silent
+/// final e. Any other non-ASCII letter stands in as a consonant.
+fn plain_letter(c: char) -> Option<u8> {
+    const VOWELS: [(&str, u8); 5] = [
+        ("àáâãäåæāăą", b'a'),
+        ("èéêëēĕėęě", b'e'),
+        ("ìíîïĩīĭįıİ", b'i'),
+        ("òóôõöøōŏő", b'o'),
+        ("ùúûüũūŭůűų", b'u'),
+    ];
+    if c.is_ascii_alphabetic() {
+        return Some(c.to_ascii_lowercase() as u8);
+    }
+    if !is_latin_letter(c) {
+        return None;
+    }
+    let lower = c.to_lowercase().next().unwrap_or(c);
+    Some(
+        VOWELS
+            .iter()
+            .find(|(set, _)| set.contains(lower))
+            .map_or(b'c', |(_, vowel)| vowel.to_ascii_uppercase()),
+    )
+}
+
+/// Heuristics, deliberately independent of pronunciation dictionaries. English
+/// rules for Latin letters; one syllable per Chinese character, Hangul block and
+/// kana; about one per three letters of any other script.
 pub fn count_syllables(word: &str) -> usize {
-    let letters: Vec<u8> = word
-        .bytes()
-        .filter(u8::is_ascii_alphabetic)
-        .map(|c| c.to_ascii_lowercase())
-        .collect();
+    let letters: Vec<u8> = word.chars().filter_map(plain_letter).collect();
+    let mut foreign = 0;
+    let mut other = 0;
+    for c in word.chars() {
+        match script_of(c) {
+            Some(Script::Han | Script::Hangul) => foreign += 1,
+            Some(Script::Kana) if !extends_kana(c) => foreign += 1,
+            Some(Script::Other) => other += 1,
+            _ => (),
+        }
+    }
+    foreign += (other as usize).div_ceil(3);
     let n = letters.len();
     if n == 0 {
-        return word
-            .bytes()
-            .filter(u8::is_ascii_digit)
-            .count()
-            .div_ceil(2)
-            .max(1);
+        return if foreign > 0 {
+            foreign
+        } else {
+            word.bytes()
+                .filter(u8::is_ascii_digit)
+                .count()
+                .div_ceil(2)
+                .max(1)
+        };
     }
-    if n <= 3 {
-        return 1;
-    }
+    foreign + if n <= 3 { 1 } else { latin_syllables(&letters) }
+}
+
+fn latin_syllables(letters: &[u8]) -> usize {
+    let n = letters.len();
     let mut count = 0i32;
     for (i, c) in letters.iter().enumerate() {
         if vowel(*c) && (i == 0 || !vowel(letters[i - 1])) {
@@ -246,6 +404,13 @@ pub fn count_syllables(word: &str) -> usize {
 }
 
 pub fn stress_index(word: &str, syllables: usize) -> Option<usize> {
+    // Syllable-timed scripts have no English stress pattern; every syllable is even.
+    if word
+        .chars()
+        .any(|c| script_of(c).is_some_and(|s| s != Script::Latin))
+    {
+        return None;
+    }
     let word = word.to_ascii_lowercase();
     let base = word.split(['\'', '’']).next().unwrap_or(&word);
     const FUNCTION_WORDS: &str = "a an the and or but so if of to in on at by for with from as is am are was were be been it its i me my you your he him his she her we us our they them their this that these those not no do does did has have had will would can could should shall may might must there here than then just";

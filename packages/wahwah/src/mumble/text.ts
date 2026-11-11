@@ -1,4 +1,4 @@
-// English text analysis in Rust, with UTF-16 offsets at the WASM boundary.
+// Text analysis in Rust (English rules for Latin words, even syllables for CJK, a rough guess elsewhere), with UTF-16 offsets at the WASM boundary.
 import { countSyllables, stressIndex, tokenizeText as tokenize } from '../wasm/wahwah_wasm.js';
 export { countSyllables, stressIndex };
 

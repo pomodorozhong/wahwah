@@ -3,6 +3,7 @@
 ## Unreleased
 
 - `deriveVoice(hash, mapping)` and `VOICE_MAPPING_V1`: repeatable character voices from a caller-provided hash of at least 16 bytes. Adding them is not breaking.
+- Multilingual Mumble input: Chinese, Japanese and Korean text gets an even syllable per character, accented Latin words stay whole, other scripts get a rough fallback, and fullwidth punctuation shapes pauses and pitch. English output is unchanged.
 
 ## 0.1.0
 

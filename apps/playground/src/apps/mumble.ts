@@ -12,6 +12,11 @@ const SAMPLES = [
   { name: 'Reluctant agreement', text: 'Well... I suppose that is fine, if you insist.' },
   { name: 'An empty room', text: 'Wait, what? Where did everyone go?' },
   { name: 'The shopkeeper', text: 'Welcome, traveler! The shop is open, and everything is on sale.' },
+  { name: 'Chinese', text: '你好，今天过得怎么样？我想去买一些水果。' },
+  { name: 'Mixed English and Chinese', text: 'Hello 你好, 我今天 feel great! 谢谢你。' },
+  { name: 'Japanese', text: 'こんにちは、お元気ですか？ありがとうございます。' },
+  { name: 'Korean', text: '안녕하세요, 만나서 반갑습니다!' },
+  { name: 'Accents and other scripts', text: 'Café déjà vu, привет мир, مرحبا' },
   { name: 'Morning class', text: 'Good morning, class. Please open your books to page forty two. Who can tell me the answer?' },
 ];
 
