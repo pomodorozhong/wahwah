@@ -74,6 +74,30 @@ export function showFitChips(show: boolean): void {
   document.querySelector('.playback-monitor')?.classList.toggle('has-fit', show);
 }
 
+/**
+ * On a phone the play bar floats over the page with a dark scrim behind it. Fade the scrim
+ * with the distance the bar still floats above its resting place, so it follows the scroll
+ * and is gone once the bar settles under the last card.
+ */
+function followScrim(root: HTMLElement): void {
+  const bar = root.querySelector<HTMLElement>('.transport')!;
+  const end = root.querySelector<HTMLElement>('.transport-end')!;
+  const FADE_PX = 120;
+  let queued = false;
+  const update = () => {
+    queued = false;
+    const floating = end.getBoundingClientRect().top - bar.getBoundingClientRect().bottom;
+    bar.style.setProperty('--scrim', String(Math.min(1, Math.max(0, floating / FADE_PX))));
+  };
+  const queue = () => {
+    if (!queued) { queued = true; requestAnimationFrame(update); }
+  };
+  addEventListener('scroll', queue, { passive: true });
+  addEventListener('resize', queue);
+  new ResizeObserver(queue).observe(root.querySelector('.layout')!);
+  queue();
+}
+
 export function renderShell(root: HTMLElement): void {
   // On a phone the tabs show one group at a time; wider layouts show them together.
   const tabs = [
@@ -122,6 +146,7 @@ export function renderShell(root: HTMLElement): void {
           <div class="transport"><div class="buttons"></div>
             <div class="status"><span>Elapsed <b id="time">–</b></span><span>Sound <b id="sound">–</b></span></div>
           </div>
+          <div class="transport-end" aria-hidden="true"></div>
         </section>
         <section class="controls" aria-label="Voice and length">
           <div id="group-1" class="panel" role="tabpanel" aria-labelledby="tab-1" data-tab="1"></div>
@@ -166,6 +191,7 @@ export function renderShell(root: HTMLElement): void {
       buttons[to].click();
     });
   }
+  followScrim(root);
   const analysis = byId<HTMLButtonElement>('analysisToggle');
   analysis.addEventListener('click', () => {
     const on = analysis.getAttribute('aria-pressed') !== 'true';

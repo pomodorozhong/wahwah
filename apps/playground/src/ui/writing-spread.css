@@ -63,6 +63,7 @@
 .hash-field button, .controls .pair.seed button { min-block-size: 36px; padding: 0 12px; }
 .controls .hash-note code { overflow-wrap: anywhere; }
 .group-switch { display: none; }
+.transport-end { height: 0; }
 /* A mode with a single column (Phoneme script, Live microphone) flows its controls into a grid. */
 .studio .controls #group-1 > .section:only-child > .section-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px 28px; align-items: start; }
 
@@ -175,7 +176,8 @@
   .studio:not([data-tab="0"]) [data-tab="0"], .studio:not([data-tab="1"]) [data-tab="1"], .studio:not([data-tab="2"]) [data-tab="2"] { display: none; }
   .transport { order: 10; position: sticky; bottom: var(--gap); z-index: 3; border: 2px solid transparent; border-radius: var(--radius); background: transparent; }
   /* A scrim behind the pinned play bar, darker toward the bottom of the screen; the bar's card is drawn over it. */
-  .transport::before { content: ''; position: absolute; z-index: -2; left: calc(-2px - var(--gutter)); right: calc(-2px - var(--gutter)); top: -112px; bottom: calc(-2px - var(--gap)); background: linear-gradient(to bottom, rgb(41 38 30 / 0), rgb(41 38 30 / .6) 25%, rgb(41 38 30 / .9) 50%, rgb(41 38 30 / .95)); pointer-events: none; }
+  .transport-end { order: 11; margin-top: calc(-1 * var(--gap)); }
+  .transport::before { opacity: var(--scrim, 1); content: ''; position: absolute; z-index: -2; left: calc(-2px - var(--gutter)); right: calc(-2px - var(--gutter)); top: -112px; bottom: calc(-2px - var(--gap)); background: linear-gradient(to bottom, rgb(41 38 30 / 0), rgb(41 38 30 / .6) 25%, rgb(41 38 30 / .9) 50%, rgb(41 38 30 / .95)); pointer-events: none; }
   .transport::after { content: ''; position: absolute; z-index: -1; inset: -2px; border: var(--card-border); border-radius: inherit; background: #faebba; box-shadow: 0 4px 14px #231d1430; pointer-events: none; }
   .playback-monitor { display: none; }
 }
