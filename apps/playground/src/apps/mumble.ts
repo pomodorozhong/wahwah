@@ -75,16 +75,6 @@ const voiceHtml =
     </div>`,
   ) +
   section(
-    'Character voice from a hash',
-    `<label class="field"><input id="useHash" type="checkbox" /> Derive the voice from a hash</label>
-    <div class="pair seed" data-hash-field>
-      <label class="field">Hash (hex, 16 bytes or more) <input id="hash" type="text" spellcheck="false" autocomplete="off" value="00112233445566778899aabbccddeeff" /></label>
-      <button id="rehash" type="button">Random hash</button>
-    </div>
-    <p class="hint" id="hashOut"></p>
-    <p class="hint">The same hash always gives the same voice. While on, pitch, rate, voice size, style, seed and trombone settings come from the hash for klattsch and Wah-wah trombone. Mood stays yours.</p>`,
-  ) +
-  section(
     'Maximum duration',
     `<label class="field"><input id="useCap" type="checkbox" /> Cap the length of the line</label>
     ${slider('cap', 'Maximum duration', 0.5, 30, 0.5, 3)}
@@ -130,6 +120,16 @@ const voiceHtml =
     <p class="hint" id="fitOut"></p>
     <canvas id="fadePlot" class="fade-plot" data-cap-field aria-label="Speed, volume and audio level across the capped line"></canvas>
     <p class="hint" data-cap-field>Dashed lines: where the fade starts (green), the cap (dark) and, when cutting between words, the cut (purple). The volume curve is the fade gain; the audio level is measured from the rendered sound.</p>`,
+  ) +
+  section(
+    'Character voice from a hash',
+    `<label class="field"><input id="useHash" type="checkbox" /> Derive the voice from a hash</label>
+    <div class="pair seed" data-hash-field>
+      <label class="field">Hash (hex, 16 bytes or more) <input id="hash" type="text" spellcheck="false" autocomplete="off" value="00112233445566778899aabbccddeeff" /></label>
+      <button id="rehash" type="button">Random hash</button>
+    </div>
+    <p class="hint" id="hashOut"></p>
+    <p class="hint">The same hash always gives the same voice. While on, pitch, rate, voice size, style, seed and trombone settings come from the hash for klattsch and Wah-wah trombone. Mood stays yours.</p>`,
   ) +
   `${section(
     'Voice settings',
