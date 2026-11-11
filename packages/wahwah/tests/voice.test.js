@@ -96,6 +96,11 @@ describe('maximum duration', () => {
     const cut = renderMumble(long, { seed: 3 }, DEFAULT_VOICE, SAMPLE_RATE, voice, true, 3);
     expect(cut.fit).toMatchObject({ truncated: true, speed: 1.6 });
     expect(Math.abs(cut.audio.at(-1))).toBe(0);
+    // Only the words that still play are listed, and they all start before the cap.
+    expect(cut.script.words.length).toBeGreaterThan(0);
+    expect(cut.script.words.length).toBeLessThan(natural.script.words.length);
+    const lastSound = cut.timeline.segments.filter(s => s.phoneme).at(-1);
+    expect(cut.script.words.at(-1).outStart).toBeLessThan(lastSound.srcEnd);
   });
 
   it('applies to Talking Instruments and rejects a bad cap', () => {

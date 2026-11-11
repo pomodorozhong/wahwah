@@ -334,11 +334,31 @@ pub fn render(
         }
         None => render_performance(&score, sample_rate, &voice, track),
     };
+    // After a cut, keep only the words that some kept sound comes from, so the
+    // script lists what plays. Both sides are still byte ranges in `phonemes` here.
+    let played: Option<Vec<bool>> = match (&script, &performance.fit) {
+        (Some(script), Some(fit)) if fit.truncated => Some(
+            script
+                .words
+                .iter()
+                .map(|w| {
+                    performance.timeline.segments.iter().any(|s| {
+                        s.phoneme.is_some() && s.src_start < w.out_end && s.src_end > w.out_start
+                    })
+                })
+                .collect(),
+        ),
+        _ => None,
+    };
     for segment in &mut performance.timeline.segments {
         segment.src_start = js_offset(phonemes, segment.src_start);
         segment.src_end = js_offset(phonemes, segment.src_end);
     }
     if let Some(script) = &mut script {
+        if let Some(played) = played {
+            let mut kept = played.into_iter();
+            script.words.retain(|_| kept.next().unwrap_or(false));
+        }
         script_offsets(source, script);
     }
     #[derive(Serialize)]

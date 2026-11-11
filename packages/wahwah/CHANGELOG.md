@@ -4,7 +4,7 @@
 
 - `deriveVoice(hash, mapping)` and `VOICE_MAPPING_V1`: repeatable character voices from a caller-provided hash of at least 16 bytes. Adding them is not breaking.
 - Multilingual Mumble input: Chinese, Japanese and Korean text gets an even syllable per character, accented Latin words stay whole, other scripts get a rough fallback, and fullwidth punctuation shapes pauses and pitch. English output is unchanged.
-- An optional `maxDurationSeconds` argument on `renderMumble`, `renderPhonemes` and `renderInstrument`, and `RenderedUtterance.fit`: a longer line is sped up, then cut with a fade, with audio, timeline and face track fitted together. An optional `fit` argument shapes the fitting: `speedUp` (profile and top speed), `cutFade` (length, curve, bend and end volume), `volume` (a shape and a level along the line), and `cutAt` (`'word'` ends the line at the last whole word instead of inside one).
+- An optional `maxDurationSeconds` argument on `renderMumble`, `renderPhonemes` and `renderInstrument`, and `RenderedUtterance.fit`: a longer line is sped up, then cut with a fade, with audio, timeline and face track fitted together. An optional `fit` argument shapes the fitting: `speedUp` (profile and top speed), `cutFade` (length, curve, bend and end volume), `volume` (a shape and a level along the line), and `cutAt` (`'word'` ends the line at the last whole word instead of inside one). The audio never runs past `floor(cap × sampleRate)` samples, and after a cut `script.words` lists only the words that still play.
 
 ## 0.1.0
 
