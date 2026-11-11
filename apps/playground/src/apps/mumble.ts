@@ -6,7 +6,7 @@ import { wordAtPhonemeOffset } from 'wahwah/mumble';
 import { fastestDuration, fitCurves, type FitPlotData } from '../ui/fitCurves';
 import { rmsEnvelope } from '../analysis';
 import type { PuppetView } from '../ui/puppetView';
-import { Stage, byId, disclosure, section, restoreDraft } from '../ui/stage';
+import { Stage, byId, section, restoreDraft } from '../ui/stage';
 
 const SAMPLES = [
   { name: 'A greeting', text: 'Hello there! How are you today?' },
@@ -115,9 +115,9 @@ const lengthHtml = section(
   ${slider('cap', 'Maximum duration', 0.5, 30, 0.5, 3)}
   <label class="field" data-cap-field><input id="cutWord" type="checkbox" checked /> Cut between words (keep the last word whole)</label>
   <p class="hint fit-status" id="fitOut" data-cap-field></p>
-  <div data-cap-field>${disclosure(
-    'Speed, volume and fade',
-    `<label class="field">Speed-up shape
+  <div class="fit-options" data-cap-field>
+    <h4 class="subhead">Speed, volume and fade</h4>
+    <label class="field">Speed-up shape
       <select id="speedProfile">
         <option value="constant">Steady</option>
         <option value="rampUp">Ramp up (faster toward the end)</option>
@@ -147,8 +147,8 @@ const lengthHtml = section(
     ${slider('fadeMs', 'Fade length', 0, 2000, 10, 80)}
     ${slider('fadeBend', 'Fade bend', 0.2, 5, 0.1, 1)}
     ${slider('fadeEnd', 'End volume', 0, 100, 5, 0)}
-    <p class="hint">The playback monitor shows the speed, how much of the line has played and the fade volume, with dashed lines where the fade starts and where the line is cut.</p>`,
-  )}</div>`,
+    <p class="hint">The playback monitor shows the speed, how much of the line has played and the fade volume, with dashed lines where the fade starts and where the line is cut.</p>
+  </div>`,
 );
 
 type Spoken =
