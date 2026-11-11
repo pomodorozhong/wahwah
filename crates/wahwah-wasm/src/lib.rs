@@ -3,7 +3,7 @@
 
 use serde::{Deserialize, Serialize};
 use wahwah_core::character;
-use wahwah_core::fit::valid_cap;
+use wahwah_core::fit::{FitOptions, pause_separated_words, valid_cap};
 use wahwah_core::{
     ScoreOptions, TromboneOptions, Voice, compile_score,
     instruments::{
@@ -43,6 +43,17 @@ fn validate_cap(max_seconds: Option<f64>) -> Result<(), JsError> {
     }
 }
 
+fn validate_fit(options: Option<FitOptions>) -> Result<FitOptions, JsError> {
+    let options = options.unwrap_or_default();
+    if options.is_valid() {
+        Ok(options)
+    } else {
+        Err(JsError::new(
+            "Fit options out of range: fade 0–5000 ms, bend 0.1–8, end volume 0–1, top speed 1–3, volume level 0–2",
+        ))
+    }
+}
+
 fn with_audio(metadata: &impl Serialize, audio: &[f32]) -> Result<JsValue, JsError> {
     let result = to_js(metadata)?;
     let audio = js_sys::Float32Array::from(audio);
@@ -59,9 +70,11 @@ pub fn render_instrument(
     sample_rate: f64,
     puppet: bool,
     max_seconds: Option<f64>,
+    fit_options: JsValue,
 ) -> Result<JsValue, JsError> {
     validate_sample_rate(sample_rate)?;
     validate_cap(max_seconds)?;
+    let fit_options = validate_fit(serde_wasm_bindgen::from_value(fit_options)?)?;
     let options: InstrumentOptions = serde_wasm_bindgen::from_value(options)?;
     if [
         options.pitch_hz,
@@ -87,6 +100,7 @@ pub fn render_instrument(
                 sample_rate,
                 puppet.then_some(&track_options),
                 cap,
+                fit_options,
             );
             score = fitted;
             performance
@@ -198,6 +212,7 @@ struct RenderOptions {
     trombone: Option<TromboneSettings>,
     puppet: bool,
     max_duration_seconds: Option<f64>,
+    fit: Option<FitOptions>,
 }
 
 fn js_offset(source: &str, byte: usize) -> usize {
@@ -267,6 +282,7 @@ pub fn render(
     let base = serde_wasm_bindgen::from_value::<VoiceSettings>(settings)?.score_options()?;
     let options: RenderOptions = serde_wasm_bindgen::from_value(options)?;
     validate_cap(options.max_duration_seconds)?;
+    let fit_options = validate_fit(options.fit)?;
     let mut script = match options.input {
         Input::Mumble => Some(mumble::generate_mumble(source, &options.mumble)),
         Input::Phonemes => None,
@@ -305,7 +321,17 @@ pub fn render(
     let track_options = TrackOptions::default();
     let track = options.puppet.then_some(&track_options);
     let mut performance = match options.max_duration_seconds {
-        Some(cap) => render_performance_within(&score, sample_rate, &voice, track, cap),
+        Some(cap) => {
+            let words: Vec<(usize, usize)> = match &script {
+                Some(script) => script
+                    .words
+                    .iter()
+                    .map(|w| (w.out_start, w.out_end))
+                    .collect(),
+                None => pause_separated_words(&score),
+            };
+            render_performance_within(&score, sample_rate, &voice, track, cap, fit_options, &words)
+        }
         None => render_performance(&score, sample_rate, &voice, track),
     };
     for segment in &mut performance.timeline.segments {
