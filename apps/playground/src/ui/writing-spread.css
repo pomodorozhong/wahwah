@@ -177,8 +177,5 @@
   /* A scrim behind the pinned play bar, darker toward the bottom of the screen; the bar's card is drawn over it. */
   .transport::before { content: ''; position: absolute; z-index: -2; left: calc(-2px - var(--gutter)); right: calc(-2px - var(--gutter)); top: -72px; bottom: calc(-2px - var(--gap)); background: linear-gradient(to bottom, rgb(41 38 30 / 0), rgb(41 38 30 / .45) 45%, rgb(41 38 30 / .8)); pointer-events: none; }
   .transport::after { content: ''; position: absolute; z-index: -1; inset: -2px; border: var(--card-border); border-radius: inherit; background: #faebba; box-shadow: 0 4px 14px #231d1430; pointer-events: none; }
-  .playback-monitor { grid-template-columns: minmax(0,1fr); gap: 4px; padding: 8px var(--gutter); }
-  .playback-monitor .meters { grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; }
-  .monitor-signals h2 { min-height: 0; margin-bottom: 5px; font-size: 13px; }
-  .monitor-plot { display: none; }
+  .playback-monitor { display: none; }
 }
