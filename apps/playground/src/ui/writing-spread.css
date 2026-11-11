@@ -198,21 +198,30 @@ main.studio .playback-monitor .timeline { border-width: 2px; border-radius: var(
 main.studio .word-preview { border-top: var(--divider); }
 main.studio .editor .transport { border-top: var(--divider); }
 
-/* Tuning the cap: with the cap on, Length gets room to work in. Its fields pair up in two
-   columns, it takes a double-width column on wide screens (and the full row on tablets),
-   and the top row gives up some height so the controls and the monitor both stay in view. */
-@media (min-width: 760px) {
-  main.studio #group-2:has(#useCap:checked) > .section > .section-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 20px; align-items: start; }
-  main.studio #group-2:has(#useCap:checked) .fit-options { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 20px; align-items: start; }
-  main.studio #group-2:has(#useCap:checked) .fit-options > :is(.subhead, .hint) { grid-column: 1 / -1; }
-}
+/* Length keeps the same size whether the cap is on or off. On wide screens it has a wider
+   track than the other columns (Engine the narrowest) and its fields pair up in two columns. */
 @media (min-width: 1100px) {
-  .studio:has(#useCap:checked) .layout { --top: clamp(200px, 30dvh, 400px); }
-  .controls:has(#useCap:checked) { grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 2fr); }
+  .controls:has(#useCap) { grid-template-columns: minmax(0, .8fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.6fr); }
+  main.studio #group-2 > .section > .section-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 20px; align-items: start; }
+  main.studio #group-2 .fit-options { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 20px; align-items: start; }
+  main.studio #group-2 .fit-options > :is(.subhead, .hint) { grid-column: 1 / -1; }
 }
-@media (min-width: 760px) and (max-width: 1099.98px) {
-  .controls #group-2:has(#useCap:checked) { grid-column: 1 / -1; }
+
+/* Slimmer bars on tablet and wide screens: the masthead and the monitor take less height. */
+@media (min-width: 760px) {
+  .studio { --control-h: 32px; }
+  .mast { padding-block: 6px; }
+  .mast .brand { font-size: 21px; }
+  .brand-mark { width: 26px; height: 26px; }
+  .segmented span, .analysis-toggle { font-size: 12.5px; }
+  .playback-monitor { padding-block: 8px; gap: 6px var(--gap); }
+  .monitor-signals h2 { min-height: 24px; margin-bottom: 4px; font-size: 13px; }
+  .playback-monitor .meters { row-gap: 3px; }
+  .monitor-plot { gap: 4px; }
+  .chip { min-height: 24px; padding: 1px 8px; font-size: 11.5px; }
+  .playback-monitor .timeline, .playback-monitor.has-fit .timeline { height: 84px; }
 }
+
 @media (min-width: 1100px) {
   /* The monitor shows the fit status and the curves, so Length drops its long status and hint. */
   main.studio #group-2 #fitOut, main.studio #group-2 .fit-options > .hint { display: none; }
