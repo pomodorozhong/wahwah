@@ -1,6 +1,6 @@
 /* Responsive studio: on wide screens the stage and line sit above a row of control
    columns; tablets fold the columns into two; phones stack everything behind tabs. */
-.studio { min-height: 100vh; min-height: 100dvh; display: grid; grid-template-rows: auto minmax(0,1fr) auto; grid-template-columns: minmax(0,1fr); background: var(--bg); --gutter: clamp(12px, 1.6vw, 24px); --ink: #29261e; --card-border: 2px solid var(--ink); --radius: 16px; --pad: clamp(12px, 1.25vw, 20px); --gap: clamp(10px, 1vw, 16px); --control-h: 36px; }
+.studio { min-height: 100vh; min-height: 100dvh; display: grid; grid-template-rows: auto minmax(0,1fr) auto; grid-template-columns: minmax(0,1fr); background: var(--bg); --gutter: clamp(12px, 1.6vw, 24px); --ink: #29261e; --card-border: 2px solid var(--ink); --radius: 20px; --inset: 10px; --pad: clamp(12px, 1.25vw, 20px); --gap: clamp(10px, 1vw, 16px); --control-h: 36px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); border: 0; white-space: nowrap; }
 
 /* Masthead: brand, title, input picker and the Analysis switch */
@@ -25,9 +25,12 @@
 /* Stage: the puppet with its view, puppet options and camera controls on top */
 .stage { container: portrait / inline-size; min-width: 0; }
 .face { position: relative; width: 100%; height: 100%; min-height: 220px; overflow: hidden; background: #1d2230; border: var(--card-border); border-radius: var(--radius); box-sizing: border-box; }
-.preview-head { position: absolute; z-index: 2; inset: auto 10px 10px; display: flex; flex-wrap: nowrap; align-items: center; gap: 6px; }
+.preview-head { position: absolute; z-index: 2; inset: auto var(--inset) var(--inset); display: flex; flex-wrap: nowrap; align-items: center; gap: 6px; }
 .preview-head .segmented label { min-height: 23px; }
 .preview-head > .segmented, .preview-head > .puppet-menu, #resetView { flex: none; }
+/* Concentric with the stage's corner: control radius + inset = the stage's inner radius. */
+.preview-head > .segmented, .puppet-menu summary, #resetView { border-radius: calc(var(--radius) - 2px - var(--inset)); }
+.preview-head .segmented span { border-radius: calc(var(--radius) - 6px - var(--inset)); }
 .preview-head .segmented span { padding: 0 8px; font-size: 12px; border-radius: 6px; }
 .face-status { bottom: 56px; }
 .puppet-menu { position: relative; }
@@ -63,9 +66,9 @@
 /* A mode with a single column (Phoneme script, Live microphone) flows its controls into a grid. */
 .studio .controls #group-1 > .section:only-child > .section-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px 28px; align-items: start; }
 
-.transport { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 12px var(--pad); border: 0; border-top: 1px solid #d4c399; background: #faebba; border-radius: 0 0 calc(var(--radius) - 2px) calc(var(--radius) - 2px); font-size: 13px; }
+.transport { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: var(--inset); padding-right: var(--pad); border: 0; border-top: 1px solid #d4c399; background: #faebba; border-radius: 0 0 calc(var(--radius) - 2px) calc(var(--radius) - 2px); font-size: 13px; }
 .transport .buttons { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
-.transport .buttons button { min-height: 40px; padding: 0 16px; border-radius: 8px; background: #fff2bf; border: 1px solid #8d7439; font-weight: 650; }
+.transport .buttons button { min-height: 40px; padding: 0 16px; border-radius: calc(var(--radius) - 2px - var(--inset)); background: #fff2bf; border: 1px solid #8d7439; font-weight: 650; }
 .transport .buttons button.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 .transport button:disabled { opacity: .52; }
 .transport .status { display: flex; align-items: start; gap: clamp(10px,2vw,26px); margin: 0; font-variant-numeric: tabular-nums; }
@@ -146,7 +149,7 @@
 
 /* Phone: layout A, stacked with tabs and no plot */
 @media (max-width: 759.98px) {
-  .studio { --gutter: 12px; --pad: 16px; --gap: 12px; --radius: 14px; --control-h: 40px; }
+  .studio { --gutter: 12px; --pad: 16px; --gap: 12px; --radius: 18px; --control-h: 40px; }
   .mast { padding: 8px var(--gutter); }
   .mast .brand { font-size: 20px; }
   .brand-mark { width: 23px; height: 23px; }
