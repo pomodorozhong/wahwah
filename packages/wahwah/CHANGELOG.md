@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- `deriveVoice(hash, mapping)` and `VOICE_MAPPING_V1`: repeatable character voices from a caller-provided hash of at least 16 bytes. Adding them is not breaking.
+
 ## 0.1.0
 
 First release of the `wahwah` package. It replaces the unpublished split into `@wahwah/performance` and `@wahwah/voice`.

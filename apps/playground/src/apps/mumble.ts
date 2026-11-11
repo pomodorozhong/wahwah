@@ -1,6 +1,6 @@
 // Mumble playground: ordinary text becomes invented speech, audio and mouth
 // movement in Rust. Talking Instruments use their own explicit note score.
-import { DEFAULT_BRASS_COLOR, renderMumble, renderInstrument, MOODS, STYLES, INSTRUMENTS, isInstrument, DEFAULT_TROMBONE, type VoiceSettings, type InstrumentPerformance, type MumbleScript, type InstrumentId } from 'wahwah';
+import { DEFAULT_BRASS_COLOR, renderMumble, renderInstrument, deriveVoice, VOICE_MAPPING_V1, MOODS, STYLES, INSTRUMENTS, isInstrument, DEFAULT_TROMBONE, type VoiceSettings, type InstrumentPerformance, type MumbleScript, type InstrumentId } from 'wahwah';
 import { type RenderedUtterance } from 'wahwah/performance';
 import { wordAtPhonemeOffset } from 'wahwah/mumble';
 import type { PuppetView } from '../ui/puppetView';
@@ -68,9 +68,20 @@ const voiceHtml =
       <button id="reroll" type="button">New seed</button>
     </div>`,
   ) +
+  section(
+    'Character voice from a hash',
+    `<label class="field"><input id="useHash" type="checkbox" /> Derive the voice from a hash</label>
+    <div class="pair seed" data-hash-field>
+      <label class="field">Hash (hex, 16 bytes or more) <input id="hash" type="text" spellcheck="false" autocomplete="off" value="00112233445566778899aabbccddeeff" /></label>
+      <button id="rehash" type="button">Random hash</button>
+    </div>
+    <p class="hint" id="hashOut"></p>
+    <p class="hint">The same hash always gives the same voice. While on, pitch, rate, voice size, style, seed and trombone settings come from the hash for klattsch and Wah-wah trombone. Mood stays yours.</p>`,
+  ) +
   `${section(
     'Voice settings',
-    `<div data-for-engine="klattsch trombone">${slider('pitch', 'Pitch', 60, 300, 1, 130)}
+    `<p class="hint hash-note" id="hashNote" hidden>From hash <code id="hashNoteValue"></code>. Turn off the hash to edit these, the language style and the seed.</p>
+    <div data-for-engine="klattsch trombone">${slider('pitch', 'Pitch', 60, 300, 1, 130)}
     ${slider('rate', 'Speaking rate', 50, 200, 5, 95)}
     <div data-for-engine="klattsch" class="section-body">
       ${slider('scale', 'Voice size', 0.8, 1.3, 0.01, 1.05)}
@@ -124,11 +135,64 @@ export function mountMumble(root: HTMLElement, view: PuppetView, signal: AbortSi
   const seedEl = byId<HTMLInputElement>('seed');
   const num = (id: string) => Number(byId<HTMLInputElement>(id).value);
 
+  const useHashEl = byId<HTMLInputElement>('useHash');
+  const hashEl = byId<HTMLInputElement>('hash');
+
+  function characterVoice() {
+    const out = byId('hashOut');
+    if (!useHashEl.checked) { out.textContent = ''; return null; }
+    try {
+      const v = deriveVoice(hashEl.value.trim(), VOICE_MAPPING_V1);
+      out.textContent = `Voice: ${Math.round(v.settings.pitchHz)} Hz, ${Math.round(v.settings.msPerPhoneme)} ms/phoneme, size ×${v.settings.formantScale.toFixed(2)}, style ${v.styleId}, seed ${v.seed}, brass ${Math.round(v.brassColor * 100)}%.`;
+      return v;
+    } catch (e) {
+      out.textContent = `Hash not used: ${e instanceof Error ? e.message : e}`;
+      return null;
+    }
+  }
+
+  // While a hash is applied, the controls it sets show its values and are locked.
+  // The user's own values come back when the hash is turned off or becomes invalid.
+  const HASHED_FIELDS = ['pitch', 'rate', 'scale', 'brass', 'brightness', 'wah', 'transpose', 'style', 'seed'];
+  let manualValues: Record<string, string> | null = null;
+  function showHash(): void {
+    const v = characterVoice();
+    const fields = HASHED_FIELDS.map(id => byId<HTMLInputElement | HTMLSelectElement>(id));
+    if (v) {
+      manualValues ??= Object.fromEntries(fields.map(el => [el.id, el.value]));
+      const values: Record<string, number | string> = {
+        pitch: v.settings.pitchHz, rate: v.settings.msPerPhoneme, scale: v.settings.formantScale,
+        brass: Math.round(v.brassColor * 100), brightness: v.trombone.brightness, wah: v.trombone.wah,
+        transpose: v.trombone.transpose, style: v.styleId, seed: v.seed,
+      };
+      for (const el of fields) {
+        // Sliders snap to their step, so let them hold the exact derived value.
+        if (el instanceof HTMLInputElement && el.type === 'range' && el.step !== 'any') {
+          el.dataset.step = el.step;
+          el.step = 'any';
+        }
+        el.value = String(values[el.id]);
+        el.disabled = true;
+      }
+      byId('hashNoteValue').textContent = hashEl.value.trim();
+    } else if (manualValues) {
+      for (const el of fields) {
+        if (el instanceof HTMLInputElement && el.dataset.step) el.step = el.dataset.step;
+        el.value = manualValues[el.id];
+        el.disabled = false;
+      }
+      manualValues = null;
+    }
+    byId<HTMLButtonElement>('reroll').disabled = !!v;
+    byId('hashNote').hidden = !v || isInstrument(engineEl.value);
+  }
+
   function baseVoice(): VoiceSettings {
     return { pitchHz: num('pitch'), msPerPhoneme: num('rate'), formantScale: num('scale') };
   }
 
   function compile(sampleRate: number, puppet: boolean): RenderedUtterance {
+    const character = characterVoice();
     const seed = Number(seedEl.value) || 0;
     const engine = engineEl.value as EngineId;
     if (isInstrument(engine)) {
@@ -142,10 +206,12 @@ export function mountMumble(root: HTMLElement, view: PuppetView, signal: AbortSi
       renderWords(words.map(w => ({ text: w.text, sub: '' })));
       return performance;
     }
-    const performance = renderMumble(textEl.value, { seed, styleId: styleEl.value, moodId: moodEl.value }, baseVoice(), sampleRate,
+    const performance = renderMumble(textEl.value,
+      { seed: character?.seed ?? seed, styleId: character?.styleId ?? styleEl.value, moodId: moodEl.value },
+      character?.settings ?? baseVoice(), sampleRate,
       engine === 'trombone'
-        ? { engine: 'trombone', trombone: { brightness: num('brightness'), wah: num('wah'), transpose: num('transpose') } }
-        : { engine: 'formant', brassColor: num('brass') / 100 }, puppet);
+        ? { engine: 'trombone', trombone: character?.trombone ?? { brightness: num('brightness'), wah: num('wah'), transpose: num('transpose') } }
+        : { engine: 'formant', brassColor: character?.brassColor ?? num('brass') / 100 }, puppet);
     const script = performance.script;
     spoken = { kind: 'script', script };
     renderWords(script.words.map(w => ({ text: w.text, sub: w.spelled })));
@@ -188,6 +254,7 @@ export function mountMumble(root: HTMLElement, view: PuppetView, signal: AbortSi
   }
 
   function changed(): void {
+    showHash();
     byId('charCount').textContent = `${textEl.value.length} / ${textEl.maxLength}`;
     byId('pitchOut').textContent = `${num('pitch')} Hz`;
     byId('rateOut').textContent = `${num('rate')} ms/phoneme`;
@@ -199,6 +266,7 @@ export function mountMumble(root: HTMLElement, view: PuppetView, signal: AbortSi
     byId('instrumentSpeedOut').textContent = `×${num('instrumentSpeed').toFixed(2)}`;
     byId('instrumentExpressionOut').textContent = `${Math.round(num('instrumentExpression') * 100)}%`;
     byId('instrumentBrightnessOut').textContent = `${Math.round(num('instrumentBrightness') * 100)}%`;
+    for (const el of root.querySelectorAll<HTMLElement>('[data-hash-field]')) el.hidden = !useHashEl.checked;
     byId('transposeOut').textContent = `${num('transpose') > 0 ? '+' : ''}${num('transpose')} st`;
     stage.invalidate();
   }
@@ -232,7 +300,11 @@ export function mountMumble(root: HTMLElement, view: PuppetView, signal: AbortSi
     sampleEl.value = i >= 0 ? String(i) : '';
     changed();
   }, { signal });
-  for (const id of ['style', 'instrumentPitch', 'instrumentSpeed', 'instrumentExpression', 'instrumentBrightness', 'mood', 'seed', 'pitch', 'rate', 'scale', 'brass', 'brightness', 'wah', 'transpose']) byId(id).addEventListener('input', changed, { signal });
+  for (const id of ['style', 'instrumentPitch', 'instrumentSpeed', 'instrumentExpression', 'instrumentBrightness', 'mood', 'seed', 'pitch', 'rate', 'scale', 'brass', 'brightness', 'wah', 'transpose', 'useHash', 'hash']) byId(id).addEventListener('input', changed, { signal });
+  byId('rehash').addEventListener('click', () => {
+    hashEl.value = [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('');
+    changed();
+  }, { signal });
   byId('reroll').addEventListener('click', () => {
     seedEl.value = String(Math.floor(Math.random() * 100000));
     changed();

@@ -8,6 +8,8 @@ In **Text to mumble**, choose a sample or enter up to 500 characters of English.
 
 **Wah-wah trombone** is the default sound engine. In **Voice**, klattsch and the wah-wah trombone share the same invented syllables. Keep **Language style**, **Mood**, and **Seed** fixed to compare the two instruments. Change the seed to give familiar words new sounds. The syllable and stress guesses work best on ordinary English words.
 
+**Character voice from a hash** derives pitch, rate, voice size, style, seed and trombone settings from a hex hash of at least 16 bytes, so the same hash always sounds the same. It applies to the klattsch and Wah-wah trombone voices, and the mood stays yours. While it is on, the voice settings, language style and seed show the values from the hash and are locked, and your own values come back when you turn it off. Use **Random hash** to hear a new character.
+
 - **klattsch formant voice** gives you control over pitch, speaking rate, and voice size. Set **Trombone color** to zero to hear the plain voice.
 - **Wah-wah trombone** plays the syllables as brass notes. Increase **Plunger wah** to exaggerate how the mute opens on vowels.
 - **Muted Horn** and **Trombone (Talking Instruments)** play sliding brass notes with a mute that opens and closes on each note. Talking Instruments' Trombone has its own low, wobbly phrasing, separate from Wah-wah trombone.
