@@ -1,8 +1,9 @@
 // Mumble playground: ordinary text becomes invented speech, audio and mouth
 // movement in Rust. Talking Instruments use their own explicit note score.
 import { DEFAULT_BRASS_COLOR, renderMumble, renderInstrument, deriveVoice, VOICE_MAPPING_V1, MOODS, STYLES, INSTRUMENTS, isInstrument, DEFAULT_TROMBONE, type VoiceSettings, type InstrumentPerformance, type MumbleScript, type InstrumentId } from 'wahwah';
-import { type RenderedUtterance } from 'wahwah/performance';
+import { type RenderedUtterance, type FadeCurve, type SpeedProfile, type FitOptions } from 'wahwah/performance';
 import { wordAtPhonemeOffset } from 'wahwah/mumble';
+import { drawFadePlot, fastestDuration, type FadePlotData } from '../ui/fadePlot';
 import type { PuppetView } from '../ui/puppetView';
 import { Stage, byId, section, restoreDraft } from '../ui/stage';
 
@@ -72,6 +73,53 @@ const voiceHtml =
       <label class="field">Seed <input id="seed" type="number" min="0" step="1" value="1" /></label>
       <button id="reroll" type="button">New seed</button>
     </div>`,
+  ) +
+  section(
+    'Maximum duration',
+    `<label class="field"><input id="useCap" type="checkbox" /> Cap the length of the line</label>
+    ${slider('cap', 'Maximum duration', 0.5, 30, 0.5, 3)}
+    <label class="field" data-cap-field><input id="cutWord" type="checkbox" checked /> Cut between words (keep the last word whole)</label>
+    <div data-cap-field>
+      <label class="field">Speed-up shape
+        <select id="speedProfile">
+          <option value="constant">Steady</option>
+          <option value="rampUp">Ramp up (faster toward the end)</option>
+          <option value="rampDown">Ramp down (fast start, slows down)</option>
+          <option value="smooth">Eased ramp up</option>
+        </select>
+      </label>
+      ${slider('speedMax', 'Top speed', 1, 3, 0.05, 1.6)}
+    </div>
+    <div data-cap-field>
+      <label class="field">Volume shape
+        <select id="volProfile">
+          <option value="constant">Steady</option>
+          <option value="rampUp">Ramp up (from normal to the level)</option>
+          <option value="rampDown">Ramp down (from the level to normal)</option>
+          <option value="smooth">Eased ramp up</option>
+        </select>
+      </label>
+      ${slider('volLevel', 'Volume level', 0, 200, 5, 100)}
+    </div>
+    <div class="pair" data-cap-field>
+      <label class="field">Fade at the cut
+        <select id="fadeCurve">
+          <option value="linear">Linear</option>
+          <option value="smooth">Smooth (half cosine)</option>
+          <option value="quick">Quick drop</option>
+          <option value="decibel">Even to the ear (decibels)</option>
+          <option value="none">None (hard cut)</option>
+        </select>
+      </label>
+      ${slider('fadeMs', 'Fade length', 0, 2000, 10, 80)}
+    </div>
+    <div data-cap-field>
+      ${slider('fadeBend', 'Fade bend', 0.2, 5, 0.1, 1)}
+      ${slider('fadeEnd', 'End volume', 0, 100, 5, 0)}
+    </div>
+    <p class="hint" id="fitOut"></p>
+    <canvas id="fadePlot" class="fade-plot" data-cap-field aria-label="Speed, volume and audio level across the capped line"></canvas>
+    <p class="hint" data-cap-field>Dashed lines: where the fade starts (green), the cap (dark) and, when cutting between words, the cut (purple). The volume curve is the fade gain; the audio level is measured from the rendered sound.</p>`,
   ) +
   section(
     'Character voice from a hash',
@@ -192,6 +240,14 @@ export function mountMumble(root: HTMLElement, view: PuppetView, signal: AbortSi
     byId('hashNote').hidden = !v || isInstrument(engineEl.value);
   }
 
+  const useCapEl = byId<HTMLInputElement>('useCap');
+
+  let lastPlot: FadePlotData | null = null;
+  const plot = () => { if (lastPlot) drawFadePlot(byId<HTMLCanvasElement>('fadePlot'), lastPlot); };
+  const resizer = new ResizeObserver(plot);
+  resizer.observe(byId('fadePlot'));
+  signal.addEventListener('abort', () => resizer.disconnect(), { once: true });
+
   function baseVoice(): VoiceSettings {
     return { pitchHz: num('pitch'), msPerPhoneme: num('rate'), formantScale: num('scale') };
   }
@@ -200,11 +256,30 @@ export function mountMumble(root: HTMLElement, view: PuppetView, signal: AbortSi
     const character = characterVoice();
     const seed = Number(seedEl.value) || 0;
     const engine = engineEl.value as EngineId;
+    const cap = useCapEl.checked ? num('cap') : undefined;
+    const fitOptions: FitOptions = {
+      cutFade: { curve: byId<HTMLSelectElement>('fadeCurve').value as FadeCurve, milliseconds: num('fadeMs'), exponent: num('fadeBend'), endVolume: num('fadeEnd') / 100 },
+      speedUp: { profile: byId<HTMLSelectElement>('speedProfile').value as SpeedProfile, max: num('speedMax') },
+      cutAt: byId<HTMLInputElement>('cutWord').checked ? 'word' : 'anywhere',
+      volume: { profile: byId<HTMLSelectElement>('volProfile').value as SpeedProfile, level: num('volLevel') / 100 },
+    };
+    const cutBelow = (natural: number) => fastestDuration(fitOptions.speedUp?.profile, fitOptions.speedUp?.max ?? 1.6, natural);
+    const showFit = (p: RenderedUtterance) => {
+      const f = p.fit;
+      lastPlot = cap === undefined ? null : { audio: p.audio, sampleRate, capSeconds: cap, fit: f, options: fitOptions, track: p.track };
+      requestAnimationFrame(plot);
+      byId('fitOut').textContent = cap === undefined ? '' : !f
+        ? `Fits: ${(p.audio.length / sampleRate).toFixed(2)} s, under the cap. The fade only applies to a cut line, so lower the cap below ${cutBelow(p.audio.length / sampleRate).toFixed(1)} s to hear it.`
+        : !f.truncated
+        ? `Natural length ${f.naturalSeconds.toFixed(2)} s, sped up ×${f.speed.toFixed(2)} on average (peak ×${f.peakSpeed.toFixed(2)}) to fit. Not cut, so the fade does not apply. Lower the cap below ${cutBelow(f.naturalSeconds).toFixed(1)} s to cut it.`
+        : `Natural length ${f.naturalSeconds.toFixed(2)} s, sped up ×${f.speed.toFixed(2)} on average (peak ×${f.peakSpeed.toFixed(2)})${f.atWord ? `, then cut after the last whole word at ${f.cutSeconds?.toFixed(2)} s` : f.truncated ? ', then cut at the cap' : ''}.${p.warnings.length ? ' ' + p.warnings.join(' ') : ''}`;
+    };
     if (isInstrument(engine)) {
       const performance = renderInstrument(textEl.value, {
         instrument: engine, pitchHz: num('instrumentPitch'), speed: num('instrumentSpeed'),
         expression: num('instrumentExpression'), brightness: num('instrumentBrightness'), seed, moodId: moodEl.value,
-      }, sampleRate, puppet);
+      }, sampleRate, puppet, cap, fitOptions);
+      showFit(performance);
       const ranges = new Map(performance.notes.map(n => [n.srcStart, n.srcEnd]));
       const words = [...ranges].map(([start, end]) => ({ text: textEl.value.slice(start, end), start, end }));
       spoken = { kind: 'instrument', performance, words };
@@ -216,7 +291,8 @@ export function mountMumble(root: HTMLElement, view: PuppetView, signal: AbortSi
       character?.settings ?? baseVoice(), sampleRate,
       engine === 'trombone'
         ? { engine: 'trombone', trombone: character?.trombone ?? { brightness: num('brightness'), wah: num('wah'), transpose: num('transpose') } }
-        : { engine: 'formant', brassColor: character?.brassColor ?? num('brass') / 100 }, puppet);
+        : { engine: 'formant', brassColor: character?.brassColor ?? num('brass') / 100 }, puppet, cap, fitOptions);
+    showFit(performance);
     const script = performance.script;
     spoken = { kind: 'script', script };
     renderWords(script.words.map(w => ({ text: w.text, sub: w.spelled })));
@@ -272,6 +348,14 @@ export function mountMumble(root: HTMLElement, view: PuppetView, signal: AbortSi
     byId('instrumentExpressionOut').textContent = `${Math.round(num('instrumentExpression') * 100)}%`;
     byId('instrumentBrightnessOut').textContent = `${Math.round(num('instrumentBrightness') * 100)}%`;
     for (const el of root.querySelectorAll<HTMLElement>('[data-hash-field]')) el.hidden = !useHashEl.checked;
+    byId('capOut').textContent = `${num('cap').toFixed(1)} s`;
+    byId('fadeMsOut').textContent = `${num('fadeMs')} ms`;
+    byId('fadeBendOut').textContent = `×${num('fadeBend').toFixed(1)}`;
+    byId('fadeEndOut').textContent = `${num('fadeEnd')}%`;
+    byId('volLevelOut').textContent = `${num('volLevel')}%`;
+    byId('speedMaxOut').textContent = `×${num('speedMax').toFixed(2)}`;
+    for (const el of root.querySelectorAll<HTMLElement>('[data-cap-field]')) el.hidden = !useCapEl.checked;
+    byId<HTMLInputElement>('cap').disabled = !useCapEl.checked;
     byId('transposeOut').textContent = `${num('transpose') > 0 ? '+' : ''}${num('transpose')} st`;
     stage.invalidate();
   }
@@ -305,7 +389,7 @@ export function mountMumble(root: HTMLElement, view: PuppetView, signal: AbortSi
     sampleEl.value = i >= 0 ? String(i) : '';
     changed();
   }, { signal });
-  for (const id of ['style', 'instrumentPitch', 'instrumentSpeed', 'instrumentExpression', 'instrumentBrightness', 'mood', 'seed', 'pitch', 'rate', 'scale', 'brass', 'brightness', 'wah', 'transpose', 'useHash', 'hash']) byId(id).addEventListener('input', changed, { signal });
+  for (const id of ['style', 'instrumentPitch', 'instrumentSpeed', 'instrumentExpression', 'instrumentBrightness', 'mood', 'seed', 'pitch', 'rate', 'scale', 'brass', 'brightness', 'wah', 'transpose', 'useHash', 'hash', 'useCap', 'cap', 'fadeCurve', 'fadeMs', 'fadeBend', 'fadeEnd', 'speedProfile', 'speedMax', 'cutWord', 'volProfile', 'volLevel']) byId(id).addEventListener('input', changed, { signal });
   byId('rehash').addEventListener('click', () => {
     hashEl.value = [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('');
     changed();

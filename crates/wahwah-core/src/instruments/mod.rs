@@ -6,6 +6,7 @@ mod synth;
 
 use crate::{
     Performance, Segment, Timeline,
+    fit::{FitOptions, fit_instrument, settle_audio, trim_to_cap},
     mouth::{FaceControls, FaceSample, FaceTrack, TrackOptions, viseme},
 };
 pub use score::{InstrumentScore, Note, compile_instrument};
@@ -205,5 +206,32 @@ pub fn render_instrument(
         timeline: timeline(score),
         warnings: Vec::new(),
         track: track.map(|o| note_track(score, o)),
+        fit: None,
     }
+}
+
+/// Fit the notes within a maximum duration, then render them. Returns the notes
+/// that were actually rendered, which differ from `score` when the line was fitted.
+pub fn render_instrument_within(
+    score: &InstrumentScore,
+    sample_rate: f64,
+    track: Option<&TrackOptions>,
+    max_seconds: f64,
+    fit_options: FitOptions,
+) -> (InstrumentScore, Performance) {
+    let Some((fitted, fit)) = fit_instrument(score, max_seconds, &fit_options) else {
+        let mut performance = render_instrument(score, sample_rate, track);
+        trim_to_cap(&mut performance.audio, sample_rate, max_seconds);
+        return (score.clone(), performance);
+    };
+    let mut performance = render_instrument(&fitted, sample_rate, track);
+    settle_audio(
+        &mut performance.audio,
+        sample_rate,
+        max_seconds,
+        &fit,
+        &fit_options,
+    );
+    performance.fit = Some(fit);
+    (fitted, performance)
 }

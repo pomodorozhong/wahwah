@@ -5,6 +5,7 @@
 mod bank;
 mod brass;
 pub mod character;
+pub mod fit;
 mod formant;
 pub mod instruments;
 pub mod mouth;
@@ -14,6 +15,8 @@ mod score;
 mod trombone;
 
 pub use brass::render_formant;
-pub use performance::{Performance, Timeline, Voice, render_performance};
+pub use performance::{
+    Performance, Timeline, Voice, render_performance, render_performance_within,
+};
 pub use score::{Event, Score, ScoreOptions, Segment, Sound, Target, compile_score};
 pub use trombone::{TromboneOptions, render_trombone};

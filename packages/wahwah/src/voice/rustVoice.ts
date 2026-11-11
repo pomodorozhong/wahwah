@@ -3,15 +3,16 @@ import init, { renderPerformance, renderInstrument as instrument, type InitInput
 import { mumbleOptions, type MumbleOptions, type MumbleScript } from '../mumble/generate.js';
 import type { TromboneOptions } from './trombone.js';
 import type { VoiceSettings } from './settings.js';
-import type { RenderedUtterance } from '../performance/index.js';
+import type { FitOptions, RenderedUtterance } from '../performance/index.js';
 import { INSTRUMENTS, type InstrumentNote, type InstrumentOptions } from './instruments.js';
 
 export interface InstrumentPerformance extends RenderedUtterance {
   notes: InstrumentNote[];
 }
 
-export function renderInstrument(text: string, options: InstrumentOptions, sampleRate: number, puppet = true): InstrumentPerformance {
-  const result = instrument(text, { ...options, seed: options.seed >>> 0 }, sampleRate, puppet) as InstrumentPerformance;
+export function renderInstrument(text: string, options: InstrumentOptions, sampleRate: number, puppet = true,
+  maxDurationSeconds?: number, fit?: FitOptions): InstrumentPerformance {
+  const result = instrument(text, { ...options, seed: options.seed >>> 0 }, sampleRate, puppet, maxDurationSeconds, fit) as InstrumentPerformance;
   return { ...result, engine: INSTRUMENTS.find(p => p.id === options.instrument)!.name };
 }
 
@@ -34,16 +35,25 @@ export interface MumblePerformance extends RenderedUtterance {
 }
 
 function render(source: string, settings: VoiceSettings, sampleRate: number, voice: RustVoice, puppet: boolean,
-  input: 'mumble' | 'phonemes', mumble?: MumbleOptions): RenderedUtterance {
-  const result = renderPerformance(source, settings, sampleRate, { ...voice, input, ...(mumble ? { mumble } : {}), puppet }) as RenderedUtterance;
+  input: 'mumble' | 'phonemes', mumble?: MumbleOptions, maxDurationSeconds?: number, fit?: FitOptions): RenderedUtterance {
+  const result = renderPerformance(source, settings, sampleRate,
+    { ...voice, input, ...(mumble ? { mumble } : {}), puppet, ...(maxDurationSeconds === undefined ? {} : { maxDurationSeconds }), ...(fit ? { fit } : {}) }) as RenderedUtterance;
   return { ...result, engine: voice.engine === 'formant' ? 'klattsch' : 'Wah-wah trombone' };
 }
 
-export function renderPhonemes(source: string, settings: VoiceSettings, sampleRate: number, voice: RustVoice, puppet = true): RenderedUtterance {
-  return render(source, settings, sampleRate, voice, puppet, 'phonemes');
+/**
+ * Every render call takes an optional `maxDurationSeconds`, 0.1 to 600. A longer
+ * line is sped up, to at most 1.6 times, and cut with a short fade if that is not
+ * enough. Audio, timeline and face track are fitted together, and the audio is
+ * never longer than the cap. A shorter line is rendered as usual. `fit` says what
+ * happened. `fit` shapes the fitting: the speed-up (`speedUp`) and the fade into a cut (`cutFade`).
+ */
+export function renderPhonemes(source: string, settings: VoiceSettings, sampleRate: number, voice: RustVoice, puppet = true,
+  maxDurationSeconds?: number, fit?: FitOptions): RenderedUtterance {
+  return render(source, settings, sampleRate, voice, puppet, 'phonemes', undefined, maxDurationSeconds, fit);
 }
 
 export function renderMumble(text: string, options: MumbleOptions, settings: VoiceSettings, sampleRate: number,
-  voice: RustVoice, puppet = true): MumblePerformance {
-  return render(text, settings, sampleRate, voice, puppet, 'mumble', mumbleOptions(options)) as MumblePerformance;
+  voice: RustVoice, puppet = true, maxDurationSeconds?: number, fit?: FitOptions): MumblePerformance {
+  return render(text, settings, sampleRate, voice, puppet, 'mumble', mumbleOptions(options), maxDurationSeconds, fit) as MumblePerformance;
 }

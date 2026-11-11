@@ -16,6 +16,7 @@ pub struct Note {
     pub src_end: usize,
 }
 
+#[derive(Clone)]
 pub struct InstrumentScore {
     pub instrument: Instrument,
     pub notes: Vec<Note>,

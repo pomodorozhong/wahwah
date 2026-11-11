@@ -3,14 +3,16 @@
 
 use serde::{Deserialize, Serialize};
 use wahwah_core::character;
+use wahwah_core::fit::{FitOptions, pause_separated_words, valid_cap};
 use wahwah_core::{
     ScoreOptions, TromboneOptions, Voice, compile_score,
     instruments::{
         InstrumentOptions, Note, compile_instrument, render_instrument as render_instrument_score,
+        render_instrument_within,
     },
     mouth::TrackOptions,
     mumble::{self, MumbleOptions, MumbleScript, TextToken},
-    render_performance,
+    render_performance, render_performance_within,
 };
 use wasm_bindgen::prelude::*;
 
@@ -32,6 +34,26 @@ fn validate_sample_rate(sample_rate: f64) -> Result<(), JsError> {
     }
 }
 
+fn validate_cap(max_seconds: Option<f64>) -> Result<(), JsError> {
+    match max_seconds {
+        Some(cap) if !valid_cap(cap) => Err(JsError::new(
+            "The maximum duration must be between 0.1 and 600 seconds",
+        )),
+        _ => Ok(()),
+    }
+}
+
+fn validate_fit(options: Option<FitOptions>) -> Result<FitOptions, JsError> {
+    let options = options.unwrap_or_default();
+    if options.is_valid() {
+        Ok(options)
+    } else {
+        Err(JsError::new(
+            "Fit options out of range: fade 0–5000 ms, bend 0.1–8, end volume 0–1, top speed 1–3, volume level 0–2",
+        ))
+    }
+}
+
 fn with_audio(metadata: &impl Serialize, audio: &[f32]) -> Result<JsValue, JsError> {
     let result = to_js(metadata)?;
     let audio = js_sys::Float32Array::from(audio);
@@ -47,8 +69,12 @@ pub fn render_instrument(
     options: JsValue,
     sample_rate: f64,
     puppet: bool,
+    max_seconds: Option<f64>,
+    fit_options: JsValue,
 ) -> Result<JsValue, JsError> {
     validate_sample_rate(sample_rate)?;
+    validate_cap(max_seconds)?;
+    let fit_options = validate_fit(serde_wasm_bindgen::from_value(fit_options)?)?;
     let options: InstrumentOptions = serde_wasm_bindgen::from_value(options)?;
     if [
         options.pitch_hz,
@@ -67,8 +93,20 @@ pub fn render_instrument(
     }
     let mut score = compile_instrument(source, &options);
     let track_options = TrackOptions::default();
-    let mut performance =
-        render_instrument_score(&score, sample_rate, puppet.then_some(&track_options));
+    let mut performance = match max_seconds {
+        Some(cap) => {
+            let (fitted, performance) = render_instrument_within(
+                &score,
+                sample_rate,
+                puppet.then_some(&track_options),
+                cap,
+                fit_options,
+            );
+            score = fitted;
+            performance
+        }
+        None => render_instrument_score(&score, sample_rate, puppet.then_some(&track_options)),
+    };
     for note in &mut score.notes {
         note.src_start = js_offset(source, note.src_start);
         note.src_end = js_offset(source, note.src_end);
@@ -173,6 +211,8 @@ struct RenderOptions {
     brass_color: Option<f64>,
     trombone: Option<TromboneSettings>,
     puppet: bool,
+    max_duration_seconds: Option<f64>,
+    fit: Option<FitOptions>,
 }
 
 fn js_offset(source: &str, byte: usize) -> usize {
@@ -241,6 +281,8 @@ pub fn render(
     validate_sample_rate(sample_rate)?;
     let base = serde_wasm_bindgen::from_value::<VoiceSettings>(settings)?.score_options()?;
     let options: RenderOptions = serde_wasm_bindgen::from_value(options)?;
+    validate_cap(options.max_duration_seconds)?;
+    let fit_options = validate_fit(options.fit)?;
     let mut script = match options.input {
         Input::Mumble => Some(mumble::generate_mumble(source, &options.mumble)),
         Input::Phonemes => None,
@@ -277,17 +319,46 @@ pub fn render(
         }
     };
     let track_options = TrackOptions::default();
-    let mut performance = render_performance(
-        &score,
-        sample_rate,
-        &voice,
-        options.puppet.then_some(&track_options),
-    );
+    let track = options.puppet.then_some(&track_options);
+    let mut performance = match options.max_duration_seconds {
+        Some(cap) => {
+            let words: Vec<(usize, usize)> = match &script {
+                Some(script) => script
+                    .words
+                    .iter()
+                    .map(|w| (w.out_start, w.out_end))
+                    .collect(),
+                None => pause_separated_words(&score),
+            };
+            render_performance_within(&score, sample_rate, &voice, track, cap, fit_options, &words)
+        }
+        None => render_performance(&score, sample_rate, &voice, track),
+    };
+    // After a cut, keep only the words that some kept sound comes from, so the
+    // script lists what plays. Both sides are still byte ranges in `phonemes` here.
+    let played: Option<Vec<bool>> = match (&script, &performance.fit) {
+        (Some(script), Some(fit)) if fit.truncated => Some(
+            script
+                .words
+                .iter()
+                .map(|w| {
+                    performance.timeline.segments.iter().any(|s| {
+                        s.phoneme.is_some() && s.src_start < w.out_end && s.src_end > w.out_start
+                    })
+                })
+                .collect(),
+        ),
+        _ => None,
+    };
     for segment in &mut performance.timeline.segments {
         segment.src_start = js_offset(phonemes, segment.src_start);
         segment.src_end = js_offset(phonemes, segment.src_end);
     }
     if let Some(script) = &mut script {
+        if let Some(played) = played {
+            let mut kept = played.into_iter();
+            script.words.retain(|_| kept.next().unwrap_or(false));
+        }
         script_offsets(source, script);
     }
     #[derive(Serialize)]

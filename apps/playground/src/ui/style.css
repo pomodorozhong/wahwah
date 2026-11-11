@@ -193,3 +193,6 @@ textarea { font: 20px/1.45 system-ui, sans-serif; padding: 12px; min-height: 90p
 .panel .section > summary { font-size: 18px; font-weight: 800; color: var(--text); letter-spacing: -.045em; text-transform: none; }
 .panel .section > summary::before { content: '+'; vertical-align: .12em; margin-inline-end: 6px; font: 700 12px/16px ui-monospace,monospace; width: 16px; text-align: center; background: #f4cc4b; border-radius: 2px; transform: none; }
 .panel .section[open] > summary::before { content: '−'; transform: none; }
+
+.fade-plot { display: block; inline-size: 100%; block-size: 360px; background: var(--panel); border-radius: 6px; }
+.fade-plot[hidden] { display: none; }

@@ -3,7 +3,7 @@
 Invented, stylized speech for puppets. A Rust/WASM voice engine renders audio together with timed mouth controls that any host can map onto its own rig.
 
 - `wahwah` is the voice engine and the performance types.
-- `wahwah/performance` is only the types and sampling helpers: `FaceControls`, `FaceControlTrack`, `RenderedUtterance`, `Timeline`, `sampleFaceTrack`, `segmentAt`, `normalizeControls`, `lerpControls` and `NEUTRAL`. It never loads WASM.
+- `wahwah/performance` is only the types and sampling helpers: `FaceControls`, `FaceControlTrack`, `RenderedUtterance`, `DurationFit`, `Timeline`, `sampleFaceTrack`, `segmentAt`, `normalizeControls`, `lerpControls` and `NEUTRAL`. It never loads WASM.
 - `wahwah/mumble` is the Mumble generator and tokenizer. It is unstable and may change in any release.
 
 ## Install

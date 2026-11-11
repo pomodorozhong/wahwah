@@ -29,7 +29,8 @@ The tarball includes the compiled WASM, the licence and the third-party notices,
 | `STYLES`, `MOODS`, `INSTRUMENTS`, `DEFAULT_VOICE`, `DEFAULT_TROMBONE` | The voice settings and presets. |
 | `FaceControls` | `jawOpen`, `lipWidth` and `lipRound`, each in [0, 1]. Neutral is all zeros. |
 | `FaceControlTrack`, `FaceControlSample` | Timed controls at a fixed rate. |
-| `RenderedUtterance` | `engine`, `warnings`, `audio`, a `Timeline` and an optional face track. |
+| `RenderedUtterance` | `engine`, `warnings`, `audio`, a `Timeline`, an optional face track, and `fit` when a maximum duration shortened the line. |
+| `DurationFit` | What a maximum duration did: `naturalSeconds`, `speed` and `truncated`. |
 | `Timeline`, `PerformanceSegment` | The sounds on a timeline, with source text ranges. |
 | `deriveVoice(hash, mapping)` | A repeatable character voice from a caller-provided hash. See [Character voices from a hash](#character-voices-from-a-hash). |
 | `sampleFaceTrack(track, seconds)` | Controls at a time on the playback clock. Neutral outside the track. |
@@ -65,6 +66,25 @@ renderMumble('Hello there!', { seed: voice.seed, styleId: voice.styleId }, voice
 - **What comes back** is plain data: pitch 85–220 Hz, 85–140 ms per phoneme, formant scale 0.85–1.25, one of the `bubbly`, `chirpy` and `grumbly` styles, a seed, a brass color, and trombone settings. The mood is not part of it. Choose one per line.
 
 A Twitch example: hash the viewer's numeric user ID with your own salt, using SHA-256, and pass the digest. wahwah does not know about Twitch.
+
+## Maximum duration
+
+Every render call (`renderMumble`, `renderPhonemes`, `renderInstrument`) takes an optional last argument, `maxDurationSeconds`, from 0.1 to 600.
+
+```ts
+const utterance = renderMumble(text, options, voice, 48000, { engine: 'formant', brassColor: 0.75 }, true, 4);
+utterance.fit; // { naturalSeconds: 9.3, speed: 1.6, truncated: true }
+```
+
+- **A line that fits is untouched,** except that it can lose one trailing sample to stay within `floor(cap × sampleRate)`. `fit` is empty.
+- **A longer line is sped up first,** by at most 1.6 times by default, without changing pitch. Every time on the score is scaled together, so the audio, the timeline and the face track still line up.
+- **If that is not enough, the end is cut** at the cap with a fade (80 ms, linear, unless you set `cutFade`), the mouth closes at the cut, and `warnings` says so. The words after the cut are not in the timeline or in `script.words`; `script.phonemes` still holds the whole line.
+- **The fade is yours to shape.** Pass `fit.cutFade` after the cap: `{ milliseconds: 0–5000, curve: 'linear' | 'smooth' | 'quick' | 'decibel' | 'none', exponent: 0.1–8, endVolume: 0–1 }`, each part optional. `smooth` is a half cosine, `quick` drops fast and then trails off, `decibel` is a straight line in decibels down to -60 dB, and `none` or 0 ms is a hard cut. `exponent` bends the curve (above 1 holds the volume longer, below 1 drops sooner) and `endVolume` is the volume the fade stops at, 0 by default. A fade longer than the audio is held to it. Only a line that was cut is faded.
+- **The speed-up is yours to shape.** Pass `fit.speedUp`: `{ profile: 'constant' | 'rampUp' | 'rampDown' | 'smooth', max: 1–3 }`. `constant` is the default. `rampUp` starts at normal speed and gets faster toward the end, `rampDown` does the reverse, and `smooth` is an eased ramp up. `max` is the fastest the line gets, and 1 turns the speed-up off, so a long line is only cut. `fit.speed` is then the average speed and `fit.peakSpeed` the fastest.
+- **A cut can fall between words.** Pass `fit.cutAt: 'word'` (the default is `'anywhere'`). The line then ends where the last word that fits whole ends, and the fade shapes that ending. `fit.atWord` is true and `fit.cutSeconds` says where. The audio can end a little before the cap, and the words after the cut are not in the timeline. In a Mumble line a word is a word of the text. In a phoneme script it is a run of sounds between pauses, so a script without pauses is one word. If not even the first word fits, the line is cut at the cap, and `warnings` says so.
+- **The volume can change along the line.** Pass `fit.volume`: `{ profile: 'constant' | 'rampUp' | 'rampDown' | 'smooth', level: 0–2 }`, with the same shapes as the speed-up. `constant` holds `level` (1 is the voice's own volume), `rampUp` goes from 1 to `level` over the line, `rampDown` from `level` to 1, and `smooth` is an eased ramp up. A level above 1 boosts, and the result is kept within full scale. It applies to a line that was fitted, before the fade, and the default changes nothing.
+- **The cap counts everything,** including the pauses and the synthesis tail. The audio is never longer than `floor(cap × sampleRate)` samples, and the timeline and track end by the cap.
+- **Exact durations are separate.** Stretching a short line to a requested length is [#20](https://github.com/pomodorozhong/wahwah/issues/20).
 
 ## Versions
 
