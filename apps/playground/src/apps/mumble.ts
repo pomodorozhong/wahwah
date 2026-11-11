@@ -3,9 +3,10 @@
 import { DEFAULT_BRASS_COLOR, renderMumble, renderInstrument, deriveVoice, VOICE_MAPPING_V1, MOODS, STYLES, INSTRUMENTS, isInstrument, DEFAULT_TROMBONE, type VoiceSettings, type InstrumentPerformance, type MumbleScript, type InstrumentId } from 'wahwah';
 import { type RenderedUtterance, type FadeCurve, type SpeedProfile, type FitOptions } from 'wahwah/performance';
 import { wordAtPhonemeOffset } from 'wahwah/mumble';
-import { drawFadePlot, fastestDuration, type FadePlotData } from '../ui/fadePlot';
+import { fastestDuration, fitCurves, type FitPlotData } from '../ui/fitCurves';
+import { rmsEnvelope } from '../analysis';
 import type { PuppetView } from '../ui/puppetView';
-import { Stage, byId, section, restoreDraft } from '../ui/stage';
+import { Stage, byId, disclosure, section, restoreDraft } from '../ui/stage';
 
 const SAMPLES = [
   { name: 'A greeting', text: 'Hello there! How are you today?' },
@@ -56,7 +57,7 @@ const inputHtml = `
 
 const voiceHtml =
   section(
-    'Engine and delivery',
+    'Engine',
     `<label class="field">Sound engine
       <select id="engine">
         <option value="trombone">Wah-wah trombone (muted brass)</option>
@@ -68,73 +69,26 @@ const voiceHtml =
     <div class="pair">
       <label class="field" data-for-engine="klattsch trombone">Language style <select id="style">${options(STYLES)}</select></label>
       <label class="field">Mood <select id="mood">${options(MOODS)}</select></label>
-    </div>
-    <div class="pair seed">
-      <label class="field">Seed <input id="seed" type="number" min="0" step="1" value="1" /></label>
-      <button id="reroll" type="button">New seed</button>
     </div>`,
   ) +
   section(
-    'Maximum duration',
-    `<label class="field"><input id="useCap" type="checkbox" /> Cap the length of the line</label>
-    ${slider('cap', 'Maximum duration', 0.5, 30, 0.5, 3)}
-    <label class="field" data-cap-field><input id="cutWord" type="checkbox" checked /> Cut between words (keep the last word whole)</label>
-    <div data-cap-field>
-      <label class="field">Speed-up shape
-        <select id="speedProfile">
-          <option value="constant">Steady</option>
-          <option value="rampUp">Ramp up (faster toward the end)</option>
-          <option value="rampDown">Ramp down (fast start, slows down)</option>
-          <option value="smooth">Eased ramp up</option>
-        </select>
-      </label>
-      ${slider('speedMax', 'Top speed', 1, 3, 0.05, 1.6)}
-    </div>
-    <div data-cap-field>
-      <label class="field">Volume shape
-        <select id="volProfile">
-          <option value="constant">Steady</option>
-          <option value="rampUp">Ramp up (from normal to the level)</option>
-          <option value="rampDown">Ramp down (from the level to normal)</option>
-          <option value="smooth">Eased ramp up</option>
-        </select>
-      </label>
-      ${slider('volLevel', 'Volume level', 0, 200, 5, 100)}
-    </div>
-    <div class="pair" data-cap-field>
-      <label class="field">Fade at the cut
-        <select id="fadeCurve">
-          <option value="linear">Linear</option>
-          <option value="smooth">Smooth (half cosine)</option>
-          <option value="quick">Quick drop</option>
-          <option value="decibel">Even to the ear (decibels)</option>
-          <option value="none">None (hard cut)</option>
-        </select>
-      </label>
-      ${slider('fadeMs', 'Fade length', 0, 2000, 10, 80)}
-    </div>
-    <div data-cap-field>
-      ${slider('fadeBend', 'Fade bend', 0.2, 5, 0.1, 1)}
-      ${slider('fadeEnd', 'End volume', 0, 100, 5, 0)}
-    </div>
-    <p class="hint" id="fitOut"></p>
-    <canvas id="fadePlot" class="fade-plot" data-cap-field aria-label="Speed, volume and audio level across the capped line"></canvas>
-    <p class="hint" data-cap-field>Dashed lines: where the fade starts (green), the cap (dark) and, when cutting between words, the cut (purple). The volume curve is the fade gain; the audio level is measured from the rendered sound.</p>`,
-  ) +
-  section(
-    'Character voice from a hash',
+    'Character',
     `<label class="field"><input id="useHash" type="checkbox" /> Derive the voice from a hash</label>
     <div class="pair seed" data-hash-field>
       <label class="field">Hash (hex, 16 bytes or more) <input id="hash" type="text" spellcheck="false" autocomplete="off" value="00112233445566778899aabbccddeeff" /></label>
       <button id="rehash" type="button">Random hash</button>
     </div>
     <p class="hint" id="hashOut"></p>
+    <div class="pair seed">
+      <label class="field">Seed <input id="seed" type="number" min="0" step="1" value="1" /></label>
+      <button id="reroll" type="button">New seed</button>
+    </div>
     <p class="hint">The same hash always gives the same voice. While on, pitch, rate, voice size, style, seed and trombone settings come from the hash for klattsch and Wah-wah trombone. Mood stays yours.</p>`,
   ) +
-  `${section(
-    'Voice settings',
+  section(
+    'Voice',
     `<p class="hint hash-note" id="hashNote" hidden>From hash <code id="hashNoteValue"></code>. Turn off the hash to edit these, the language style and the seed.</p>
-    <div data-for-engine="klattsch trombone">${slider('pitch', 'Pitch', 60, 300, 1, 130)}
+    <div data-for-engine="klattsch trombone" class="section-body">${slider('pitch', 'Pitch', 60, 300, 1, 130)}
     ${slider('rate', 'Speaking rate', 50, 200, 5, 95)}
     <div data-for-engine="klattsch" class="section-body">
       ${slider('scale', 'Voice size', 0.8, 1.3, 0.01, 1.05)}
@@ -146,14 +100,56 @@ const voiceHtml =
       ${slider('transpose', 'Transpose', -12, 12, 1, DEFAULT_TROMBONE.transpose)}
     </div>
     </div>
-    <div data-for-engine="muted-horn talking-trombone ooh-choir kazoo">
+    <div data-for-engine="muted-horn talking-trombone ooh-choir kazoo" class="section-body">
       ${slider('instrumentPitch', 'Pitch', 60, 600, 1, 330)}
       ${slider('instrumentSpeed', 'Speaking speed', 0.5, 2, 0.05, 1)}
       ${slider('instrumentExpression', 'Expression', 0, 1, 0.05, 0.7)}
       ${slider('instrumentBrightness', 'Brightness', 0, 1, 0.05, 0.55)}
     </div>
     <details data-for-engine="klattsch trombone"><summary class="hint">Generated klattsch phonemes</summary><code id="mumbleOut" class="mumble-out"></code></details>`,
-  )}`;
+  );
+
+const lengthHtml = section(
+  'Length',
+  `<label class="field"><input id="useCap" type="checkbox" /> Cap the length of the line</label>
+  ${slider('cap', 'Maximum duration', 0.5, 30, 0.5, 3)}
+  <label class="field" data-cap-field><input id="cutWord" type="checkbox" checked /> Cut between words (keep the last word whole)</label>
+  <p class="hint fit-status" id="fitOut" data-cap-field></p>
+  <div data-cap-field>${disclosure(
+    'Speed, volume and fade',
+    `<label class="field">Speed-up shape
+      <select id="speedProfile">
+        <option value="constant">Steady</option>
+        <option value="rampUp">Ramp up (faster toward the end)</option>
+        <option value="rampDown">Ramp down (fast start, slows down)</option>
+        <option value="smooth">Eased ramp up</option>
+      </select>
+    </label>
+    ${slider('speedMax', 'Top speed', 1, 3, 0.05, 1.6)}
+    <label class="field">Volume shape
+      <select id="volProfile">
+        <option value="constant">Steady</option>
+        <option value="rampUp">Ramp up (from normal to the level)</option>
+        <option value="rampDown">Ramp down (from the level to normal)</option>
+        <option value="smooth">Eased ramp up</option>
+      </select>
+    </label>
+    ${slider('volLevel', 'Volume level', 0, 200, 5, 100)}
+    <label class="field">Fade at the cut
+      <select id="fadeCurve">
+        <option value="linear">Linear</option>
+        <option value="smooth">Smooth (half cosine)</option>
+        <option value="quick">Quick drop</option>
+        <option value="decibel">Even to the ear (decibels)</option>
+        <option value="none">None (hard cut)</option>
+      </select>
+    </label>
+    ${slider('fadeMs', 'Fade length', 0, 2000, 10, 80)}
+    ${slider('fadeBend', 'Fade bend', 0.2, 5, 0.1, 1)}
+    ${slider('fadeEnd', 'End volume', 0, 100, 5, 0)}
+    <p class="hint">The playback monitor shows the speed, how much of the line has played and the fade volume, with dashed lines where the fade starts and where the line is cut.</p>`,
+  )}</div>`,
+);
 
 type Spoken =
   | { kind: 'script'; script: MumbleScript }
@@ -169,7 +165,9 @@ export function mountMumble(root: HTMLElement, view: PuppetView, signal: AbortSi
 
     inputHtml,
     voiceHtml,
+    lengthHtml,
     compile,
+    fit: () => lastFit,
     onFrame: (time, segment) => highlight(activeWordIndex(time, segment)),
     debugState: () => ({
       mumble:
@@ -242,11 +240,7 @@ export function mountMumble(root: HTMLElement, view: PuppetView, signal: AbortSi
 
   const useCapEl = byId<HTMLInputElement>('useCap');
 
-  let lastPlot: FadePlotData | null = null;
-  const plot = () => { if (lastPlot) drawFadePlot(byId<HTMLCanvasElement>('fadePlot'), lastPlot); };
-  const resizer = new ResizeObserver(plot);
-  resizer.observe(byId('fadePlot'));
-  signal.addEventListener('abort', () => resizer.disconnect(), { once: true });
+  let lastFit: FitPlotData | null = null;
 
   function baseVoice(): VoiceSettings {
     return { pitchHz: num('pitch'), msPerPhoneme: num('rate'), formantScale: num('scale') };
@@ -264,35 +258,48 @@ export function mountMumble(root: HTMLElement, view: PuppetView, signal: AbortSi
       volume: { profile: byId<HTMLSelectElement>('volProfile').value as SpeedProfile, level: num('volLevel') / 100 },
     };
     const cutBelow = (natural: number) => fastestDuration(fitOptions.speedUp?.profile, fitOptions.speedUp?.max ?? 1.6, natural);
-    const showFit = (p: RenderedUtterance) => {
+    const showFit = (p: RenderedUtterance, uncapped: () => RenderedUtterance) => {
       const f = p.fit;
-      lastPlot = cap === undefined ? null : { audio: p.audio, sampleRate, capSeconds: cap, fit: f, options: fitOptions, track: p.track };
-      requestAnimationFrame(plot);
+      const seconds = p.audio.length / sampleRate;
+      lastFit = cap === undefined ? null : { seconds, capSeconds: cap, fit: f, options: fitOptions, tail: null };
+      // Render the whole line once more so the monitor can show what the cut removed.
+      if (lastFit && f?.truncated) {
+        const full = uncapped();
+        const curves = fitCurves(lastFit);
+        const envelope = rmsEnvelope(full.audio, sampleRate).map((v, i) => ({ t: curves.outputTime(i * 0.01), v }));
+        const track = full.track && {
+          ...full.track,
+          samples: full.track.samples.map(sample => ({ ...sample, timeSeconds: curves.outputTime(sample.timeSeconds) })),
+        };
+        lastFit.tail = { envelope, track, seconds: curves.outputTime(full.audio.length / sampleRate) };
+      }
       byId('fitOut').textContent = cap === undefined ? '' : !f
-        ? `Fits: ${(p.audio.length / sampleRate).toFixed(2)} s, under the cap. The fade only applies to a cut line, so lower the cap below ${cutBelow(p.audio.length / sampleRate).toFixed(1)} s to hear it.`
+        ? `Fits: ${seconds.toFixed(2)} s, under the cap. The fade only applies to a cut line, so lower the cap below ${cutBelow(seconds).toFixed(1)} s to hear it.`
         : !f.truncated
         ? `Natural length ${f.naturalSeconds.toFixed(2)} s, sped up ×${f.speed.toFixed(2)} on average (peak ×${f.peakSpeed.toFixed(2)}) to fit. Not cut, so the fade does not apply. Lower the cap below ${cutBelow(f.naturalSeconds).toFixed(1)} s to cut it.`
-        : `Natural length ${f.naturalSeconds.toFixed(2)} s, sped up ×${f.speed.toFixed(2)} on average (peak ×${f.peakSpeed.toFixed(2)})${f.atWord ? `, then cut after the last whole word at ${f.cutSeconds?.toFixed(2)} s` : f.truncated ? ', then cut at the cap' : ''}.${p.warnings.length ? ' ' + p.warnings.join(' ') : ''}`;
+        : `Natural length ${f.naturalSeconds.toFixed(2)} s, sped up ×${f.speed.toFixed(2)} on average (peak ×${f.peakSpeed.toFixed(2)})${f.atWord ? `, then cut after the last whole word at ${f.cutSeconds?.toFixed(2)} s` : ', then cut at the cap'}.${p.warnings.length ? ' ' + p.warnings.join(' ') : ''}`;
     };
     if (isInstrument(engine)) {
-      const performance = renderInstrument(textEl.value, {
+      const instrument = (limit: number | undefined) => renderInstrument(textEl.value, {
         instrument: engine, pitchHz: num('instrumentPitch'), speed: num('instrumentSpeed'),
         expression: num('instrumentExpression'), brightness: num('instrumentBrightness'), seed, moodId: moodEl.value,
-      }, sampleRate, puppet, cap, fitOptions);
-      showFit(performance);
+      }, sampleRate, puppet, limit, fitOptions);
+      const performance = instrument(cap);
+      showFit(performance, () => instrument(undefined));
       const ranges = new Map(performance.notes.map(n => [n.srcStart, n.srcEnd]));
       const words = [...ranges].map(([start, end]) => ({ text: textEl.value.slice(start, end), start, end }));
       spoken = { kind: 'instrument', performance, words };
       renderWords(words.map(w => ({ text: w.text, sub: '' })));
       return performance;
     }
-    const performance = renderMumble(textEl.value,
+    const mumble = (limit: number | undefined) => renderMumble(textEl.value,
       { seed: character?.seed ?? seed, styleId: character?.styleId ?? styleEl.value, moodId: moodEl.value },
       character?.settings ?? baseVoice(), sampleRate,
       engine === 'trombone'
         ? { engine: 'trombone', trombone: character?.trombone ?? { brightness: num('brightness'), wah: num('wah'), transpose: num('transpose') } }
-        : { engine: 'formant', brassColor: character?.brassColor ?? num('brass') / 100 }, puppet, cap, fitOptions);
-    showFit(performance);
+        : { engine: 'formant', brassColor: character?.brassColor ?? num('brass') / 100 }, puppet, limit, fitOptions);
+    const performance = mumble(cap);
+    showFit(performance, () => mumble(undefined));
     const script = performance.script;
     spoken = { kind: 'script', script };
     renderWords(script.words.map(w => ({ text: w.text, sub: w.spelled })));

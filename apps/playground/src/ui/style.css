@@ -17,14 +17,13 @@
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text); }
 
-.panel [hidden], .transport [hidden] { display: none !important; }
+.studio [hidden] { display: none !important; }
 .panel .section:first-child { border-top: 0; }
-.workspace .warnings:not([hidden]) { padding: 8px 16px; }
 .face canvas { display: block; width: 100%; height: 100%; }
 .debug-puppet { position: absolute; inset: 0; }
 .debug-puppet[hidden], .face canvas[hidden] { display: none; }
 .face-status { position: absolute; inset: auto 16px 16px; margin: 0; padding: 8px 12px; border-radius: 8px; background: #20262aeb; color: white; font-size: 13px; z-index: 1; }
-.face-status[hidden], .transport [hidden] { display: none; }
+.face-status[hidden] { display: none; }
 
 .transport {
   display: flex;
@@ -42,10 +41,6 @@ body { margin: 0; background: var(--bg); color: var(--text); }
 .transport .status { display: flex; gap: 14px; font-variant-numeric: tabular-nums; }
 .transport .status span { color: var(--muted); margin-right: 4px; }
 .transport .status b { font-weight: 500; display: inline-block; min-width: 3.5em; }
-.view-opts { display:grid; gap:16px; }
-.view-opts label { display:grid; gap:6px; color:var(--muted); font-size:13px; }
-.view-opts label:has(input[type=checkbox]) { display:flex; align-items:center; color:var(--text); }
-.view-opts select { width:100%; }
 .meters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .meter { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto 6px; gap: 3px 8px; font-size: 11px; }
 .meter span { color: var(--muted); font-family: ui-monospace, monospace; }
@@ -194,5 +189,3 @@ textarea { font: 20px/1.45 system-ui, sans-serif; padding: 12px; min-height: 90p
 .panel .section > summary::before { content: '+'; vertical-align: .12em; margin-inline-end: 6px; font: 700 12px/16px ui-monospace,monospace; width: 16px; text-align: center; background: #f4cc4b; border-radius: 2px; transform: none; }
 .panel .section[open] > summary::before { content: '−'; transform: none; }
 
-.fade-plot { display: block; inline-size: 100%; block-size: 360px; background: var(--panel); border-radius: 6px; }
-.fade-plot[hidden] { display: none; }

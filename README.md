@@ -24,7 +24,7 @@ npm ci
 npm run dev
 ```
 
-Open the local URL Vite prints. In **Text to mumble**, press **Play line** to hear the sample, then type a line of your own. Open **Voice → Sound engine** to compare Wah-wah trombone, klattsch, Muted Horn, Trombone (Talking Instruments), Ooh Choir, and Kazoo. All six voices run in Rust/WASM.
+Open the local URL Vite prints. In **Text to mumble**, press **Play line** to hear the sample, then type a line of your own. Use **Engine → Sound engine** to compare Wah-wah trombone, klattsch, Muted Horn, Trombone (Talking Instruments), Ooh Choir, and Kazoo. All six voices run in Rust/WASM.
 
 Use **Input mode** to try the same puppet with another source.
 
