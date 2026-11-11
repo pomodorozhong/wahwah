@@ -56,6 +56,7 @@ export function renderMode(root: HTMLElement, opts: ShellOptions): void {
   byId('warnings').hidden = true;
   byId('warnings').textContent = '';
   showFitChips(false);
+  byId('monitorNote').textContent = '';
   byId<HTMLButtonElement>('tab-0').click();
 }
 
@@ -161,6 +162,7 @@ export function renderShell(root: HTMLElement): void {
         <div class="monitor-plot">
           <div class="monitor-chips" role="group" aria-label="Plotted signals">
             ${chip('jaw', 'Jaw')}${chip('width', 'Width')}${chip('round', 'Round')}${chip('level', 'Level')}<span class="chip-divider" aria-hidden="true" hidden></span>${chip('speed', 'Speed', true)}${chip('reached', 'Reached', true)}${chip('fade', 'Fade', true)}
+            <span id="monitorNote" class="monitor-note" aria-live="polite"></span>
           </div>
           <canvas id="timeline" class="timeline" aria-label="Playback timeline"></canvas>
         </div>

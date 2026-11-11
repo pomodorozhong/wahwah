@@ -273,6 +273,10 @@ export function mountMumble(root: HTMLElement, view: PuppetView, signal: AbortSi
         };
         lastFit.tail = { envelope, track, seconds: curves.outputTime(full.audio.length / sampleRate) };
       }
+      // A short form for the monitor, beside the curves it describes.
+      byId('monitorNote').textContent = cap === undefined ? '' : !f
+        ? `Fits in ${seconds.toFixed(2)} s · no speed-up`
+        : `${f.naturalSeconds.toFixed(2)} s line · ×${f.speed.toFixed(2)} avg, peak ×${f.peakSpeed.toFixed(2)} · ${!f.truncated ? 'not cut' : f.atWord ? `cut after a word at ${f.cutSeconds?.toFixed(2)} s` : `cut at ${cap.toFixed(1)} s`}`;
       byId('fitOut').textContent = cap === undefined ? '' : !f
         ? `Fits: ${seconds.toFixed(2)} s, under the cap. The fade only applies to a cut line, so lower the cap below ${cutBelow(seconds).toFixed(1)} s to hear it.`
         : !f.truncated
