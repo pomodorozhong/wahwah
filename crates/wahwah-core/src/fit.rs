@@ -547,6 +547,12 @@ pub fn fit_instrument(
     Some((fitted, fit))
 }
 
+/// Drop any audio past `floor(cap * sample_rate)` samples. A line that fits in
+/// seconds can still round up to one sample more.
+pub fn trim_to_cap(audio: &mut Vec<f32>, sample_rate: f64, cap_seconds: f64) {
+    audio.truncate((cap_seconds * sample_rate).floor() as usize);
+}
+
 /// Make rendered audio obey the cap to the sample, and fade a cut.
 pub fn settle_audio(
     audio: &mut Vec<f32>,
@@ -559,7 +565,7 @@ pub fn settle_audio(
     let end = fit
         .cut_seconds
         .map_or(cap_seconds, |cut| cut.min(cap_seconds));
-    audio.truncate((end * sample_rate).floor() as usize);
+    trim_to_cap(audio, sample_rate, end);
     if !options.volume.is_flat() {
         let n = audio.len().max(1) as f64;
         for (i, sample) in audio.iter_mut().enumerate() {

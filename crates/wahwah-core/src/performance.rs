@@ -1,7 +1,7 @@
 //! One score supplies the audio, timeline, and optional mouth movement.
 use crate::{
     Score, Segment, TromboneOptions,
-    fit::{Fit, FitOptions, fit_score, settle_audio},
+    fit::{Fit, FitOptions, fit_score, settle_audio, trim_to_cap},
     mouth::{FaceTrack, TrackOptions, generate_face_track},
     render_formant, render_trombone,
 };
@@ -53,8 +53,9 @@ pub fn render_performance(
     }
 }
 
-/// Render within a maximum duration. A line that already fits renders exactly
-/// as `render_performance` would; a longer one is fitted first, so audio, timeline
+/// Render within a maximum duration. A line that already fits renders as
+/// `render_performance` would, except that at most one trailing sample past
+/// `floor(cap * sample_rate)` is dropped; a longer one is fitted first, so audio, timeline
 /// and mouth movement come from the same fitted score. `words` are the byte ranges of the
 /// words in the score's phoneme source (see `fit::phoneme_words`), used to cut between words.
 pub fn render_performance_within(
@@ -67,7 +68,9 @@ pub fn render_performance_within(
     words: &[(usize, usize)],
 ) -> Performance {
     let Some((fitted, fit)) = fit_score(score, max_seconds, &fit_options, words) else {
-        return render_performance(score, sample_rate, voice, track);
+        let mut performance = render_performance(score, sample_rate, voice, track);
+        trim_to_cap(&mut performance.audio, sample_rate, max_seconds);
+        return performance;
     };
     let mut performance = render_performance(&fitted, sample_rate, voice, track);
     settle_audio(

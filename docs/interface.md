@@ -76,7 +76,7 @@ const utterance = renderMumble(text, options, voice, 48000, { engine: 'formant',
 utterance.fit; // { naturalSeconds: 9.3, speed: 1.6, truncated: true }
 ```
 
-- **A line that fits is untouched.** It renders exactly as without a cap, and `fit` is empty.
+- **A line that fits is untouched,** except that it can lose one trailing sample to stay within `floor(cap × sampleRate)`. `fit` is empty.
 - **A longer line is sped up first,** by at most 1.6 times by default, without changing pitch. Every time on the score is scaled together, so the audio, the timeline and the face track still line up.
 - **If that is not enough, the end is cut** at the cap with a fade (80 ms, linear, unless you set `cutFade`), the mouth closes at the cut, and `warnings` says so. The words after the cut are not in the timeline.
 - **The fade is yours to shape.** Pass `fit.cutFade` after the cap: `{ milliseconds: 0–5000, curve: 'linear' | 'smooth' | 'quick' | 'decibel' | 'none', exponent: 0.1–8, endVolume: 0–1 }`, each part optional. `smooth` is a half cosine, `quick` drops fast and then trails off, `decibel` is a straight line in decibels down to -60 dB, and `none` or 0 ms is a hard cut. `exponent` bends the curve (above 1 holds the volume longer, below 1 drops sooner) and `endVolume` is the volume the fade stops at, 0 by default. A fade longer than the audio is held to it. Only a line that was cut is faded.

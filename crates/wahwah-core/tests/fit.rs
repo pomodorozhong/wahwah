@@ -4,12 +4,16 @@ use wahwah_core::{
         CutAt, CutFade, FadeCurve, FitOptions, MAX_SPEEDUP, SpeedProfile, SpeedUp, Volume,
         pause_separated_words,
     },
-    instruments::{InstrumentOptions, compile_instrument, render_instrument_within},
+    instruments::{
+        InstrumentOptions, compile_instrument, render_instrument, render_instrument_within,
+    },
     mouth::TrackOptions,
     render_performance, render_performance_within,
 };
 
 const RATE: f64 = 24000.0;
+/// A rate where lines, which last whole tens of milliseconds, end between samples.
+const ODD_RATE: f64 = 22050.0;
 
 fn line(words: usize) -> wahwah_core::Score {
     compile_score(&"HH EH L OW ".repeat(words), &ScoreOptions::default())
@@ -35,6 +39,46 @@ fn a_line_that_fits_is_unchanged() {
     assert_eq!(plain.audio, within.audio);
     assert_eq!(plain.timeline.segments, within.timeline.segments);
     assert!(within.fit.is_none());
+}
+
+#[test]
+fn a_line_that_barely_fits_is_cut_to_the_sample() {
+    // A cap equal to a line that ends between samples: it fits in seconds, but
+    // its audio rounds up to one sample past floor(cap * rate).
+    let score = line(3);
+    let cap = score.duration_seconds();
+    let limit = (cap * ODD_RATE).floor() as usize;
+    let plain = render_performance(&score, ODD_RATE, &voice(), None);
+    assert_eq!(
+        plain.audio.len(),
+        limit + 1,
+        "the line must end between samples"
+    );
+    let within = render_performance_within(
+        &score,
+        ODD_RATE,
+        &voice(),
+        None,
+        cap,
+        FitOptions::default(),
+        &[],
+    );
+    assert!(within.fit.is_none());
+    assert_eq!(within.audio[..], plain.audio[..limit]);
+
+    let options = InstrumentOptions::new(wahwah_core::instruments::Instrument::Kazoo);
+    let notes = compile_instrument("hello there friend", &options);
+    let cap = notes.duration_seconds;
+    let limit = (cap * ODD_RATE).floor() as usize;
+    let plain = render_instrument(&notes, ODD_RATE, None);
+    assert_eq!(
+        plain.audio.len(),
+        limit + 1,
+        "the notes must end between samples"
+    );
+    let (_, within) = render_instrument_within(&notes, ODD_RATE, None, cap, FitOptions::default());
+    assert!(within.fit.is_none());
+    assert_eq!(within.audio[..], plain.audio[..limit]);
 }
 
 #[test]

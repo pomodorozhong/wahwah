@@ -6,7 +6,7 @@ mod synth;
 
 use crate::{
     Performance, Segment, Timeline,
-    fit::{FitOptions, fit_instrument, settle_audio},
+    fit::{FitOptions, fit_instrument, settle_audio, trim_to_cap},
     mouth::{FaceControls, FaceSample, FaceTrack, TrackOptions, viseme},
 };
 pub use score::{InstrumentScore, Note, compile_instrument};
@@ -220,7 +220,9 @@ pub fn render_instrument_within(
     fit_options: FitOptions,
 ) -> (InstrumentScore, Performance) {
     let Some((fitted, fit)) = fit_instrument(score, max_seconds, &fit_options) else {
-        return (score.clone(), render_instrument(score, sample_rate, track));
+        let mut performance = render_instrument(score, sample_rate, track);
+        trim_to_cap(&mut performance.audio, sample_rate, max_seconds);
+        return (score.clone(), performance);
     };
     let mut performance = render_instrument(&fitted, sample_rate, track);
     settle_audio(
