@@ -110,8 +110,6 @@ export function renderShell(root: HTMLElement): void {
                 </div>
               </details>
               <div id="cameraTools" hidden>
-                <span class="camera-hint">Drag to rotate · Shift-drag to pan · Scroll to zoom</span>
-                <span class="touch-hint">Drag to rotate · Two fingers to pan or pinch</span>
                 <button type="button" id="resetView" aria-label="Reset view"><span class="reset-text">Reset<span class="reset-long"> view</span></span></button>
               </div>
             </div>

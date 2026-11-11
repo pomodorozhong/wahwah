@@ -39,15 +39,10 @@
 .puppet-options label { display: flex; align-items: center; gap: 8px; min-height: 32px; font-size: 13px; cursor: pointer; }
 #cameraTools { display: flex; align-items: center; gap: 6px; margin-left: auto; min-width: 0; }
 #cameraTools[hidden] { display: none; }
-.camera-hint, .touch-hint { display: none; padding: 3px 7px; border-radius: 6px; background: #fff5d9e0; color: #514320; font-size: 11px; }
 #resetView { height: 30px; white-space: nowrap; padding: 0 9px; border: 1.5px solid var(--ink); border-radius: 10px; background: var(--panel); font: 700 12px system-ui, sans-serif; }
 #resetView:hover, .puppet-menu summary:hover { background: #ffdf74; }
 @container portrait (max-width: 299px) { .reset-long { display: none; } }
 @container portrait (max-width: 269px) { .reset-text { display: none; } #resetView::before { content: '⟲'; font-size: 15px; } }
-@container portrait (min-width: 470px) {
-  @media (pointer:fine) { .camera-hint { display:inline; } }
-  @media (pointer:coarse) { .touch-hint { display:inline; } }
-}
 
 /* Cards: the line editor, each control column and the analysis panel */
 .editor, .controls #group-1 > .section, .controls #group-2, .analysis { background: var(--panel); border: var(--card-border); border-radius: var(--radius); min-width: 0; }
