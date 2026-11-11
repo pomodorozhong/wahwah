@@ -74,7 +74,7 @@ const voiceHtml =
   section(
     'Character',
     `<label class="field"><input id="useHash" type="checkbox" /> Derive the voice from a hash</label>
-    <div class="pair seed" data-hash-field>
+    <div class="hash-field" data-hash-field>
       <label class="field">Hash (hex, 16 bytes or more) <input id="hash" type="text" spellcheck="false" autocomplete="off" value="00112233445566778899aabbccddeeff" /></label>
       <button id="rehash" type="button">Random hash</button>
     </div>

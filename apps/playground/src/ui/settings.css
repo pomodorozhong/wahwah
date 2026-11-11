@@ -43,7 +43,7 @@
   }
 
   .pair { gap: 12px; }
-  .pair.seed { grid-template-columns: minmax(5rem, 8rem) auto; justify-content: start; }
+  .pair.seed { grid-template-columns: minmax(0, 1fr) auto; }
   .pair.seed button { min-block-size: 38px; }
 
   .field.slider {

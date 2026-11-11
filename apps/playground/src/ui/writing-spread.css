@@ -1,6 +1,6 @@
 /* Responsive studio: on wide screens the stage and line sit above a row of control
    columns; tablets fold the columns into two; phones stack everything behind tabs. */
-.studio { min-height: 100vh; min-height: 100dvh; display: grid; grid-template-rows: auto minmax(0,1fr) auto; grid-template-columns: minmax(0,1fr); background: var(--bg); --gutter: clamp(12px, 2.2vw, 24px); --ink: #29261e; --card-border: 2px solid var(--ink); --radius: 16px; --pad: 20px; --gap: 16px; --control-h: 36px; }
+.studio { min-height: 100vh; min-height: 100dvh; display: grid; grid-template-rows: auto minmax(0,1fr) auto; grid-template-columns: minmax(0,1fr); background: var(--bg); --gutter: clamp(12px, 1.6vw, 24px); --ink: #29261e; --card-border: 2px solid var(--ink); --radius: 16px; --pad: clamp(12px, 1.25vw, 20px); --gap: clamp(10px, 1vw, 16px); --control-h: 36px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); border: 0; white-space: nowrap; }
 
 /* Masthead: brand, title, input picker and the Analysis switch */
@@ -24,7 +24,7 @@
 
 /* Stage: the puppet with its view, puppet options and camera controls on top */
 .stage { container: portrait / inline-size; min-width: 0; }
-.face { position: relative; width: 100%; aspect-ratio: 1; overflow: hidden; background: #1d2230; border: var(--card-border); border-radius: var(--radius); box-sizing: border-box; }
+.face { position: relative; width: 100%; height: 100%; min-height: 220px; overflow: hidden; background: #1d2230; border: var(--card-border); border-radius: var(--radius); box-sizing: border-box; }
 .preview-head { position: absolute; z-index: 2; inset: auto 10px 10px; display: flex; flex-wrap: nowrap; align-items: center; gap: 6px; }
 .preview-head .segmented label { min-height: 23px; }
 .preview-head > .segmented, .preview-head > .puppet-menu, #resetView { flex: none; }
@@ -57,6 +57,13 @@
 .studio .controls #group-2 > .section { border-top: 0; padding: 0; }
 .studio .controls #group-1 > .section { border-top: var(--card-border); }
 .analysis { padding: var(--pad); }
+.controls .hint { font-size: 12px; line-height: 1.45; }
+.controls .pair.seed button { white-space: nowrap; }
+.hash-field { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.hash-field .field { align-self: stretch; }
+.hash-field input { width: 100%; font-family: ui-monospace, monospace; font-size: 13px; }
+.hash-field button, .controls .pair.seed button { min-block-size: 36px; padding: 0 12px; }
+.controls .hash-note code { overflow-wrap: anywhere; }
 .group-switch { display: none; }
 /* A mode with a single column (Phoneme script, Live microphone) flows its controls into a grid. */
 .studio .controls #group-1 > .section:only-child > .section-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px 28px; align-items: start; }
@@ -93,12 +100,11 @@
   .studio { height: 100vh; height: 100dvh; }
   .layout {
     --top: clamp(220px, 38dvh, 440px);
-    display: grid; grid-template-columns: var(--top) minmax(0,1fr); grid-template-rows: var(--top) minmax(0,1fr);
+    display: grid; grid-template-columns: minmax(240px, 2fr) minmax(0, 3fr); grid-template-rows: var(--top) minmax(0,1fr);
     grid-template-areas: 'portrait editor' 'controls controls';
     gap: var(--gap); padding: var(--gap) var(--gutter); width: min(1480px,100%); margin-inline: auto; min-height: 0;
   }
   .stage { grid-area: portrait; height: var(--top); }
-  .face { height: 100%; }
   .editor { grid-area: editor; display: grid; grid-template-rows: minmax(0,1fr) auto auto; min-height: 0; }
   .editor > .panel { overflow: auto; overscroll-behavior: contain; }
   .controls { grid-area: controls; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px,1fr)); gap: var(--gap); min-height: 0; }
@@ -107,13 +113,19 @@
   .analysis { grid-area: controls; display: none; overflow: auto; min-height: 0; }
   .show-analysis .analysis { display: block; }
   .show-analysis .controls { display: none; }
-  .editor .script-heading h2 { font-size: clamp(20px, 2vw, 28px); }
   /* Let the writing box take the room the card has, so the card does not scroll it out of view. */
   .editor > .panel { display: flex; flex-direction: column; }
   #group-0 .script-editor { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; }
   #group-0 .writing-sheet { flex: 1; min-height: 84px; display: flex; flex-direction: column; }
-  .editor #group-0 .writing-sheet textarea { flex: 1; min-height: 0; resize: none; padding: 10px 14px 0; font-size: 22px; }
-  .editor #group-0 .writing-sheet #phonemes { font-size: 19px; }
+  .editor #group-0 .writing-sheet textarea { flex: 1; min-height: 0; resize: none; }
+}
+
+/* Tablet and wide: a compact line card, so the top row stays short */
+@media (min-width: 760px) {
+  .editor .script-heading h2 { font-size: clamp(20px, 1.8vw, 26px); }
+  #group-0 .script-editor { gap: 12px; }
+  .editor #group-0 .writing-sheet textarea { padding: 10px 14px 0; font-size: 20px; line-height: 1.35; }
+  .editor #group-0 .writing-sheet #phonemes { font-size: 18px; }
   #group-0 .word-preview { display: flex; align-items: baseline; gap: 12px; padding-top: 10px; }
   #group-0 .word-preview h3 { flex: none; margin: 0; }
 }
@@ -121,13 +133,16 @@
 /* Tablet: the same columns, two to a row, and the page scrolls */
 @media (min-width: 760px) and (max-width: 1099.98px) {
   .layout {
-    display: grid; grid-template-columns: minmax(220px, 36%) minmax(0,1fr);
+    display: grid; grid-template-columns: minmax(220px, 2fr) minmax(0, 3fr);
     grid-template-areas: 'portrait editor' 'controls controls';
-    align-items: start; gap: var(--gap); padding: var(--gap) var(--gutter);
+    align-items: stretch; gap: var(--gap); padding: var(--gap) var(--gutter);
   }
   .stage { grid-area: portrait; }
   .editor { grid-area: editor; }
+  .editor #group-0 .writing-sheet textarea { min-height: 84px; resize: vertical; }
   .controls { grid-area: controls; display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: var(--gap); align-items: stretch; }
+  /* The page scrolls here, so keep the monitor pinned to the bottom of the window. */
+  .playback-monitor { position: sticky; bottom: 0; z-index: 4; }
   .controls #group-1 { display: contents; }
   .analysis { grid-area: controls; display: none; }
   .show-analysis .analysis { display: block; }
@@ -149,7 +164,7 @@
   .input-switch .short { display: flex; }
   .analysis-toggle { display: none; }
   .layout { display: flex; flex-direction: column; gap: var(--gap); padding: var(--gap) var(--gutter); }
-  .stage { align-self: center; width: min(100%, 32dvh, 300px); }
+  .face { height: clamp(200px, 32dvh, 320px); min-height: 0; }
   .face-status { bottom: 46px; }
   .group-switch { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 4px; padding: 4px; background: var(--panel); border: var(--card-border); border-radius: var(--radius); }
   .group-switch button { min-height: var(--control-h); border: 0; border-radius: calc(var(--radius) - 6px); background: transparent; color: #46381f; font-weight: 700; font-size: 14px; }
