@@ -42,6 +42,9 @@ export class FaceRenderer {
     this.width = this.container.clientWidth || 1;
     this.height = this.container.clientHeight || 1;
     this.renderer.setSize(this.width, this.height, false);
-    this.host?.resize(this.width, this.height);
+    if (!this.host) return;
+    this.host.resize(this.width, this.height);
+    // Resizing clears the canvas; draw again now so no empty frame shows while the window is resized.
+    this.renderer.render(this.host.scene, this.host.camera);
   }
 }

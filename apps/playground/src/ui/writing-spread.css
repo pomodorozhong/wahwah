@@ -24,7 +24,7 @@
 
 /* Stage: the puppet with its view, puppet options and camera controls on top */
 .stage { container: portrait / inline-size; min-width: 0; }
-.face { position: relative; width: 100%; height: 100%; min-height: 220px; overflow: hidden; background: #1d2230; border: var(--card-border); border-radius: var(--radius); box-sizing: border-box; }
+.face { position: relative; width: 100%; height: 100%; min-height: 220px; overflow: hidden; background: #f4dab2; border: var(--card-border); border-radius: var(--radius); box-sizing: border-box; }
 .preview-head { position: absolute; z-index: 2; inset: auto var(--inset) var(--inset); display: flex; flex-wrap: nowrap; align-items: center; gap: 6px; }
 .preview-head .segmented label { min-height: 22px; }
 .preview-head > .segmented, .preview-head > .puppet-menu, #resetView { flex: none; }
