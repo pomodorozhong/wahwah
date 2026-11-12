@@ -24,8 +24,8 @@ export interface ShellOptions {
   lengthHtml?: string;
   inputLabel?: string;
   analysisHtml?: string;
-  /** Label for the fourth meter. */
-  levelLabel?: string;
+  /** Heading above the plot, e.g. "Input monitor" for the microphone. */
+  monitorTitle?: string;
 }
 
 export function byId<T extends HTMLElement = HTMLElement>(id: string): T {
@@ -40,19 +40,23 @@ export function disclosure(title: string, body: string): string {
   return `<details class="section"><summary>${title}</summary><div class="section-body">${body}</div></details>`;
 }
 
-const meter = (id: string, label: string) =>
-  `<div class="meter ${id}"><span>${label}</span><b id="${id}Val">0.00</b><i><em id="${id}Bar"></em></i></div>`;
-
 /** Update the editor, transport and analysis for a new input while retaining the stage and rig. */
 export function renderMode(root: HTMLElement, opts: ShellOptions): void {
   byId('group-0').innerHTML = opts.inputHtml + '<div id="calibrationTools"></div>';
   byId('group-1').innerHTML = opts.voiceHtml;
   byId('group-2').innerHTML = opts.lengthHtml ?? '';
   byId('group-2').hidden = !opts.lengthHtml;
-  byId('group-3').innerHTML = (opts.analysisHtml ?? '') + section('Diagnostics', '<div id="diag">–</div>');
+  // One fold, titled Diagnostics, holds the diagnostics and any analysis tools. Phones show it
+  // closed at the bottom of the Voice tab, with the rows open inside it and no second heading.
+  // Wider screens keep the fold open and hide its heading, so the rows (a closed Diagnostics
+  // card of their own) and each tool show as separate cards in the list.
+  const phone = phoneLayout?.matches ?? false;
+  byId('group-3').innerHTML = `<details class="section analysis-fold" id="analysisFold"${phone ? '' : ' open'}><summary>Diagnostics</summary><div class="section-body">`
+    + `<details class="section diag-fold" id="diagFold"${phone ? ' open' : ''}><summary>Diagnostics</summary><div class="section-body"><div id="diag">–</div></div></details>`
+    + `${opts.analysisHtml ?? ''}</div></details>`;
   byId('tab-0').textContent = opts.inputLabel ?? 'Script';
   root.querySelector<HTMLElement>('.transport .buttons')!.innerHTML = opts.transportHtml;
-  root.querySelector<HTMLElement>('.meter.level span')!.textContent = opts.levelLabel ?? 'Output';
+  byId('monitorTitle').textContent = opts.monitorTitle ?? 'Playback monitor';
   byId('warnings').hidden = true;
   byId('warnings').textContent = '';
   showFitChips(false);
@@ -60,11 +64,37 @@ export function renderMode(root: HTMLElement, opts: ShellOptions): void {
   byId<HTMLButtonElement>('tab-0').click();
 }
 
+/** Matches the phone layout in writing-spread.css. */
+const phoneLayout = typeof matchMedia === 'function' ? matchMedia('(max-width: 759.98px)') : null;
+
+/** The masthead's two inputs. A line can be text or phonemes; the switch for that sits in the line row. */
 const MODES = [
-  { value: 'mumble', label: 'Text to mumble', short: 'Text' },
-  { value: 'klattsch', label: 'Phoneme script', short: 'Phonemes' },
+  { value: 'line', label: 'Text to wahwah', short: 'Text to wahwah' },
   { value: 'live', label: 'Live microphone', short: 'Microphone' },
 ];
+
+const REPO_URL = 'https://github.com/pomodorozhong/wahwah';
+
+/** The Text / Phonemes switch at the start of the line row; the studio swaps the mode when it changes. */
+export function lineFormatHtml(current: 'mumble' | 'klattsch'): string {
+  const option = (value: string, label: string) =>
+    `<label><input type="radio" name="lineFormat" value="${value}"${value === current ? ' checked' : ''} /><span>${label}</span></label>`;
+  return `<fieldset class="segmented line-format" id="lineFormat"><legend class="sr-only">Line written as</legend>${option('mumble', 'Text')}${option('klattsch', 'Phonemes')}</fieldset>`;
+}
+
+/** Example lines as a row of cards: each shows its name, its text and what it is good for. */
+export function exampleShelfHtml(items: readonly { name: string; text: string; tag: string }[]): string {
+  const escape = (s: string) => s.replace(/[&<>"]/g, c => `&#${c.charCodeAt(0)};`);
+  return `<div class="example-shelf" role="group" aria-label="Examples. Choosing one replaces your line.">${items.map((item, i) =>
+    `<button type="button" class="example" data-example="${i}" aria-pressed="false"><b>${escape(item.name)}</b><span class="example-text">${escape(item.text)}</span><span class="example-tag">${escape(item.tag)}</span></button>`).join('')}</div>`;
+}
+
+/** Mark the example whose text matches the line, or none once the line is the user's own. */
+export function markExample(index: number): void {
+  for (const card of document.querySelectorAll<HTMLButtonElement>('.example-shelf .example')) {
+    card.setAttribute('aria-pressed', String(Number(card.dataset.example) === index));
+  }
+}
 
 const chip = (key: MonitorSeries, label: string, fit = false) =>
   `<button type="button" class="chip${fit ? ' fit-chip' : ''}" data-series="${key}" aria-pressed="${monitorSeriesOn(key)}"><i style="--chip:${MONITOR_SERIES[key].color}" aria-hidden="true"></i>${label}</button>`;
@@ -103,8 +133,7 @@ export function renderShell(root: HTMLElement): void {
   // On a phone the tabs show one group at a time; wider layouts show them together.
   const tabs = [
     { label: 'Script', controls: 'group-0 group-2' },
-    { label: 'Voice', controls: 'group-1' },
-    { label: 'Analysis', controls: 'group-3' },
+    { label: 'Voice', controls: 'group-1 group-3' },
   ];
   root.innerHTML = `
     <main class="studio" data-tab="0">
@@ -114,8 +143,8 @@ export function renderShell(root: HTMLElement): void {
           <fieldset class="segmented input-switch" id="inputMode"><legend class="sr-only">Input mode</legend>
             ${MODES.map(m => `<label><input type="radio" name="inputMode" value="${m.value}" /><span class="long">${m.label}</span><span class="short" aria-hidden="true">${m.short}</span></label>`).join('')}
           </fieldset>
-          <button type="button" id="analysisToggle" class="analysis-toggle" aria-pressed="false" aria-controls="group-3">Analysis</button>
         </div>
+        <a class="repo-link" href="${REPO_URL}" target="_blank" rel="noopener" aria-label="wahwah on GitHub"><svg width="20" height="20" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.17-.89-1.17-.73-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.23 1.88.87 2.34.67.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg></a>
       </header>
       <div class="layout">
         <section class="stage" aria-labelledby="previewTitle">
@@ -141,32 +170,32 @@ export function renderShell(root: HTMLElement): void {
           </div>
         </section>
         <nav class="group-switch" aria-label="Control groups" role="tablist">${tabs.map((t, i) => `<button type="button" id="tab-${i}" role="tab" aria-controls="${t.controls}" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}">${t.label}</button>`).join('')}</nav>
-        <section class="editor" aria-label="Line">
-          <div id="group-0" class="panel" role="tabpanel" aria-labelledby="tab-0" data-tab="0"></div>
-          <p id="warnings" class="warnings" hidden></p>
-          <div class="transport"><div class="buttons"></div>
-            <div class="status"><span>Elapsed <b id="time">–</b></span><span>Sound <b id="sound">–</b></span></div>
-          </div>
-          <div class="transport-end" aria-hidden="true"></div>
-        </section>
-        <section class="controls" aria-label="Voice and length">
+        <aside class="side-list" aria-label="Voice and analysis">
           <div id="group-1" class="panel" role="tabpanel" aria-labelledby="tab-1" data-tab="1"></div>
-          <div id="group-2" class="panel" data-tab="0" hidden></div>
-        </section>
-        <section id="group-3" class="panel analysis" role="tabpanel" aria-labelledby="tab-2" data-tab="2"></section>
-      </div>
-      <section class="playback-monitor" aria-label="Playback monitor">
-        <div class="monitor-signals"><h2>Playback monitor</h2><div class="meters">
-          ${meter('jawOpen', 'Jaw')}${meter('lipWidth', 'Width')}${meter('lipRound', 'Round')}${meter('level', 'Output')}
-        </div></div>
-        <div class="monitor-plot">
-          <div class="monitor-chips" role="group" aria-label="Plotted signals">
-            ${chip('jaw', 'Jaw')}${chip('width', 'Width')}${chip('round', 'Round')}${chip('level', 'Level')}<span class="chip-divider" aria-hidden="true" hidden></span>${chip('speed', 'Speed', true)}${chip('reached', 'Reached', true)}${chip('fade', 'Fade', true)}
-            <span id="monitorNote" class="monitor-note" aria-live="polite"></span>
-          </div>
-          <canvas id="timeline" class="timeline" aria-label="Playback timeline"></canvas>
+          <section id="group-3" class="panel analysis" aria-label="Analysis" data-tab="1"></section>
+        </aside>
+        <div class="workspace">
+          <section class="editor" aria-label="Line">
+            <div id="group-0" class="panel" role="tabpanel" aria-labelledby="tab-0" data-tab="0"></div>
+            <p id="warnings" class="warnings" hidden></p>
+            <div class="transport"><div class="buttons"></div>
+              <div class="status"><span>Elapsed <b id="time">–</b></span><span>Sound <b id="sound">–</b></span></div>
+            </div>
+            <div class="transport-end" aria-hidden="true"></div>
+          </section>
+          <section class="playback-monitor" aria-labelledby="monitorTitle">
+            <div class="monitor-chips" role="group" aria-label="Plotted signals">
+              <h2 id="monitorTitle" class="monitor-title">Playback monitor</h2>
+              ${chip('jaw', 'Jaw')}${chip('width', 'Width')}${chip('round', 'Round')}${chip('level', 'Level')}<span class="chip-divider" aria-hidden="true" hidden></span>${chip('speed', 'Speed', true)}${chip('reached', 'Reached', true)}${chip('fade', 'Fade', true)}
+              <span id="monitorNote" class="monitor-note" aria-live="polite"></span>
+            </div>
+            <canvas id="timeline" class="timeline" aria-label="Playback timeline"></canvas>
+          </section>
+          <section class="controls" aria-label="Length and response">
+            <div id="group-2" class="panel" data-tab="0" hidden></div>
+          </section>
         </div>
-      </section>
+      </div>
     </main>`;
   const studio = root.querySelector<HTMLElement>('.studio')!;
   const buttons = Array.from(root.querySelectorAll<HTMLButtonElement>('.group-switch button'));
@@ -194,11 +223,13 @@ export function renderShell(root: HTMLElement): void {
     });
   }
   followScrim(root);
-  const analysis = byId<HTMLButtonElement>('analysisToggle');
-  analysis.addEventListener('click', () => {
-    const on = analysis.getAttribute('aria-pressed') !== 'true';
-    analysis.setAttribute('aria-pressed', String(on));
-    studio.classList.toggle('show-analysis', on);
+  // Crossing into the phone layout folds the diagnostics away and opens the rows inside;
+  // leaving it opens the outer fold again and closes the rows' own card.
+  phoneLayout?.addEventListener('change', () => {
+    const outer = document.getElementById('analysisFold') as HTMLDetailsElement | null;
+    const rows = document.getElementById('diagFold') as HTMLDetailsElement | null;
+    if (outer) outer.open = !phoneLayout.matches;
+    if (rows) rows.open = phoneLayout.matches;
   });
   for (const button of root.querySelectorAll<HTMLButtonElement>('.monitor-chips .chip')) {
     button.addEventListener('click', () => {
@@ -305,14 +336,12 @@ export class PuppetView {
   showReadout(time: number | null, sound: string | null, level: number): void {
     byId('time').textContent = time === null ? '–' : `${Math.max(0, time).toFixed(2)} s`;
     byId('sound').textContent = sound ?? (time === null ? '–' : 'pause');
-    const c = this.follower.controls;
-    for (const k of ['jawOpen', 'lipWidth', 'lipRound'] as const) {
-      byId(`${k}Bar`).style.width = `${c[k] * 100}%`;
-      byId(`${k}Val`).textContent = c[k].toFixed(2);
-    }
-    byId('levelBar').style.width = `${Math.min(1, level * 2) * 100}%`;
-    byId('levelVal').textContent = level.toFixed(2);
+    // The level reaches only the debug hook now; the plot shows it over time.
+    this.lastLevel = level;
   }
+
+  /** The output or input level from the most recent frame. */
+  lastLevel = 0;
 
   /** Stop following anything and hold a pose, e.g. for screenshots. */
   holdPose(c: FaceControls): HTMLCanvasElement {

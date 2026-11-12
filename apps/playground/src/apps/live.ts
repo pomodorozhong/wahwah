@@ -45,7 +45,7 @@ let savedClip: RecordedClip | null = null;
 export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSignal): void {
   renderMode(root, {
 
-    levelLabel: 'input level',
+    monitorTitle: 'Input monitor',
     transportHtml: '<button id="start" class="primary">● Start</button><button id="stop" disabled>■ Stop</button>',
     inputLabel: 'Input',
     inputHtml: section(
@@ -61,8 +61,9 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
         <label class="field" id="deviceField">Microphone device <select id="device"><option value="">Default</option></select></label>
         <label><input id="monitor" type="checkbox" /> Hear the microphone (use headphones)</label>
         <p class="hint" id="sourceHint">Your audio stays in this page; nothing is recorded or sent anywhere.</p>`,
-      ) +
-      section(
+      ),
+    // The profile sits in the list beside the stage, and Response under the monitor.
+    voiceHtml: section(
         'Voice profile',
         `<p class="hint" id="profileStatus">No profile yet. Calibrate once (about 30 seconds) so the face reads your own voice, mic and room instead of a textbook reference.</p>
         <div class="profile-buttons">
@@ -73,7 +74,7 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
         </div>
         <ul class="profile-report" id="profileReport"></ul>`,
       ),
-    voiceHtml: section(
+    lengthHtml: section(
         'Response',
         `${slider('sensitivity', 'Sensitivity', 0.5, 3, 0.05, DEFAULT_LIVE.sensitivity)}
         ${slider('gate', 'Gate above noise floor', 2, 24, 1, DEFAULT_LIVE.gateDb)}

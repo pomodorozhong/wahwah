@@ -2,17 +2,23 @@
 
 import { DEFAULT_BRASS_COLOR, renderPhonemes, type VoiceSettings } from 'wahwah';
 import { PRESETS } from '../voice/presets';
-import type { PuppetView } from '../ui/puppetView';
+import { exampleShelfHtml, lineFormatHtml, markExample, type PuppetView } from '../ui/puppetView';
+import { LengthControls, lengthHtml } from '../ui/lengthControls';
 import { Stage, byId, section, restoreDraft } from '../ui/stage';
+
+// What each preset is good for, shown on its card in the example shelf.
+const PRESET_TAGS: Record<string, string> = {
+  greeting: 'Warm', question: 'Pitch bends', grumble: 'Low and slow', chatter: 'Fast', lips: 'Checks mouth shapes',
+};
+const EXAMPLES = PRESETS.map(p => ({ name: p.name.replace(/ \(diagnostic\)$/, ''), text: p.phonemes, tag: PRESET_TAGS[p.id] ?? '' }));
 
 const inputHtml = `
   <section class="script-editor" aria-labelledby="phonemesTitle">
     <div class="script-heading">
       <h2 id="phonemesTitle"><label for="phonemes">Phonemes</label></h2>
-      <label class="sample-picker">Preset
-        <select id="preset"><option value="" disabled>Custom phrase</option>${PRESETS.map((p) => `<option value="${p.id}">${p.name}</option>`).join('')}</select>
-      </label>
     </div>
+    ${exampleShelfHtml(EXAMPLES)}
+    ${lineFormatHtml('klattsch')}
     <div class="writing-sheet">
       <textarea id="phonemes" rows="4" spellcheck="false" placeholder="HH EH L OW" aria-describedby="phonemeFormat"></textarea>
       <span id="phonemeFormat" class="sheet-meta">ARPABET · klattsch syntax</span>
@@ -21,8 +27,9 @@ const inputHtml = `
 
 const voiceHtml =
   section(
-    'Voice settings',
-    `<label class="field slider">Pitch <output id="pitchOut"></output>
+    '<span>Voice</span><span class="engine-lock">klattsch formant voice</span>',
+    `<p class="hint">Phoneme scripts always play on the klattsch formant voice. Set Trombone color to zero to hear the plain voice.</p>
+    <label class="field slider">Pitch <output id="pitchOut"></output>
       <input id="pitch" type="range" min="60" max="300" step="1" />
     </label>
     <label class="field slider">Speaking rate <output id="rateOut"></output>
@@ -43,11 +50,13 @@ export function mountKlattsch(root: HTMLElement, view: PuppetView, signal: Abort
 
     inputHtml,
     voiceHtml,
-    compile: (sampleRate, puppet) => renderPhonemes(phonemesEl.value, voiceSettings(), sampleRate,
-      { engine: 'formant', brassColor: Number(brassEl.value) / 100 }, puppet),
+    lengthHtml,
+    fit: () => length.fit,
+    compile: (sampleRate, puppet) => length.render(sampleRate, (limit, fitOptions) => renderPhonemes(phonemesEl.value, voiceSettings(), sampleRate,
+      { engine: 'formant', brassColor: Number(brassEl.value) / 100 }, puppet, limit, fitOptions)),
   });
+  const length = new LengthControls(signal, () => changed());
 
-  const presetSel = byId<HTMLSelectElement>('preset');
   const phonemesEl = byId<HTMLTextAreaElement>('phonemes');
   const pitchEl = byId<HTMLInputElement>('pitch');
   const rateEl = byId<HTMLInputElement>('rate');
@@ -67,12 +76,13 @@ export function mountKlattsch(root: HTMLElement, view: PuppetView, signal: Abort
 
   function changed(): void {
     updateSliderLabels();
+    length.refresh();
+    markExample(PRESETS.findIndex(p => p.phonemes === phonemesEl.value));
     stage.invalidate();
   }
 
   function loadPreset(id: string): void {
     const p = PRESETS.find((x) => x.id === id) ?? PRESETS[0];
-    presetSel.value = p.id;
     phonemesEl.value = p.phonemes;
     pitchEl.value = String(p.voice.pitchHz);
     rateEl.value = String(p.voice.msPerPhoneme);
@@ -80,11 +90,11 @@ export function mountKlattsch(root: HTMLElement, view: PuppetView, signal: Abort
     changed();
   }
 
-  presetSel.addEventListener('change', () => loadPreset(presetSel.value), { signal });
-  phonemesEl.addEventListener('input', () => {
-    presetSel.value = '';
-    changed();
+  byId('group-0').addEventListener('click', (event) => {
+    const card = (event.target as HTMLElement).closest<HTMLButtonElement>('.example');
+    if (card) loadPreset(PRESETS[Number(card.dataset.example)].id);
   }, { signal });
+  phonemesEl.addEventListener('input', changed, { signal });
   for (const el of [pitchEl, rateEl, scaleEl, brassEl]) el.addEventListener('input', changed, { signal });
 
   restoreDraft(root, signal, draft);

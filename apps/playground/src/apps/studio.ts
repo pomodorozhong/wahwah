@@ -39,8 +39,12 @@ const root = byId('app');
 renderShell(root);
 const view = new PuppetView();
 const selector = byId<HTMLFieldSetElement>('inputMode');
+// The masthead offers Line or Live microphone; a line is text (mumble) or phonemes (klattsch).
+let lineMode: 'mumble' | 'klattsch' = 'mumble';
 const choose = (mode: Mode) => {
-  for (const input of selector.querySelectorAll<HTMLInputElement>('input[name=inputMode]')) input.checked = input.value === mode;
+  if (mode !== 'live') lineMode = mode;
+  const shown = mode === 'live' ? 'live' : 'line';
+  for (const input of selector.querySelectorAll<HTMLInputElement>('input[name=inputMode]')) input.checked = input.value === shown;
 };
 let active: Mode | undefined;
 let session: AbortController | undefined;
@@ -66,12 +70,22 @@ function applyLocation(): void {
   }
 }
 
-selector.addEventListener('change', (event) => {
+function go(mode: Mode): void {
   const dest = new URL(location.href);
-  dest.searchParams.set('mode', (event.target as HTMLInputElement).value);
+  dest.searchParams.set('mode', mode);
   dest.searchParams.delete('engine');
   history.pushState(null, '', dest);
   applyLocation();
+}
+
+selector.addEventListener('change', (event) => {
+  const value = (event.target as HTMLInputElement).value;
+  go(value === 'live' ? 'live' : lineMode);
+});
+// The Text / Phonemes switch is drawn by each line mode, so listen on the root.
+root.addEventListener('change', (event) => {
+  const target = event.target;
+  if (target instanceof HTMLInputElement && target.name === 'lineFormat' && isMode(target.value)) go(target.value);
 });
 window.addEventListener('popstate', applyLocation);
 window.addEventListener('pagehide', () => {

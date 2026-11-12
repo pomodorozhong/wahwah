@@ -1,16 +1,16 @@
 # Playground guide
 
-The **Input mode** switch at the top (**Text to mumble**, **Phoneme script** or **Live microphone**) changes what drives the puppet. Switching modes stops playback or capture. Your character, framing, and script drafts stay with you during the visit.
+The switch at the top right chooses what drives the puppet: **Text to wahwah**, a line you write, or the **Live microphone**. A line is either **Text** or **Phonemes**, chosen with the switch at the start of the line. Switching stops playback or capture. Your character, framing, and drafts stay with you during the visit. The GitHub mark at the far right opens the project's repository.
 
-On a wide screen, the line sits beside the puppet and the controls sit in columns underneath. **Analysis** in the top bar swaps those columns for the analysis tools, and pressing it again brings them back. On a tablet, the columns fold into two per row and the page scrolls. On a phone, the **Script**, **Voice** and **Analysis** tabs show one group at a time, and the length controls sit in **Script** under the line.
+On a wide screen, the puppet stays in view at the top left, with **Voice** and **Character** in a list under it that scrolls on its own. The right side holds the examples, the line, the playback monitor and **Length**. In **Live microphone**, the list holds **Voice profile** and the analysis tools instead, and **Response** takes Length's place. On a tablet the same two columns stay and the page scrolls. On a phone, the **Script** and **Voice** tabs show one group at a time. The length controls sit in **Script** under the line, and the diagnostics and analysis tools sit in a closed **Diagnostics** section at the bottom of **Voice**.
 
 ## Shape a Mumble voice
 
-In **Text to mumble**, choose a sample or enter up to 500 characters of text in any language, including Chinese and lines that mix languages. Play a question, then change its punctuation to a period and listen to the ending. The word highlight follows the line during playback.
+In **Text**, choose an example card above the line or enter up to 500 characters of text in any language, including Chinese and lines that mix languages. Each card shows its text and what it is good for, and choosing one replaces your line. Play a question, then change its punctuation to a period and listen to the ending. The word highlight follows the line during playback.
 
-**Wah-wah trombone** is the default sound engine. Under **Engine**, klattsch and the wah-wah trombone share the same invented syllables. Keep **Language style**, **Mood**, and **Seed** fixed to compare the two instruments. Change the seed to give familiar words new sounds. The syllable and stress guesses are tuned for English. Chinese, Japanese and Korean get one even syllable per character, and other scripts get a rough guess.
+**Wah-wah trombone** is the default sound engine, chosen at the top of the **Voice** card. klattsch and the wah-wah trombone share the same invented syllables. Keep **Language style**, **Mood**, and **Seed** fixed to compare the two instruments. Change the seed to give familiar words new sounds. The syllable and stress guesses are tuned for English. Chinese, Japanese and Korean get one even syllable per character, and other scripts get a rough guess.
 
-**Length** caps the line. Turn on **Cap the length of the line** and set **Maximum duration**: longer lines are sped up first, then cut, and a status line says which happened: under the slider, or on wide screens at the right end of the playback monitor's chips. **Cut between words** ends the line where the last word that fits ends, and the fade shapes that ending. Below them, **Speed, volume and fade** holds the rest. **Speed-up shape** and **Top speed** choose how a long line is sped up first, steadily or ramping up or down. **Volume shape** and **Volume level** change the volume along the line with the same shapes as the speed-up. **Fade at the cut**, **Fade length**, **Fade bend** and **End volume** shape the end of a cut line, from a hard cut to a two-second fade.
+**Length** caps the line. All its settings are always shown, and they are disabled until you turn on **Cap the length of the line**. Then set **Maximum duration**: longer lines are sped up first, then cut, and a status line says which happened: under the cap on a phone, or at the right end of the playback monitor's chips. **Cut between words** ends the line where the last word that fits ends, and the fade shapes that ending. **Speed-up** (**Speed-up shape** and **Top speed**) chooses how a long line is sped up first, steadily or ramping up or down. **Volume** (**Volume shape** and **Volume level**) changes the volume along the line with the same shapes as the speed-up. **Fade at the cut** (**Fade shape**, **Fade length**, **Fade bend** and **End volume**) shapes the end of a cut line, from a hard cut to a two-second fade.
 
 While the cap is on, the **Playback monitor** adds the fit to its plot: **Speed**, how much of the original line has been **Reached**, and the **Fade** volume, with dashed lines where the fade starts and where the line is cut. A cut line also shows, faintly, the part of the original line that the cut removed. The chips above the plot turn each signal on or off. Phones hide the playback monitor.
 
@@ -26,7 +26,7 @@ The four Talking Instruments choices turn text into their own note score, with a
 
 ## Write a phoneme script
 
-Choose **Phoneme script**, select the **Lip workout** preset, and press **Play line**. The editor takes ARPABET sounds such as `HH EH L OW`. Punctuation adds pauses. Try `AA . AA(+40)` to hear a pitch bend on the second vowel. Inline pitch and rate settings such as `b140` and `r90` override the voice sliders. The editor reports unrecognized tokens.
+Choose **Phonemes** at the start of the line, select the **Lip workout** example, and press **Play line**. Phoneme scripts always play on the klattsch formant voice. **Length** works the same way as for text, and its settings carry over when you switch between Text and Phonemes. The editor takes ARPABET sounds such as `HH EH L OW`. Punctuation adds pauses. Try `AA . AA(+40)` to hear a pitch bend on the second vowel. Inline pitch and rate settings such as `b140` and `r90` override the voice sliders. The editor reports unrecognized tokens.
 
 ## Calibrate a microphone
 
@@ -40,13 +40,13 @@ For a rehearsal, select **Demo voice** as the input. It can answer the calibrati
 
 **Response → Mouth shape from** explains the selected analysis mode. **Your voice profile** matches calibrated sounds; **uLipSync-style** smooths those matches with a spring. **Formants** estimates vowel resonances without calibration. **Brightness only** approximates wide or rounded lips from the sound's brightness, while **Loudness only** moves just the jaw.
 
-The **Analysis → Vowel map** circle and one-second trail need running input, **Puppet output** enabled, and **Formants** selected. The map plots F1 (openness, down) and F2 (front, left). Other analysis modes do not measure F1/F2, so the mouth can move while the map has no circle. Silence and unvoiced sounds can also leave the map empty.
+The **Vowel map** circle, in the list under the puppet, and one-second trail need running input, **Puppet output** enabled, and **Formants** selected. The map plots F1 (openness, down) and F2 (front, left). Other analysis modes do not measure F1/F2, so the mouth can move while the map has no circle. Silence and unvoiced sounds can also leave the map empty.
 
 ### Compare timing on one recording
 
-Open **Analysis → Delay test**. Choose **Record**, say a few spaced “ah” sounds followed by a short sentence, then stop the recording. Use **Play back** with **Audio delay** at zero. Choose **Match measured lag** and replay the same clip. Positive delay holds the audio back while the mouth moves.
+Scroll the list under the puppet to **Delay test**. Choose **Record**, say a few spaced “ah” sounds followed by a short sentence, then stop the recording. Use **Play back** with **Audio delay** at zero. Choose **Match measured lag** and replay the same clip. Positive delay holds the audio back while the mouth moves.
 
-If timing improves but the shapes still look jumpy, compare **Your voice profile** with **uLipSync-style** under **Voice**. Try the latter with **uLipSync smoothness** at 50 ms and 20 ms. The clip is analysed again when you change settings. The best tradeoff between smoothness and delay on a physical microphone remains an open question.
+If timing improves but the shapes still look jumpy, compare **Your voice profile** with **uLipSync-style** under **Response**. Try the latter with **uLipSync smoothness** at 50 ms and 20 ms. The clip is analysed again when you change settings. The best tradeoff between smoothness and delay on a physical microphone remains an open question.
 
 ## Watch the puppet
 

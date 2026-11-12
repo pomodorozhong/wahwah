@@ -3,14 +3,15 @@ import { type FaceControls } from 'wahwah/performance';
 export type MonitorSeries = 'jaw' | 'width' | 'round' | 'level' | 'speed' | 'reached' | 'fade';
 
 /** Colors and dashes for every plotted signal; the chips above the plot use the same colors. */
+// The monitor is light, so these are darker versions of the first dark-monitor colors.
 export const MONITOR_SERIES: Record<MonitorSeries, { color: string; dash: readonly number[] }> = {
-  jaw: { color: '#fff2ca', dash: [] },
-  width: { color: '#79b6ad', dash: [6, 3] },
-  round: { color: '#e4ba55', dash: [1, 3] },
-  level: { color: '#c8a03b', dash: [] },
-  speed: { color: '#9fd38e', dash: [] },
-  reached: { color: '#c3b2f0', dash: [3, 3] },
-  fade: { color: '#f29b5c', dash: [] },
+  jaw: { color: '#29261e', dash: [] },
+  width: { color: '#2f7d73', dash: [6, 3] },
+  round: { color: '#a8760f', dash: [1, 3] },
+  level: { color: '#e0b84f', dash: [] },
+  speed: { color: '#3f8a2c', dash: [] },
+  reached: { color: '#6f57bd', dash: [3, 3] },
+  fade: { color: '#cf6a1c', dash: [] },
 };
 
 // Width and Round stay off at first so the jaw, level and fit curves read clearly.
@@ -28,12 +29,15 @@ export function visibleFaceSignals(): [keyof FaceControls, string, readonly numb
 }
 
 export const MONITOR_COLORS = {
-  fill: '#c8a03b73',
-  foreground: '#fff2ca',
-  labels: '#d8caa8',
-  grid: '#655a3a',
-  floor: '#998c6b',
-  threshold: '#e4ba55',
+  background: '#fbf1cf',
+  fill: '#e0b84f99',
+  foreground: '#29261e',
+  labels: '#6e5f38',
+  grid: '#e3d29c',
+  floor: '#8f8260',
+  threshold: '#b8871c',
+  /** The part of a line the cut removed. */
+  removed: '#efe2b8',
 };
 
 /** Lay out the shared time-series plot below its phoneme band and above its time axis. */
@@ -43,7 +47,7 @@ export function beginMonitor(g: CanvasRenderingContext2D, w: number, h: number, 
   g.setLineDash([]);
   g.lineCap = 'butt';
   g.clearRect(0, 0, w, h);
-  g.fillStyle = '#302d24';
+  g.fillStyle = MONITOR_COLORS.background;
   g.fillRect(0, 0, w, h);
   g.strokeStyle = MONITOR_COLORS.grid;
   g.lineWidth = 0.5;

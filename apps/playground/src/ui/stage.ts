@@ -14,7 +14,8 @@ export { byId, disclosure, section } from './puppetView';
 /** Keep each generated mode's draft in memory while the user tries other inputs. */
 export function restoreDraft(root: HTMLElement, signal: AbortSignal, draft: Record<string, string>): void {
   const fields = root.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
-    ':is(#group-0, #group-1, #group-2) :is(input, select, textarea)[id]',
+    // Length (#group-2) keeps its own values, shared by Text and Phonemes; see lengthControls.ts.
+    ':is(#group-0, #group-1) :is(input, select, textarea)[id]',
   );
   for (const field of fields) if (field.id in draft) field.value = draft[field.id];
   signal.addEventListener('abort', () => {
@@ -132,6 +133,8 @@ export class Stage {
     const warn = byId('warnings');
     warn.hidden = utterance.warnings.length === 0;
     warn.textContent = utterance.warnings.join('; ');
+    // Wide screens keep this to one line above the monitor; the full text is on hover.
+    warn.title = warn.textContent;
     this.renderDiagnostics(p);
     showFitChips(!!this.opts.fit?.());
     return p;
@@ -190,7 +193,7 @@ export class Stage {
     const height = bottom - top;
     const cutX = curves?.cutAt != null && tail ? x(curves.cutAt) : null;
     if (cutX !== null) {
-      g.fillStyle = '#211f18';
+      g.fillStyle = MONITOR_COLORS.removed;
       g.fillRect(cutX, 0, w - cutX, bottom);
     }
 

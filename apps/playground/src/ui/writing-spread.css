@@ -1,17 +1,27 @@
-/* Responsive studio: on wide screens the stage and line sit above a row of control
-   columns; tablets fold the columns into two; phones stack everything behind tabs. */
-.studio { min-height: 100vh; min-height: 100dvh; display: grid; grid-template-rows: auto minmax(0,1fr) auto; grid-template-columns: minmax(0,1fr); background: var(--bg); --gutter: clamp(12px, 1.6vw, 24px); --ink: #29261e; --line: 2px solid var(--ink); --card-border: var(--line); --divider: 2px solid #d9c690; --radius: 22px; --inset: 10px; --control-radius: 10px; --pad: clamp(12px, 1.25vw, 20px); --gap: clamp(10px, 1vw, 16px); --control-h: 36px; }
+/* Responsive studio. Wide screens: a left column with the stage and a list (Voice and Character,
+   or the voice profile and analysis) that scrolls on its own, and a right column with the examples,
+   the line, the playback monitor and Length. Tablets keep the two columns and let the page scroll.
+   Phones stack everything behind tabs. */
+.studio { min-height: 100vh; min-height: 100dvh; display: grid; grid-template-rows: auto minmax(0,1fr) auto; grid-template-columns: minmax(0,1fr); background: var(--bg); --gutter: clamp(12px, 1.6vw, 24px); --ink: #29261e; --line: 2px solid var(--ink); --card-border: var(--line); --divider: 2px solid #d9c690; --radius: 22px; --inset: 10px; --control-radius: 10px; --pad: clamp(12px, 1.25vw, 20px); --gap: clamp(10px, 1vw, 16px); --control-h: 36px; --soft: #f3e2a6; --field: #fffdf3; --gold: #f2c540; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); border: 0; white-space: nowrap; }
 
-/* Masthead: brand, title, input picker and the Analysis switch */
-.mast { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 10px var(--gutter); background: #f7ce4f; border-bottom: var(--card-border); }
+/* Masthead: brand and title on the left; the input picker and the GitHub link on the right */
+.mast { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 10px var(--gutter); background: #f7ce4f; border-bottom: var(--card-border); }
 .brand { display: flex; align-items: center; line-height: 1; }
 .mast-titles { display: flex; align-items: center; gap: clamp(10px,1.8vw,24px); min-width: 0; }
 .mast .brand { font-family: 'Arial Rounded MT Bold','Trebuchet MS',sans-serif; letter-spacing: -.075em; font-weight: 850; font-size: 24px; gap: 9px; color: var(--text); }
-.mast h1 { font-size: 14px; font-weight: 750; letter-spacing: 0; border-left: 2px solid #a98b37; padding-left: clamp(10px,1.8vw,24px); margin: 0; }
-.mast-actions { display: flex; align-items: center; gap: 10px; min-width: 0; }
+/* The two dividers in the masthead, before the title and before the GitHub mark, share one
+   size and spacing: 2px wide, as tall as the title's line, with the same space on each side. */
+.studio { --mast-divider: 2px solid #a98b37; --mast-divider-space: clamp(10px,1.8vw,24px); }
+.mast h1 { font-size: 14px; line-height: 18px; font-weight: 750; letter-spacing: 0; border-left: var(--mast-divider); padding-left: var(--mast-divider-space); margin: 0; }
+.mast-titles { gap: var(--mast-divider-space); }
+.mast-actions { display: flex; align-items: center; gap: 10px; min-width: 0; margin-left: auto; }
+.repo-link { display: inline-flex; align-items: center; gap: var(--mast-divider-space); margin-left: calc(var(--mast-divider-space) - 16px); color: var(--ink); }
+.repo-link::before { content: ''; height: 18px; border-left: var(--mast-divider); }
+.repo-link:focus-visible { outline: none; }
+.repo-link:focus-visible svg { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 50%; }
 
-/* Segmented pickers: the input mode in the masthead and the view on the stage */
+/* Segmented pickers: the input mode, Text / Phonemes, and the view on the stage */
 .segmented { display: inline-flex; gap: 2px; margin: 0; padding: 2px; border: 1.5px solid var(--ink); border-radius: 10px; overflow: hidden; background: var(--panel); min-width: 0; }
 .segmented label { position: relative; display: flex; min-width: 0; min-height: calc(var(--control-h) - 8px); cursor: pointer; }
 .segmented input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
@@ -19,8 +29,9 @@
 .segmented input:checked + span, .segmented input:checked + span + span { background: var(--ink); color: var(--on-accent); }
 .segmented input:focus-visible ~ span { outline: 2px solid var(--ink); outline-offset: -4px; border-radius: 6px; }
 .segmented .short { display: none; }
-.analysis-toggle { min-height: var(--control-h); padding: 0 14px; border: 1.5px solid var(--ink); border-radius: 10px; background: var(--panel); font-weight: 700; font-size: 13px; }
-.analysis-toggle[aria-pressed=true] { background: var(--ink); color: var(--on-accent); }
+.input-switch span { padding: 0 16px; }
+.line-format { flex: none; background: var(--field); }
+.line-format label { min-height: 34px; }
 
 /* Stage: the puppet with its view, puppet options and camera controls on top */
 .stage { container: portrait / inline-size; min-width: 0; }
@@ -30,7 +41,6 @@
 .preview-head > .segmented, .preview-head > .puppet-menu, #resetView { flex: none; }
 /* Concentric with the stage's corner: control radius + inset = the stage's inner radius. */
 .preview-head > .segmented, .puppet-menu summary, #resetView { border-radius: calc(var(--radius) - 2px - var(--inset)); }
-.preview-head .segmented span { border-radius: calc(var(--radius) - 6px - var(--inset)); }
 .preview-head .segmented span { padding: 0 8px; font-size: 12px; border-radius: 6px; }
 .face-status { bottom: 56px; }
 .puppet-menu { position: relative; }
@@ -47,136 +57,194 @@
 @container portrait (max-width: 299px) { .reset-long { display: none; } }
 @container portrait (max-width: 269px) { .reset-text { display: none; } #resetView::before { content: '⟲'; font-size: 15px; } }
 
-/* Cards: the line editor, each control column and the analysis panel */
-.editor, .controls #group-1 > .section, .controls #group-2, .analysis { background: var(--panel); border: var(--card-border); border-radius: var(--radius); min-width: 0; }
+/* Cards: the line, each card in the side list, the monitor and Length */
+.editor, .side-list #group-1 > .section, .side-list #group-3 > :is(.section), .controls #group-2, .playback-monitor { background: var(--panel); border: var(--card-border); border-radius: var(--radius); min-width: 0; }
 .editor > .panel { padding: var(--pad); min-width: 0; }
 .editor .warnings:not([hidden]) { padding: 0 var(--pad) 10px; }
-.studio .controls #group-1 > .section, .studio .controls #group-2 { padding: var(--pad); }
+.studio .side-list #group-1 > .section, .studio .side-list #group-3 > .section, .studio .controls #group-2 { padding: var(--pad); }
 .studio .controls #group-2 > .section { border-top: 0; padding: 0; }
-.studio .controls #group-1 > .section { border-top: var(--card-border); }
-.analysis { padding: var(--pad); }
-.controls .hint { font-size: 12px; line-height: 1.45; }
-.controls .pair.seed button { white-space: nowrap; }
-.fit-options { display: flex; flex-direction: column; gap: 14px; padding-top: 14px; border-top: var(--divider); }
-.fit-options .subhead { margin: 0; font-size: 15px; font-weight: 750; letter-spacing: -.02em; }
+.side-list #group-1, .side-list #group-3 { display: flex; flex-direction: column; gap: var(--gap); }
+.side-list .hint, .controls .hint { font-size: 12px; line-height: 1.45; }
+.side-list .pair.seed button { white-space: nowrap; }
 .hash-field { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 .hash-field .field { align-self: stretch; }
 .hash-field input { width: 100%; font-family: ui-monospace, monospace; font-size: 13px; }
-.hash-field button, .controls .pair.seed button { min-block-size: 36px; padding: 0 12px; }
-.controls .hash-note code { overflow-wrap: anywhere; }
+.hash-field button, .side-list .pair.seed button { min-block-size: 36px; padding: 0 12px; }
+.side-list .hash-note code { overflow-wrap: anywhere; }
 .group-switch { display: none; }
 .transport-end { height: 0; }
-/* A mode with a single column (Phoneme script, Live microphone) flows its controls into a grid. */
-.studio .controls #group-1 > .section:only-child > .section-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px 28px; align-items: start; }
+#calibrationTools:empty { display: none; }
+
+/* Voice leads with its engine picker; Phonemes shows the one engine they play on. */
+.studio .side-list #group-1 > .section > h3 { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.studio .side-list .engine-picker { width: auto; max-width: 60%; min-block-size: 34px; font-size: 13px; font-weight: 700; }
+.engine-lock { padding: 4px 10px; border-radius: 999px; background: var(--soft); font: 700 12px system-ui, sans-serif; letter-spacing: 0; white-space: nowrap; }
+
+/* Example shelf: a row of cards above the line; choosing one replaces the line */
+.example-shelf { display: grid; grid-auto-flow: column; grid-auto-columns: 196px; gap: 8px; overflow-x: auto; overscroll-behavior-x: contain; padding: 2px 2px 6px; scrollbar-width: thin; scrollbar-color: var(--ink) transparent; }
+.example-shelf .example { display: grid; grid-template-rows: auto auto 1fr; gap: 3px; align-content: start; justify-items: start; padding: 8px 10px; border: var(--line); border-radius: 12px; background: var(--field); color: var(--text); text-align: left; font: inherit; cursor: pointer; }
+.example-shelf .example b { font-size: 13px; }
+.example-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 12px; line-height: 1.35; color: var(--muted); }
+.example-tag { align-self: end; margin-top: 2px; padding: 1px 8px; border: 1.5px solid #d9c690; border-radius: 999px; background: var(--field); font-size: 11px; font-weight: 700; }
+.example-shelf .example:hover { background: #fff3c4; }
+.example-shelf .example[aria-pressed=true] { background: var(--gold); }
+.example-shelf .example[aria-pressed=true] .example-text { color: var(--text); }
 
 .transport { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: var(--inset); padding-right: var(--pad); border: 0; border-top: 1px solid #d4c399; background: #faebba; border-radius: 0 0 calc(var(--radius) - 2px) calc(var(--radius) - 2px); font-size: 13px; }
 .transport .buttons { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
 .transport .buttons button { min-height: 40px; padding: 0 16px; border-radius: calc(var(--radius) - 2px - var(--inset)); background: #fff2bf; border: 1px solid #8d7439; font-weight: 650; }
-.transport .buttons button.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.transport .buttons button.primary { background: var(--gold); color: var(--ink); border-color: var(--ink); font-weight: 800; }
 .transport button:disabled { opacity: .52; }
 .transport .status { display: flex; align-items: start; gap: clamp(10px,2vw,26px); margin: 0; font-variant-numeric: tabular-nums; }
 .transport .status span { display: grid; gap: 3px; text-transform: uppercase; font: 10px/1.2 system-ui,sans-serif; letter-spacing: .08em; color: var(--muted); }
 .transport .status b { color: var(--text); font: 13px/1.3 ui-monospace,monospace; text-transform: none; letter-spacing: 0; min-width: 3.5em; }
 
-/* Playback monitor: meters, then one plot whose signals the chips turn on and off */
-.playback-monitor { display: grid; grid-template-columns: minmax(200px,.32fr) minmax(0,1fr); align-items: start; gap: var(--gap); padding: 12px var(--gutter); background: #29271f; color: #fff2ca; border-top: var(--card-border); --muted: #d8cda9; --jaw:#fff2ca; --width:#79b6ad; --round:#e4ba55; --level:#c8a03b; --line:#655a3a; }
-.monitor-signals h2 { display: flex; align-items: center; min-height: 28px; margin: 0 0 6px; font-size: 15px; letter-spacing: -.025em; }
-.playback-monitor .meters { grid-template-columns: repeat(2,minmax(0,1fr)); column-gap: 18px; row-gap: 6px; }
-.playback-monitor .meter { grid-template-rows: auto 3px; }
-.playback-monitor .meter span { color: #e4d7b4; }
-.playback-monitor .meter i { background: #5c5237; }
-.playback-monitor .meter em { border-radius: 3px; }
-.monitor-plot { display: grid; gap: 6px; min-width: 0; }
-.monitor-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.chip { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 3px 10px; border: 1.5px dashed #7d7154; border-radius: 999px; background: transparent; color: #d8cda9; font: 600 12px system-ui, sans-serif; }
-.chip[aria-pressed=true] { border-style: solid; border-color: #e4d7b4; background: #3a362b; color: #fff2ca; }
+/* Playback monitor: a light card with chips that turn each plotted signal on or off.
+   The chips keep their first shape: pills, dashed when off, solid and filled when on. */
+.playback-monitor { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 6px; padding: 10px var(--pad) var(--pad); color: var(--text); }
+.monitor-title { margin: 0 6px 0 0; font-size: 14px; font-weight: 800; letter-spacing: -.02em; }
+.monitor-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.chip { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 3px 10px; border: 1.5px dashed #b9a674; border-radius: 999px; background: transparent; color: #6b5d3a; font: 600 12px system-ui, sans-serif; cursor: pointer; }
+.chip[aria-pressed=true] { border-style: solid; border-color: var(--ink); background: var(--soft); color: var(--ink); }
 .chip i { width: 10px; height: 10px; border-radius: 2px; background: var(--chip); }
 .chip[aria-pressed=false] i { opacity: .45; }
-.monitor-note { margin-left: auto; font: 12px system-ui, sans-serif; color: #d8cda9; font-variant-numeric: tabular-nums; }
-.chip-divider { width: 1px; height: 18px; margin: 0 4px; background: #655a3a; }
-.playback-monitor .timeline { display: block; width: 100%; height: 86px; background: #302d24; border: 1px solid #655a3a; border-radius: 6px; }
-.playback-monitor.has-fit .timeline { height: 124px; }
+.chip-divider { width: 1px; height: 18px; margin: 0 4px; background: #d9c690; }
+.monitor-note { margin-left: auto; font: 12px system-ui, sans-serif; color: var(--muted); font-variant-numeric: tabular-nums; }
+.playback-monitor .timeline { display: block; width: 100%; height: 120px; background: #fbf1cf; border: var(--line); border-radius: var(--control-radius); }
 
-/* Wide: layout C */
+/* Length: four groups, every control always in view and disabled while the cap is off */
+.length-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px 22px; }
+.length-group { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.length-group .subhead { margin: 0; font-size: 14px; font-weight: 800; letter-spacing: -.02em; }
+.length-group .cap-switch { padding: 6px 10px; border-radius: var(--control-radius); background: var(--soft); }
+.cap-off .length-group :is(.field:has(:disabled), .subhead) { opacity: .45; }
+.cap-off .length-group:first-child .subhead { opacity: 1; }
+.cap-off-note { font-weight: 700; }
+/* Live microphone's Response fills the same card as a grid of sliders. */
+.controls #group-2 > .section:not(:has(.length-groups)) > .section-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px 24px; align-items: start; }
+.controls #group-2 > .section:not(:has(.length-groups)) > .section-body > :is(.field:has(select), .hint) { grid-column: span 2; }
+
+/* Tablet and wide: two columns, the stage and its list on the left, the line on the right */
+@media (min-width: 760px) {
+  .studio { --control-h: 32px; }
+  .mast { padding-block: 6px; }
+  .mast .brand { font-size: 21px; }
+  .brand-mark { width: 26px; height: 26px; }
+  .segmented span { font-size: 12.5px; }
+  .layout {
+    display: grid; grid-template-columns: clamp(260px, 30vw, 400px) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas: 'portrait work' 'list work';
+    gap: var(--gap); padding: var(--gap) var(--gutter); width: min(1480px, 100%); margin-inline: auto; min-height: 0;
+  }
+  .stage { grid-area: portrait; height: clamp(220px, 36dvh, 340px); }
+  .side-list { grid-area: list; display: flex; flex-direction: column; gap: var(--gap); min-height: 0; }
+  .workspace { grid-area: work; display: flex; flex-direction: column; gap: var(--gap); min-width: 0; min-height: 0; }
+
+  /* The line: examples on top, then Text / Phonemes, the one-line writing box, Play and Stop. */
+  .editor { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; column-gap: 8px; padding: 12px var(--pad); }
+  .editor > .panel { padding: 0; grid-row: 1; }
+  .editor .transport { grid-column: 2; grid-row: 1; }
+  /* A written line lays its parts straight onto the card's grid, so the examples span the whole
+     card and Text / Phonemes, the writing box, Play and Stop share the row under them. */
+  .editor:has(.script-editor) { grid-template-columns: auto minmax(0, 1fr) auto; row-gap: 10px; }
+  .editor #group-0:has(.script-editor), .editor #group-0 .script-editor { display: contents; }
+  .editor .script-editor > .example-shelf { grid-column: 1 / -1; grid-row: 1; min-width: 0; }
+  .editor .script-editor > .line-format { grid-column: 1; grid-row: 2; }
+  .editor .script-editor > .writing-sheet { grid-column: 2; grid-row: 2; }
+  .editor:has(.script-editor) .transport { grid-column: 3; grid-row: 2; }
+  .editor:has(.script-editor) .warnings:not([hidden]) { grid-row: 3; }
+  .editor .script-heading, .editor .sheet-meta, .editor .word-preview, .editor .transport .status {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  .editor #group-0 .writing-sheet { min-height: 0; background: var(--field); }
+  .editor #group-0 .writing-sheet :is(textarea, #phonemes) { height: 40px; min-height: 0; padding: 7px 12px; font-size: 18px; line-height: 22px; white-space: pre; overflow: hidden; resize: none; }
+  .editor .transport { padding: 0; border: 0; background: none; }
+  .editor .warnings:not([hidden]) { grid-column: 1 / -1; grid-row: 2; padding: 6px 4px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .editor .transport-end { display: none; }
+  /* Live microphone's source sits in one row beside Start and Stop. */
+  .editor #group-0:has(#source) > .section { padding: 0; border: 0; }
+  .editor #group-0:has(#source) > .section > h3 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .editor #group-0:has(#source) > .section > .section-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: end; gap: 8px 12px; padding: 0; }
+  .editor #group-0:has(#source) .section-body > :is(label:has(#monitor), .hint) { grid-column: 1 / -1; }
+
+  .playback-monitor { flex: 1 0 auto; }
+  /* The analysis fold stays open with no heading here, so each tool is its own card in the list. */
+  .studio .side-list #group-3 > .analysis-fold { background: none; border: 0; border-radius: 0; padding: 0; }
+  .analysis-fold > summary { display: none; }
+  .studio .side-list .analysis-fold > .section-body { display: flex; flex-direction: column; gap: var(--gap); padding: 0; }
+  .studio .side-list .analysis-fold > .section-body > .section { background: var(--panel); border: var(--card-border); border-radius: var(--radius); padding: var(--pad); }
+  /* The monitor shows the fit status and the curves, so Length drops its long status. */
+  main.studio #group-2 #fitOut { display: none; }
+}
+
+/* Wide: one screen; the side list and the workspace scroll on their own if they must */
 @media (min-width: 1100px) {
   .studio { height: 100vh; height: 100dvh; }
-  .layout {
-    --top: clamp(220px, 38dvh, 440px);
-    display: grid; grid-template-columns: minmax(240px, 2fr) minmax(0, 3fr); grid-template-rows: var(--top) minmax(0,1fr);
-    grid-template-areas: 'portrait editor' 'controls controls';
-    gap: var(--gap); padding: var(--gap) var(--gutter); width: min(1480px,100%); margin-inline: auto; min-height: 0;
-  }
-  .stage { grid-area: portrait; height: var(--top); }
-  .editor { grid-area: editor; display: grid; grid-template-rows: minmax(0,1fr) auto auto; min-height: 0; }
-  .editor > .panel { overflow: auto; overscroll-behavior: contain; }
-  .controls { grid-area: controls; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px,1fr)); gap: var(--gap); min-height: 0; }
-  .controls #group-1 { display: contents; }
-  .controls #group-1 > .section, .controls #group-2 { overflow: auto; overscroll-behavior: contain; min-height: 0; }
-  .analysis { grid-area: controls; display: none; overflow: auto; min-height: 0; }
-  .show-analysis .analysis { display: block; }
-  .show-analysis .controls { display: none; }
-  /* Let the writing box take the room the card has, so the card does not scroll it out of view. */
-  .editor > .panel { display: flex; flex-direction: column; }
-  #group-0 .script-editor { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; }
-  #group-0 .writing-sheet { flex: 1; min-height: 84px; display: flex; flex-direction: column; }
-  .editor #group-0 .writing-sheet textarea { flex: 1; min-height: 0; resize: none; }
+  .side-list { overflow-y: auto; overscroll-behavior: contain; padding-bottom: 24px; scrollbar-width: thin; scrollbar-color: var(--ink) transparent;
+    mask-image: linear-gradient(#000 calc(100% - 24px), transparent); }
+  .workspace { overflow-y: auto; overscroll-behavior: contain; }
+  .playback-monitor { flex: 1 1 160px; min-height: 160px; }
+  .playback-monitor .timeline { height: 100%; min-height: 110px; }
+  .length-groups { grid-template-columns: minmax(0, 1.2fr) repeat(3, minmax(0, 1fr)); }
+  .length-group + .length-group { padding-left: 22px; border-left: var(--divider); }
 }
 
-/* Tablet and wide: a compact line card, so the top row stays short */
-@media (min-width: 760px) {
-  .editor .script-heading h2 { font-size: clamp(20px, 1.8vw, 26px); }
-  #group-0 .script-editor { gap: 12px; }
-  .editor #group-0 .writing-sheet textarea { padding: 10px 14px 0; font-size: 20px; line-height: 1.35; }
-  .editor #group-0 .writing-sheet #phonemes { font-size: 18px; }
-  #group-0 .word-preview { display: flex; align-items: baseline; gap: 12px; padding-top: 10px; }
-  #group-0 .word-preview h3 { flex: none; margin: 0; }
-}
-
-/* Tablet: the same columns, two to a row, and the page scrolls */
+/* Tablet: the page scrolls, so cards keep their natural height */
 @media (min-width: 760px) and (max-width: 1099.98px) {
-  .layout {
-    display: grid; grid-template-columns: minmax(220px, 2fr) minmax(0, 3fr);
-    grid-template-areas: 'portrait editor' 'controls controls';
-    align-items: stretch; gap: var(--gap); padding: var(--gap) var(--gutter);
-  }
-  .stage { grid-area: portrait; }
-  .editor { grid-area: editor; }
-  .editor #group-0 .writing-sheet textarea { min-height: 84px; resize: vertical; }
-  .controls { grid-area: controls; display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: var(--gap); align-items: stretch; }
-  /* The page scrolls here, so keep the monitor pinned to the bottom of the window. */
-  .playback-monitor { position: sticky; bottom: 0; z-index: 4; }
-  .controls #group-1 { display: contents; }
-  .analysis { grid-area: controls; display: none; }
-  .show-analysis .analysis { display: block; }
-  .show-analysis .controls { display: none; }
+  .workspace { align-self: start; }
+  .playback-monitor { flex: none; }
+  .playback-monitor .timeline { height: 140px; }
+  .monitor-note { display: none; }
+  /* The right column is narrow here, so Play and Stop move under the line. */
+  .editor { grid-template-columns: minmax(0, 1fr); row-gap: 10px; }
+  .editor .transport { grid-column: 1; grid-row: 2; justify-self: end; }
+  .editor .warnings:not([hidden]) { grid-row: 3; }
+  .editor:has(.script-editor) { grid-template-columns: auto minmax(0, 1fr); }
+  .editor:has(.script-editor) .transport { grid-column: 1 / -1; grid-row: 3; }
+  .editor:has(.script-editor) .warnings:not([hidden]) { grid-row: 4; }
+  .studio .side-list #group-1 > .section > h3 { flex-wrap: wrap; }
 }
 
-/* Phone: layout A, stacked with tabs and no plot */
+/* Phone: stacked with tabs and no plot */
 @media (max-width: 759.98px) {
   .studio { --gutter: 12px; --pad: 16px; --gap: 12px; --control-h: 40px; }
   .mast { padding: 8px var(--gutter); }
   .mast .brand { font-size: 20px; }
   .brand-mark { width: 23px; height: 23px; }
   .mast h1 { font-size: 12px; }
-  .mast-actions { flex: 1 0 100%; }
+  .repo-link { margin-left: auto; }
+  .repo-link::before { display: none; }
+  .mast-actions { order: 3; flex: 1 0 100%; margin-left: 0; }
   .input-switch { flex: 1; }
   .input-switch label { flex: 1; }
   .input-switch span { width: 100%; padding: 0 4px; }
   .input-switch .long { display: none; }
   .input-switch .short { display: flex; }
-  .analysis-toggle { display: none; }
   .layout { display: flex; flex-direction: column; gap: var(--gap); padding: var(--gap) var(--gutter); }
+  .side-list, .workspace, .editor, .controls { display: contents; }
+  .stage { order: 1; }
+  .group-switch { order: 2; }
+  #group-0 { order: 3; }
+  #warnings { order: 4; }
+  #group-2 { order: 5; }
+  #group-1 { order: 6; }
+  #group-3 { order: 7; }
   .face { height: clamp(200px, 32dvh, 320px); min-height: 0; }
   .face-status { bottom: 46px; }
-  .group-switch { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 4px; padding: 4px; background: var(--panel); border: var(--card-border); border-radius: var(--radius); }
-  .group-switch button { min-height: var(--control-h); border: 0; border-radius: calc(var(--radius) - 6px); background: transparent; color: #46381f; font-weight: 700; font-size: 14px; }
-  .group-switch button[aria-selected=true] { background: var(--text); color: var(--on-accent); }
-  .editor { display: contents; }
-  .editor > .panel, .controls #group-1 { background: var(--panel); border: var(--card-border); border-radius: var(--radius); padding: var(--pad); }
-  .controls { display: flex; flex-direction: column; gap: var(--gap); }
-  .studio .controls #group-1 > .section { background: none; border: 0; border-top: var(--divider); border-radius: 0; padding: var(--pad) 0 0; margin-top: var(--pad); }
-  .studio .controls #group-1 > .section:first-child { border-top: 0; padding-top: 0; margin-top: 0; }
-  .studio:not([data-tab="0"]) [data-tab="0"], .studio:not([data-tab="1"]) [data-tab="1"], .studio:not([data-tab="2"]) [data-tab="2"] { display: none; }
+  /* Script and Voice are page tabs: plain words over a thin rule, the chosen one underlined in ink.
+     They avoid the filled pill look of the input switch in the masthead. */
+  /* Inside the phone's Diagnostics fold, the rows need no second Diagnostics heading. */
+  .diag-fold > summary { display: none; }
+  .studio .analysis-fold .diag-fold { padding-top: 0; border-top: 0; }
+  .group-switch { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); border-bottom: var(--divider); }
+  .group-switch button { min-height: var(--control-h); margin-bottom: -2px; padding: 0; border: 0; border-bottom: 4px solid transparent; border-radius: 0; background: transparent; color: #6b5d3a; font-weight: 700; font-size: 16px; }
+  .group-switch button[aria-selected=true] { border-bottom-color: var(--ink); color: var(--ink); }
+  .group-switch button:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; border-radius: 6px; }
+  .editor > .panel { background: var(--panel); border: var(--card-border); border-radius: var(--radius); padding: var(--pad); }
+  #group-0 .script-editor { gap: 14px; }
+  .line-format label { flex: 1; }
+  /* Only the chosen tab's groups show. This must win over each group's own display, such as the side list's flex. */
+  .studio:not([data-tab="0"]) [data-tab="0"], .studio:not([data-tab="1"]) [data-tab="1"], .studio:not([data-tab="2"]) [data-tab="2"] { display: none !important; }
   .transport { order: 10; position: sticky; bottom: var(--gap); z-index: 3; border: 2px solid transparent; border-radius: var(--radius); background: transparent; }
   /* A scrim behind the pinned play bar, darker toward the bottom of the screen; the bar's card is drawn over it. */
   .transport-end { order: 11; margin-top: calc(-1 * var(--gap)); }
@@ -186,46 +254,14 @@
 }
 
 /* One outline system: every outline is 2px ink, cards round at --radius, and every
-   control and field rounds at --control-radius. Dividers are 2px of one light tone. */
-main.studio :is(.segmented, .analysis-toggle, .puppet-menu summary, .puppet-options) { border: var(--line); }
-main.studio :is(.segmented, .analysis-toggle, .puppet-menu summary) { border-radius: var(--control-radius); }
+   control and field rounds at --control-radius. Dividers are 2px of one light tone.
+   The monitor chips and the example cards keep their own shapes. */
+main.studio :is(.segmented, .puppet-menu summary, .puppet-options) { border: var(--line); }
+main.studio :is(.segmented, .puppet-menu summary) { border-radius: var(--control-radius); }
 main.studio .puppet-options { border-radius: calc(var(--control-radius) + 4px); }
 main.studio .segmented span { border-radius: calc(var(--control-radius) - 4px); }
-main.studio .layout button:not([role=tab]), main.studio #resetView { border: var(--line); border-radius: var(--control-radius); }
+main.studio .layout button:not([role=tab], .chip, .example), main.studio #resetView { border: var(--line); border-radius: var(--control-radius); }
 main.studio :is(select, input[type=text], input[type=number], .writing-sheet, .file-button) { border: var(--line); border-radius: var(--control-radius); }
-main.studio .chip { border-width: 2px; border-radius: var(--control-radius); }
-main.studio .playback-monitor .timeline { border-width: 2px; border-radius: var(--control-radius); }
 main.studio .word-preview { border-top: var(--divider); }
 main.studio .editor .transport { border-top: var(--divider); }
-
-/* Length keeps the same size whether the cap is on or off. On wide screens it has a wider
-   track than the other columns (Engine the narrowest) and its fields pair up in two columns. */
-@media (min-width: 1100px) {
-  .controls:has(#useCap) { grid-template-columns: minmax(0, .8fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.6fr); }
-  main.studio #group-2 > .section > .section-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 20px; align-items: start; }
-  main.studio #group-2 .fit-options { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 20px; align-items: start; }
-  main.studio #group-2 .fit-options > :is(.subhead, .hint) { grid-column: 1 / -1; }
-}
-
-/* Slimmer bars on tablet and wide screens: the masthead and the monitor take less height. */
-@media (min-width: 760px) {
-  .studio { --control-h: 32px; }
-  .mast { padding-block: 6px; }
-  .mast .brand { font-size: 21px; }
-  .brand-mark { width: 26px; height: 26px; }
-  .segmented span, .analysis-toggle { font-size: 12.5px; }
-  .playback-monitor { padding-block: 8px; gap: 6px var(--gap); }
-  .monitor-signals h2 { min-height: 24px; margin-bottom: 4px; font-size: 13px; }
-  .playback-monitor .meters { row-gap: 3px; }
-  .monitor-plot { gap: 4px; }
-  .chip { min-height: 24px; padding: 1px 8px; font-size: 11.5px; }
-  .playback-monitor .timeline, .playback-monitor.has-fit .timeline { height: 84px; }
-}
-
-@media (min-width: 1100px) {
-  /* The monitor shows the fit status and the curves, so Length drops its long status and hint. */
-  main.studio #group-2 #fitOut, main.studio #group-2 .fit-options > .hint { display: none; }
-}
-@media (max-width: 1099.98px) {
-  .monitor-note { display: none; }
-}
+@media (min-width: 760px) { main.studio .editor .transport { border-top: 0; } }
