@@ -120,7 +120,8 @@ enum Script {
     Latin,
     /// One Chinese character, one syllable.
     Han,
-    /// A Hangul syllable block, one syllable.
+    /// A Hangul syllable block, or a run of conjoining jamo that spells one, one
+    /// syllable.
     Hangul,
     /// A kana, one mora.
     Kana,
@@ -134,6 +135,11 @@ fn is_latin_letter(c: char) -> bool {
 }
 
 fn script_of(c: char) -> Option<Script> {
+    // A mark only joins a word. Some, such as Arabic harakat, count as alphabetic,
+    // and would otherwise start a word of their own.
+    if is_combining(c) {
+        return None;
+    }
     if c.is_ascii_digit() || is_latin_letter(c) {
         return Some(Script::Latin);
     }
@@ -149,6 +155,40 @@ fn script_of(c: char) -> Option<Script> {
         _ if c.is_alphanumeric() => Script::Other,
         _ => return None,
     })
+}
+
+/// Conjoining jamo: a leading consonant, a vowel, or a trailing consonant.
+fn is_leading_jamo(c: char) -> bool {
+    matches!(c as u32, 0x1100..=0x115F)
+}
+
+fn is_vowel_jamo(c: char) -> bool {
+    matches!(c as u32, 0x1160..=0x11A7)
+}
+
+fn is_trailing_jamo(c: char) -> bool {
+    matches!(c as u32, 0x11A8..=0x11FF)
+}
+
+/// The length in bytes of the Hangul syllable at the start of `text`. One or more
+/// leading consonants, then one or more vowels, then any trailing consonants spell
+/// one syllable, the same as the precomposed block. Anything else, such as a
+/// precomposed block or a stray jamo, is one character.
+fn hangul_syllable_len(text: &str) -> usize {
+    let first = text.chars().next().map_or(0, char::len_utf8);
+    let mut chars = text.char_indices().peekable();
+    let mut take = |is: fn(char) -> bool| {
+        let mut taken = 0;
+        while chars.next_if(|(_, c)| is(*c)).is_some() {
+            taken += 1;
+        }
+        taken
+    };
+    if take(is_leading_jamo) == 0 || take(is_vowel_jamo) == 0 {
+        return first;
+    }
+    take(is_trailing_jamo);
+    chars.peek().map_or(text.len(), |(i, _)| *i)
 }
 
 /// Small kana and the long-vowel mark join the mora before them. The sokuon `っ`
@@ -254,7 +294,8 @@ pub fn tokenize_text(text: &str) -> Vec<TextToken<'_>> {
                         }
                     }
                 }
-                Script::Han | Script::Hangul => i += c.len_utf8(),
+                Script::Han => i += c.len_utf8(),
+                Script::Hangul => i += hangul_syllable_len(&text[i..]),
                 Script::Kana => {
                     i += c.len_utf8();
                     while let Some(c) = text[i..].chars().next().filter(|c| extends_kana(*c)) {
@@ -348,9 +389,17 @@ pub fn count_syllables(word: &str) -> usize {
     let letters: Vec<u8> = word.chars().filter_map(plain_letter).collect();
     let mut foreign = 0;
     let mut other = 0;
-    for c in word.chars() {
+    let mut skip_to = 0;
+    for (i, c) in word.char_indices() {
+        if i < skip_to {
+            continue;
+        }
         match script_of(c) {
-            Some(Script::Han | Script::Hangul) => foreign += 1,
+            Some(Script::Han) => foreign += 1,
+            Some(Script::Hangul) => {
+                foreign += 1;
+                skip_to = i + hangul_syllable_len(&word[i..]);
+            }
             Some(Script::Kana) if !extends_kana(c) => foreign += 1,
             Some(Script::Other) => other += 1,
             _ => (),
