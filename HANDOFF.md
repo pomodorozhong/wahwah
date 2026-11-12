@@ -5,11 +5,10 @@
 ### feat/hangul-jamo
 
 - Task: [#42](https://github.com/pomodorozhong/wahwah/issues/42), group decomposed Hangul jamo into one syllable and test a word-initial combining mark.
-- PR: none. The branch is local only and not yet linked to [#42](https://github.com/pomodorozhong/wahwah/issues/42); it carries only this handoff so far.
+- PR: none. The branch is pushed but carries only this handoff so far, so it stays unlinked from [#42](https://github.com/pomodorozhong/wahwah/issues/42) until real work for it lands.
 - Code checkpoint: `c91e25b` on `main` (the merge of [PR #48](https://github.com/pomodorozhong/wahwah/pull/48)). No code changes yet.
 - Verification: none run on this branch.
 - Next action: read [#42](https://github.com/pomodorozhong/wahwah/issues/42) and the multilingual tokenizer, then write failing tests for decomposed jamo and a word-initial combining mark.
-- Pending: **P-11** push `feat/hangul-jamo` and link it to [#42](https://github.com/pomodorozhong/wahwah/issues/42) (`gh issue develop`). Why: pushing needs approval. Blocks: resuming from another computer.
 
 ## Ranked work
 
