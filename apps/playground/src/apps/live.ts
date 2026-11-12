@@ -769,7 +769,7 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
     const { g, w, h } = fitCanvas(timeline);
     const { top, bottom } = beginMonitor(g, w, h);
     if (!analysed || !playback) {
-        return 0;
+      return 0;
     }
     const delay = playback.delayMs / 1000;
     const start = Math.min(0, delay);
