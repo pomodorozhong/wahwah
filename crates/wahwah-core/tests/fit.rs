@@ -669,7 +669,14 @@ fn an_instrument_word_cut_keeps_whole_words() {
         .map(|n| n.start_seconds + n.duration_seconds)
         .fold(0.0, f64::max);
     assert!(end <= cap + 1e-9);
-    assert_eq!(fit.cut_seconds.unwrap(), end);
+    // The line runs on past the last note for its release, but never past the cap.
+    let cut = fit.cut_seconds.unwrap();
+    assert!(
+        cut > end && cut <= cap,
+        "cut {cut} after notes ending {end}"
+    );
+    assert_eq!(fitted.duration_seconds, cut);
+    assert!(p.audio.len() <= (cap * RATE).floor() as usize);
     let last = fitted.notes.last().unwrap();
     let word_notes = fitted
         .notes
@@ -876,4 +883,49 @@ fn the_volume_shapes_an_instrument_line_that_already_fits() {
     for (a, b) in plain.audio.iter().zip(&half.audio) {
         assert!((a * 0.5 - b).abs() < 1e-6);
     }
+}
+
+#[test]
+fn an_instrument_word_cut_lets_the_last_note_die_away() {
+    let text = "hello there my good friend ".repeat(12);
+    let score = compile_instrument(
+        &text,
+        &InstrumentOptions::new(wahwah_core::instruments::Instrument::Kazoo),
+    );
+    let hard_cut = FitOptions {
+        cut_at: CutAt::Word,
+        cut_fade: CutFade {
+            curve: FadeCurve::None,
+            ..CutFade::default()
+        },
+        ..FitOptions::default()
+    };
+    let (fitted, p) = render_instrument_within(&score, RATE, None, 3.0, hard_cut);
+    assert!(p.fit.expect("fitted").at_word);
+    // With no fade at all, the line still ends quietly: the release finished first.
+    let n = p.audio.len();
+    let peak = |a: &[f32]| a.iter().fold(0.0_f32, |m, v| m.max(v.abs()));
+    let whole = peak(&p.audio);
+    let last_ms = peak(&p.audio[n - (RATE / 1000.0) as usize..]);
+    assert!(last_ms < whole * 0.01, "ends at {last_ms} of {whole}");
+    let last = fitted.notes.last().unwrap();
+    assert!(p.audio.len() as f64 / RATE > last.start_seconds + last.duration_seconds);
+}
+
+#[test]
+fn an_instrument_word_cut_stays_within_the_cap_when_the_release_does_not_fit() {
+    let text = "hello there my good friend ".repeat(12);
+    let score = compile_instrument(
+        &text,
+        &InstrumentOptions::new(wahwah_core::instruments::Instrument::OohChoir),
+    );
+    // Find a cap that falls inside the release of a word's last note.
+    let (probe, _) = render_instrument_within(&score, RATE, None, 3.0, word_options());
+    let last = probe.notes.last().unwrap();
+    let cap = last.start_seconds + last.duration_seconds + 0.01;
+    let (_, p) = render_instrument_within(&score, RATE, None, cap, word_options());
+    let fit = p.fit.expect("fitted");
+    assert!(fit.at_word);
+    assert!(fit.cut_seconds.unwrap() <= cap);
+    assert!(p.audio.len() <= (cap * RATE).floor() as usize);
 }

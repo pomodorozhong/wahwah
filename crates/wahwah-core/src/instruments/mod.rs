@@ -13,6 +13,7 @@ pub use score::{InstrumentScore, Note, compile_instrument};
 use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
 pub use synth::render_notes;
+pub(crate) use synth::sounding_end;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub enum Instrument {

@@ -1,6 +1,6 @@
 //! Muted brass, a three-voice ooh choir and a clipped membrane buzz.
 //! The note envelopes and pitch curves follow Talking Instruments' renderTone.
-use super::{Instrument, InstrumentScore};
+use super::{Instrument, InstrumentScore, Note};
 use std::f64::consts::{PI, TAU};
 
 struct Random(u32);
@@ -27,13 +27,23 @@ impl Mute {
     }
 }
 
+/// A note holds a little past its written duration, then releases.
+fn sustain_seconds(note: &Note) -> f64 {
+    note.duration_seconds * 1.08
+}
+
+/// When a note has fully died away: its sustain, then its release.
+pub(crate) fn sounding_end(note: &Note, kind: Instrument) -> f64 {
+    note.start_seconds + sustain_seconds(note) + kind.release_seconds()
+}
+
 pub fn render_notes(score: &InstrumentScore, sample_rate: f64) -> Vec<f32> {
     let mut out = vec![0.0f32; (score.duration_seconds * sample_rate).ceil() as usize];
     let kind = score.instrument;
     let mut noise = Random(score.seed);
     for note in &score.notes {
         let start = (note.start_seconds * sample_rate).floor() as usize;
-        let sustain = note.duration_seconds * 1.08;
+        let sustain = sustain_seconds(note);
         let length = ((sustain + kind.release_seconds()) * sample_rate).floor() as usize;
         let mut mute = Mute::default();
         let (mut phase, mut body, mut breath) = (0.0, 0.0, 0.0);
