@@ -1,7 +1,5 @@
-/* Keep each settings page in reading order and size its controls to the inspector. */
-.panel > :is(#group-1, #group-2, #group-3, #group-0:has(#source)) {
-  container: settings / inline-size;
-
+/* Keep each settings group in reading order and size its controls to its column. */
+.studio :where(#group-1, #group-2, #group-3, #group-0:has(#source)) {
   .section {
     padding: 1rem 0;
     border-color: color-mix(in srgb, var(--line) 60%, transparent);
@@ -25,7 +23,7 @@
   }
 
   .section-body .section-body { padding: 0; }
-  .field, .view-opts label {
+  .field {
     min-inline-size: 0;
     gap: 5px;
     color: var(--text);
@@ -45,7 +43,7 @@
   }
 
   .pair { gap: 12px; }
-  .pair.seed { grid-template-columns: minmax(5rem, 8rem) auto; justify-content: start; }
+  .pair.seed { grid-template-columns: minmax(0, 1fr) auto; }
   .pair.seed button { min-block-size: 38px; }
 
   .field.slider {
@@ -67,13 +65,13 @@
   input[type='checkbox'] { margin: 0; inline-size: 17px; block-size: 17px; flex: none; }
   label:has(> input[type='checkbox']) {
     display: flex;
+    flex-direction: row;
     align-items: center;
     gap: 8px;
     cursor: pointer;
     min-block-size: 32px;
   }
 
-  .view-opts { gap: 10px 16px; align-items: start; }
   .hint { max-inline-size: 62ch; color: var(--muted); font-size: 13px; }
   summary { cursor: pointer; }
   .profile-buttons { align-items: center; }
@@ -89,19 +87,4 @@
   }
   .row:last-child { border-bottom: 0; }
   .row b { text-align: end; }
-}
-
-@container settings (min-width: 27rem) {
-  #group-2 .view-opts {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  #group-2 .view-opts label:has(> #view) { grid-column: 1 / -1; }
-}
-
-@container settings (max-width: 26.99rem) {
-  #group-1 .section-body:has(> .field.slider) {
-    display: flex;
-    flex-direction: column;
-  }
 }

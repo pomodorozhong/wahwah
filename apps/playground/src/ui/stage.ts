@@ -5,14 +5,16 @@
 import { segmentAt, sampleFaceTrack, type PerformanceSegment, type RenderedUtterance, type Timeline, type FaceControlTrack, type FaceControls } from 'wahwah/performance';
 import { rmsEnvelope, syncReport, type SyncReport } from '../analysis';
 import { Player } from '../playback';
-import { beginMonitor, drawMonitorLegend, drawMonitorPlayhead, MONITOR_COLORS, MONITOR_SIGNALS } from './monitorTheme';
-import { PuppetView, byId, fitCanvas, renderMode } from './puppetView';
+import { fitCurves, type FitPlotData } from './fitCurves';
+import { beginMonitor, drawMonitorPlayhead, MONITOR_COLORS, MONITOR_SERIES, monitorSeriesOn, visibleFaceSignals, type MonitorSeries } from './monitorTheme';
+import { PuppetView, byId, fitCanvas, renderMode, showFitChips } from './puppetView';
 
-export { byId, section } from './puppetView';
+export { byId, disclosure, section } from './puppetView';
 
 /** Keep each generated mode's draft in memory while the user tries other inputs. */
 export function restoreDraft(root: HTMLElement, signal: AbortSignal, draft: Record<string, string>): void {
   const fields = root.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+    // Length (#group-2) keeps its own values, shared by Text and Phonemes; see lengthControls.ts.
     ':is(#group-0, #group-1) :is(input, select, textarea)[id]',
   );
   for (const field of fields) if (field.id in draft) field.value = draft[field.id];
@@ -35,6 +37,9 @@ export interface StageOptions {
   /** Page-specific panel content, usually built with section(). */
   inputHtml: string;
   voiceHtml: string;
+  lengthHtml?: string;
+  /** The current line's fit to a maximum duration, if any, drawn on the monitor. */
+  fit?: () => FitPlotData | null;
   /** Build the utterance from the page's current inputs, with any engine. */
   compile: (sampleRate: number, puppet: boolean) => RenderedUtterance;
   /** Called every frame with the playback time and active segment. */
@@ -58,6 +63,7 @@ export class Stage {
 
       inputHtml: opts.inputHtml,
       voiceHtml: opts.voiceHtml,
+      lengthHtml: opts.lengthHtml,
       transportHtml: '<button id="play" class="primary" title="Play line (Ctrl or Command + Enter)">▶ Play line</button><button id="stop" disabled title="Stop playback (Escape)">■ Stop</button>',
     });
     this.timeline = byId('timeline');
@@ -127,7 +133,10 @@ export class Stage {
     const warn = byId('warnings');
     warn.hidden = utterance.warnings.length === 0;
     warn.textContent = utterance.warnings.join('; ');
+    // Wide screens keep this to one line above the monitor; the full text is on hover.
+    warn.title = warn.textContent;
     this.renderDiagnostics(p);
+    showFitChips(!!this.opts.fit?.());
     return p;
   }
 
@@ -170,29 +179,54 @@ export class Stage {
   }
 
   private drawTimeline(time: number | null): void {
-    const { g, w, h } = fitCanvas(this.timeline);
-    const { top, bottom } = beginMonitor(g, w, h);
     const p = this.prepared;
+    const fit = p ? this.opts.fit?.() ?? null : null;
+    const { g, w, h } = fitCanvas(this.timeline);
+    const { top, bottom } = beginMonitor(g, w, h, !!fit);
     if (!p) return;
     const duration = p.performance.durationSeconds || 1;
-    const x = (t: number) => (t / duration) * w;
+    const tail = fit?.tail ?? null;
+    const curves = fit ? fitCurves(fit) : null;
+    // A cut line also shows, faintly, the part of the original line the cut removed.
+    const span = Math.max(duration, tail?.seconds ?? 0);
+    const x = (t: number) => (t / span) * w;
     const height = bottom - top;
+    const cutX = curves?.cutAt != null && tail ? x(curves.cutAt) : null;
+    if (cutX !== null) {
+      g.fillStyle = MONITOR_COLORS.removed;
+      g.fillRect(cutX, 0, w - cutX, bottom);
+    }
 
     const peak = Math.max(1e-6, ...p.envelope);
-    g.fillStyle = MONITOR_COLORS.fill;
-    g.beginPath();
-    g.moveTo(0, bottom);
-    p.envelope.forEach((v, i) => g.lineTo(x(i * 0.01), bottom - (v / peak) * height));
-    g.lineTo(Math.min(w, x(p.envelope.length * 0.01)), bottom);
-    g.closePath();
-    g.fill();
+    if (monitorSeriesOn('level')) {
+      g.fillStyle = MONITOR_COLORS.fill;
+      g.beginPath();
+      g.moveTo(0, bottom);
+      p.envelope.forEach((v, i) => g.lineTo(x(i * 0.01), bottom - (v / peak) * height));
+      g.lineTo(Math.min(w, x(p.envelope.length * 0.01)), bottom);
+      g.closePath();
+      g.fill();
+      if (tail && cutX !== null) {
+        g.globalAlpha = 0.35;
+        g.beginPath();
+        g.moveTo(cutX, bottom);
+        for (const point of tail.envelope) if (x(point.t) >= cutX) g.lineTo(x(point.t), bottom - Math.min(1, point.v / peak) * height);
+        g.lineTo(x(tail.seconds), bottom);
+        g.closePath();
+        g.fill();
+        g.globalAlpha = 1;
+      }
+    }
 
-    if (p.track) {
-      for (const [key, color, dash] of MONITOR_SIGNALS) {
-        g.strokeStyle = color;
-        g.lineWidth = 1.8;
-        g.lineCap = 'round';
-        g.setLineDash([...dash]);
+    const stroke = (color: string, dash: readonly number[], width = 1.8) => {
+      g.strokeStyle = color;
+      g.lineWidth = width;
+      g.lineCap = 'round';
+      g.setLineDash([...dash]);
+    };
+    for (const [key, color, dash] of visibleFaceSignals()) {
+      if (p.track) {
+        stroke(color, dash);
         g.beginPath();
         p.track.samples.forEach((sample, i) => {
           const y = bottom - sample[key] * height;
@@ -201,9 +235,66 @@ export class Stage {
         });
         g.stroke();
       }
+      if (tail?.track && cutX !== null) {
+        stroke(color, dash, 1.4);
+        g.globalAlpha = 0.4;
+        g.beginPath();
+        let started = false;
+        for (const sample of tail.track.samples) {
+          const px = x(sample.timeSeconds);
+          if (px < cutX) continue;
+          const y = bottom - sample[key] * height;
+          if (!started) { g.moveTo(px, y); started = true; } else g.lineTo(px, y);
+        }
+        g.stroke();
+        g.globalAlpha = 1;
+      }
     }
 
-    // Skip labels that cannot fit, especially when the phone plot is narrow.
+    if (curves) {
+      const line = (key: MonitorSeries, value: (t: number) => number) => {
+        if (!monitorSeriesOn(key)) return;
+        stroke(MONITOR_SERIES[key].color, MONITOR_SERIES[key].dash, 2);
+        g.beginPath();
+        const n = Math.max(2, Math.floor(x(duration)));
+        for (let k = 0; k <= n; k++) {
+          const t = (k / n) * duration;
+          const y = bottom - Math.min(1, Math.max(0, value(t))) * height;
+          if (k === 0) g.moveTo(x(t), y); else g.lineTo(x(t), y);
+        }
+        g.stroke();
+      };
+      const topSpeed = Math.max(1.2, curves.peak * 1.05);
+      line('speed', t => (curves.speed(t) - 1) / (topSpeed - 1));
+      line('reached', curves.reached);
+      line('fade', t => curves.gain(t) / curves.maxGain);
+      // Markers at the fade start and the cut, labelled on the time axis.
+      g.font = '10px system-ui, sans-serif';
+      g.textBaseline = 'bottom';
+      const marker = (t: number, color: string, label: string, align: CanvasTextAlign) => {
+        stroke(color, [4, 3], 1.2);
+        g.beginPath();
+        g.moveTo(x(t), top);
+        g.lineTo(x(t), bottom);
+        g.stroke();
+        g.setLineDash([]);
+        g.fillStyle = color;
+        g.textAlign = align;
+        g.fillText(label, x(t) + (align === 'right' ? -3 : 3), h - 1);
+      };
+      if (curves.fadeStart !== null) marker(curves.fadeStart, MONITOR_SERIES.fade.color, 'fade', 'right');
+      if (curves.cutAt !== null) marker(curves.cutAt, MONITOR_COLORS.foreground, `cut ${curves.cutAt.toFixed(1)} s`, 'left');
+      g.textAlign = 'left';
+      g.fillStyle = MONITOR_COLORS.labels;
+      g.fillText('0 s', 2, h - 1);
+      if (tail && cutX !== null && w - cutX > 150) {
+        g.textAlign = 'right';
+        g.fillText(`cut off · original ends ${tail.seconds.toFixed(1)} s`, w - 3, h - 1);
+      }
+      g.textAlign = 'left';
+    }
+
+    // Skip labels that cannot fit, especially when the plot is narrow.
     g.setLineDash([]);
     g.font = '10px ui-monospace, monospace';
     g.textBaseline = 'top';
@@ -218,8 +309,7 @@ export class Stage {
         labelEnd = right + 9;
       }
     }
-    drawMonitorLegend(g, w, h);
-    if (time !== null) drawMonitorPlayhead(g, x(Math.max(0, time)), h);
+    if (time !== null) drawMonitorPlayhead(g, x(Math.max(0, time)), bottom);
   }
 
   private frame(now: number): void {

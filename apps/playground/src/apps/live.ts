@@ -16,7 +16,7 @@ import { NEUTRAL, type FaceControls } from 'wahwah/performance';
 import { demoStepAudio, liveSpeechAudio } from '../live/demoVoice';
 import { PuppetView, byId, fitCanvas, renderMode, disclosure, section } from '../ui/puppetView';
 import { rmsEnvelope } from '../analysis';
-import { MONITOR_SIGNALS, MONITOR_COLORS, beginMonitor, drawMonitorLegend, drawMonitorPlayhead } from '../ui/monitorTheme';
+import { MONITOR_COLORS, beginMonitor, drawMonitorPlayhead, monitorSeriesOn, visibleFaceSignals } from '../ui/monitorTheme';
 
 const FFT = 1024; // short analysis window (~21 ms at 48 kHz)
 const BUFFER = 4096; // time-domain history; uLipSync-style mode uses the last 64 ms
@@ -45,7 +45,7 @@ let savedClip: RecordedClip | null = null;
 export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSignal): void {
   renderMode(root, {
 
-    levelLabel: 'input level',
+    monitorTitle: 'Input monitor',
     transportHtml: '<button id="start" class="primary">● Start</button><button id="stop" disabled>■ Stop</button>',
     inputLabel: 'Input',
     inputHtml: section(
@@ -61,8 +61,9 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
         <label class="field" id="deviceField">Microphone device <select id="device"><option value="">Default</option></select></label>
         <label><input id="monitor" type="checkbox" /> Hear the microphone (use headphones)</label>
         <p class="hint" id="sourceHint">Your audio stays in this page; nothing is recorded or sent anywhere.</p>`,
-      ) +
-      section(
+      ),
+    // The profile sits in the list beside the stage, and Response under the monitor.
+    voiceHtml: section(
         'Voice profile',
         `<p class="hint" id="profileStatus">No profile yet. Calibrate once (about 30 seconds) so the face reads your own voice, mic and room instead of a textbook reference.</p>
         <div class="profile-buttons">
@@ -73,7 +74,7 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
         </div>
         <ul class="profile-report" id="profileReport"></ul>`,
       ),
-    voiceHtml: section(
+    lengthHtml: section(
         'Response',
         `${slider('sensitivity', 'Sensitivity', 0.5, 3, 0.05, DEFAULT_LIVE.sensitivity)}
         ${slider('gate', 'Gate above noise floor', 2, 24, 1, DEFAULT_LIVE.gateDb)}
@@ -719,7 +720,7 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
     const x = (t: number) => ((t - t0) / HISTORY_SECONDS) * w;
     const yDb = (db: number) => bottom - Math.min(1, Math.max(0, (db + 90) / 90)) * plotHeight;
 
-    if (history.length) {
+    if (history.length && monitorSeriesOn('level')) {
       g.beginPath();
       g.moveTo(x(history[0].t), bottom);
       for (const point of history) g.lineTo(x(point.t), yDb(point.levelDb));
@@ -742,7 +743,7 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
       });
       g.stroke();
     }
-    for (const [key, color, dash] of MONITOR_SIGNALS) {
+    for (const [key, color, dash] of visibleFaceSignals()) {
       g.strokeStyle = color;
       g.lineWidth = 1.8;
       g.lineCap = 'round';
@@ -761,7 +762,6 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
     g.textAlign = 'left';
     if (w > 460) g.fillText('Input level · noise floor · opens above (dBFS)', 5, 3);
     if (w > 90) g.fillText(`last ${HISTORY_SECONDS} s`, w - 70, 3);
-    drawMonitorLegend(g, w, h);
   }
 
   /** Draw the retained take against the same mouth clock used by delay-test playback. */
@@ -769,8 +769,7 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
     const { g, w, h } = fitCanvas(timeline);
     const { top, bottom } = beginMonitor(g, w, h);
     if (!analysed || !playback) {
-      drawMonitorLegend(g, w, h);
-      return 0;
+        return 0;
     }
     const delay = playback.delayMs / 1000;
     const start = Math.min(0, delay);
@@ -778,7 +777,7 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
     const x = (t: number) => ((t - start) / duration) * w;
     const plotHeight = Math.max(0, bottom - top);
     const yLevel = (value: number) => bottom - Math.min(1, Math.max(0, (20 * Math.log10(Math.max(value, 1e-7)) + 90) / 90)) * plotHeight;
-    if (clipEnvelope.length) {
+    if (clipEnvelope.length && monitorSeriesOn('level')) {
       g.fillStyle = MONITOR_COLORS.fill;
       g.beginPath();
       g.moveTo(x(delay), bottom);
@@ -787,7 +786,7 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
       g.closePath();
       g.fill();
     }
-    for (const [key, color, dash] of MONITOR_SIGNALS) {
+    for (const [key, color, dash] of visibleFaceSignals()) {
       g.strokeStyle = color;
       g.lineWidth = 1.8;
       g.lineCap = 'round';
@@ -801,7 +800,6 @@ export function mountLive(root: HTMLElement, view: PuppetView, signal: AbortSign
     }
     g.setLineDash([]);
     drawMonitorPlayhead(g, x(time), h);
-    drawMonitorLegend(g, w, h);
     return clipEnvelope[Math.floor((time - delay) / 0.01)] ?? 0;
   }
 
