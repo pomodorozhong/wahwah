@@ -68,6 +68,10 @@ const saved: Record<string, string | boolean> = {};
 
 export class LengthControls {
   private lastFit: FitPlotData | null = null;
+  /** True while a Length field's own edit rebuilds the line. */
+  private lengthEdit = false;
+  /** The line rendered without a cap. Length settings never change it, so a Length edit reuses it. */
+  private uncapped: RenderedUtterance | null = null;
 
   /** Wire the card's fields; `changed` rebuilds the line after any edit. */
   constructor(signal: AbortSignal, changed: () => void) {
@@ -77,7 +81,17 @@ export class LengthControls {
         if (el instanceof HTMLInputElement && el.type === 'checkbox') el.checked = saved[id] === true;
         else el.value = String(saved[id]);
       }
-      el.addEventListener('input', () => { this.refresh(); changed(); }, { signal });
+      el.addEventListener('input', () => {
+        this.refresh();
+        // The rebuild runs inside this handler, so a render that sees the flag knows only
+        // Length settings changed since the last one.
+        this.lengthEdit = true;
+        try {
+          changed();
+        } finally {
+          this.lengthEdit = false;
+        }
+      }, { signal });
     }
     signal.addEventListener('abort', () => {
       for (const id of FIELDS) {
@@ -130,9 +144,12 @@ export class LengthControls {
     const seconds = p.audio.length / sampleRate;
     const cutBelow = (natural: number) => fastestDuration(options.speedUp?.profile, options.speedUp?.max ?? 1.6, natural);
     this.lastFit = cap === undefined ? null : { seconds, capSeconds: cap, fit: f, options, tail: null };
-    // Render the whole line once more so the monitor can show what the cut removed.
+    // Any change outside this card can change the uncapped line, so drop it then.
+    if (!this.lengthEdit) this.uncapped = null;
+    // Render the whole line once more so the monitor can show what the cut removed, but only
+    // once until something outside this card changes: dragging a Length slider reuses it.
     if (this.lastFit && f?.truncated) {
-      const full = renderAt(undefined, options);
+      const full = this.uncapped ??= renderAt(undefined, options);
       const curves = fitCurves(this.lastFit);
       const envelope = rmsEnvelope(full.audio, sampleRate).map((v, i) => ({ t: curves.outputTime(i * 0.01), v }));
       const track = full.track && {
