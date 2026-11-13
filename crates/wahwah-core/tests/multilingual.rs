@@ -107,10 +107,35 @@ fn kana_morae_and_hangul_blocks_count_one_syllable() {
 }
 
 #[test]
+fn decomposed_hangul_jamo_spell_one_syllable() {
+    // 한 and 글, each as a leading consonant, a vowel and a trailing consonant.
+    let decomposed = "\u{1112}\u{1161}\u{11AB}\u{1100}\u{1173}\u{11AF}";
+    assert_eq!(
+        words(decomposed),
+        ["\u{1112}\u{1161}\u{11AB}", "\u{1100}\u{1173}\u{11AF}"]
+    );
+    // 하, with no trailing consonant.
+    assert_eq!(words("\u{1112}\u{1161}"), ["\u{1112}\u{1161}"]);
+    assert_eq!(count_syllables("\u{1112}\u{1161}\u{11AB}"), 1);
+    assert_eq!(count_syllables(decomposed), 2);
+    // Spoken as the same number of syllables as the precomposed 한글.
+    let s = script(decomposed);
+    assert_eq!(s.words.len(), 2);
+    assert!(s.words.iter().all(|w| !w.spelled.contains('-')));
+    // A stray jamo that spells no syllable stays a syllable of its own.
+    assert_eq!(words("\u{1161}\u{11AB}"), ["\u{1161}", "\u{11AB}"]);
+    assert_eq!(words("\u{1112}\u{1100}"), ["\u{1112}", "\u{1100}"]);
+    // Compatibility jamo are unchanged: one syllable each.
+    assert_eq!(words("ㅎㅏ"), ["ㅎ", "ㅏ"]);
+}
+
+#[test]
 fn other_scripts_fall_back_to_about_three_letters_a_syllable() {
     assert_eq!(count_syllables("Привет"), 2);
     assert_eq!(count_syllables("мир"), 1);
     assert_eq!(count_syllables("مرحبا"), 2);
+    // Vowel marks are not letters: the vowelled word is as long as the bare one.
+    assert_eq!(count_syllables("مَرْحَبًا"), 2);
     assert_eq!(stress_index("Привет", 2), None);
     assert_eq!(stress_index("你", 1), None);
     assert!(script("Привет мир").phonemes.len() > 4);
@@ -159,6 +184,10 @@ fn combining_marks_stay_with_their_word() {
     assert_eq!(words("مَرْحَبًا"), ["مَرْحَبًا"]);
     assert_eq!(words("สวัสดี"), ["สวัสดี"]);
     assert_eq!(words("3.14"), ["3", "14"]);
+    // A mark with no letter before it starts no word and is skipped.
+    assert_eq!(words("\u{301}cafe"), ["cafe"]);
+    assert_eq!(words("ok \u{301}\u{64E} bar"), ["ok", "bar"]);
+    assert_eq!(script("\u{301}").phonemes, "");
     // A danda is punctuation, not part of a word.
     assert_eq!(words("नमस्ते। दुनिया"), ["नमस्ते", "दुनिया"]);
 }

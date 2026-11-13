@@ -13,7 +13,7 @@ npm test
 npm run build
 ```
 
-The npm commands, including `npm run dev`, first run `npm run build:wasm`. It writes the generated package to `packages/wahwah/src/wasm/` and copies the shared presets into `packages/wahwah/src/data/`, which is ignored by Git. Keep the `wasm-bindgen-cli` version equal to the `wasm-bindgen` crate version.
+The npm commands, including `npm run dev`, first run `npm run build:wasm`. It writes the generated package to `packages/wahwah/src/wasm/` and copies the shared presets into `packages/wahwah/src/data/`, which is ignored by Git. Keep the `wasm-bindgen-cli` version equal to the `wasm-bindgen` crate version. The script reads the compiled module from `target/` at the repository root, so `CARGO_TARGET_DIR` set elsewhere makes every npm command fail; to share one build folder between worktrees, link each worktree's `target` to it instead.
 
 The tests exercise synthesis, mouth tracks, host mappings, and live analysis in Node. To inspect the production build in a browser, run `npm run preview`. For microphone checks, follow the [calibration and playback guide](playground.md#calibrate-a-microphone).
 
