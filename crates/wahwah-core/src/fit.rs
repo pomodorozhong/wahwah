@@ -11,7 +11,10 @@
 //! or ramps up or down along the line. `Volume` shapes the volume along the line the
 //! same way, whether or not the line had to be fitted.
 
-use crate::{Score, instruments::InstrumentScore};
+use crate::{
+    Score,
+    instruments::{InstrumentScore, sounding_end},
+};
 use serde::{Deserialize, Serialize};
 
 /// The default for the fastest a line is sped up before the rest is cut.
@@ -168,7 +171,8 @@ pub enum CutAt {
     #[default]
     Anywhere,
     /// At the end of the last word that fits whole. The line ends there, and the fade
-    /// shapes that ending. When not even the first word fits, it is cut at the cap.
+    /// shapes that ending. A Talking Instruments line runs on for the last note's
+    /// release, up to the cap. When not even the first word fits, it is cut at the cap.
     Word,
 }
 
@@ -530,8 +534,16 @@ pub fn fit_instrument(
         })
         .flatten();
     match whole {
-        Some((last_note, cut)) => {
+        Some((last_note, word_end)) => {
             fitted.notes.truncate(last_note + 1);
+            // A note rings past its end, so let the last word die away before the line
+            // ends, as far as the cap allows. Past that, the fade shapes the ending.
+            let cut = fitted
+                .notes
+                .iter()
+                .map(|note| sounding_end(note, fitted.instrument))
+                .fold(word_end, f64::max)
+                .min(cap_seconds);
             fitted.duration_seconds = cut;
             fit.cut_seconds = Some(cut);
             fit.at_word = true;
