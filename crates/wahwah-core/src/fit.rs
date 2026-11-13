@@ -3,13 +3,13 @@
 //! A line that is too long is first sped up, up to `MAX_SPEEDUP`, by scaling
 //! every time on its score. Audio, timeline and mouth movement are all made from
 //! the fitted score, so they cannot drift apart. Pitch is not changed. A line that
-//! is still too long is cut at the cap with a short fade. Shorter lines are left
-//! exactly as they were. The cap includes the synthesis tail: the audio is never
+//! is still too long is cut at the cap with a short fade. Shorter lines keep their
+//! timing exactly. The cap includes the synthesis tail: the audio is never
 //! longer than `floor(cap * sample_rate)` samples. The fade into a cut can be
 //! shaped with `CutFade`: its length, curve, bend and end volume. The speed-up
 //! can be shaped with `SpeedUp`: how fast at most, and whether the speed is steady
 //! or ramps up or down along the line. `Volume` shapes the volume along the line the
-//! same way.
+//! same way, whether or not the line had to be fitted.
 
 use crate::{Score, instruments::InstrumentScore};
 use serde::{Deserialize, Serialize};
@@ -172,7 +172,7 @@ pub enum CutAt {
     Word,
 }
 
-/// The volume along a fitted line. It uses the same shapes as the speed-up: `Constant`
+/// The volume along a capped line, fitted or not. It uses the same shapes as the speed-up: `Constant`
 /// holds `level` all the way, the ramps move between 1 and `level`.
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -553,7 +553,19 @@ pub fn trim_to_cap(audio: &mut Vec<f32>, sample_rate: f64, cap_seconds: f64) {
     audio.truncate((cap_seconds * sample_rate).floor() as usize);
 }
 
-/// Make rendered audio obey the cap to the sample, and fade a cut.
+/// Shape the volume along the whole line. The default changes nothing.
+pub fn apply_volume(audio: &mut [f32], volume: &Volume) {
+    if volume.is_flat() {
+        return;
+    }
+    let n = audio.len().max(1) as f64;
+    for (i, sample) in audio.iter_mut().enumerate() {
+        let gain = volume.gain((i as f64 + 0.5) / n);
+        *sample = (*sample * gain).clamp(-1.0, 1.0);
+    }
+}
+
+/// Make rendered audio obey the cap to the sample, shape its volume, and fade a cut.
 pub fn settle_audio(
     audio: &mut Vec<f32>,
     sample_rate: f64,
@@ -566,13 +578,7 @@ pub fn settle_audio(
         .cut_seconds
         .map_or(cap_seconds, |cut| cut.min(cap_seconds));
     trim_to_cap(audio, sample_rate, end);
-    if !options.volume.is_flat() {
-        let n = audio.len().max(1) as f64;
-        for (i, sample) in audio.iter_mut().enumerate() {
-            let gain = options.volume.gain((i as f64 + 0.5) / n);
-            *sample = (*sample * gain).clamp(-1.0, 1.0);
-        }
-    }
+    apply_volume(audio, &options.volume);
     if fit.truncated && fade.curve != FadeCurve::None && fade.milliseconds > 0.0 {
         let length = (fade.milliseconds / 1000.0 * sample_rate) as usize;
         let start = audio.len() - length.clamp(1, audio.len().max(1)).min(audio.len());

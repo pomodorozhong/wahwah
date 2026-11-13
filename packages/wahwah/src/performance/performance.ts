@@ -45,7 +45,7 @@ export interface SpeedUp {
   max?: number;
 }
 
-/** The volume along a fitted line, shaped like the speed-up. Default: steady at 1. */
+/** The volume along a capped line, whether or not it had to be fitted, shaped like the speed-up. Default: steady at 1. */
 export interface Volume {
   /** 'constant' holds `level`; the ramps move between 1 and `level`, as they do for the speed. */
   profile?: SpeedProfile;

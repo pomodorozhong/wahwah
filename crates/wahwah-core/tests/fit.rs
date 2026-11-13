@@ -825,3 +825,55 @@ fn a_boost_never_clips_past_full_scale() {
         .is_valid()
     );
 }
+
+#[test]
+fn the_volume_shapes_a_line_that_already_fits() {
+    let score = line(3);
+    let plain = render_performance(&score, RATE, &voice(), None);
+    let half = render_performance_within(
+        &score,
+        RATE,
+        &voice(),
+        None,
+        60.0,
+        volume_options(SpeedProfile::Constant, 0.5),
+        &[],
+    );
+    assert!(half.fit.is_none(), "the line fits, so nothing is fitted");
+    assert_eq!(half.audio.len(), plain.audio.len());
+    for (a, b) in plain.audio.iter().zip(&half.audio) {
+        assert!((a * 0.5 - b).abs() < 1e-6);
+    }
+    let ramp = render_performance_within(
+        &score,
+        RATE,
+        &voice(),
+        None,
+        60.0,
+        volume_options(SpeedProfile::RampUp, 0.0),
+        &[],
+    );
+    let n = ramp.audio.len();
+    let peak = |a: &[f32]| a[n * 9 / 10..].iter().fold(0.0_f32, |m, v| m.max(v.abs()));
+    assert!(peak(&ramp.audio) < 0.25 * peak(&plain.audio));
+}
+
+#[test]
+fn the_volume_shapes_an_instrument_line_that_already_fits() {
+    let options = InstrumentOptions::new(wahwah_core::instruments::Instrument::Kazoo);
+    let notes = compile_instrument("hello there", &options);
+    let plain = render_instrument(&notes, RATE, None);
+    let (kept, half) = render_instrument_within(
+        &notes,
+        RATE,
+        None,
+        60.0,
+        volume_options(SpeedProfile::Constant, 0.5),
+    );
+    assert!(half.fit.is_none());
+    assert_eq!(kept.notes.len(), notes.notes.len());
+    assert_eq!(half.audio.len(), plain.audio.len());
+    for (a, b) in plain.audio.iter().zip(&half.audio) {
+        assert!((a * 0.5 - b).abs() < 1e-6);
+    }
+}
