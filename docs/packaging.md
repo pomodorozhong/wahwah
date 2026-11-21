@@ -15,7 +15,6 @@ wahwah/
 ├── LICENSE
 ├── THIRD_PARTY_NOTICES.md
 ├── README.md
-├── HANDOFF.md
 ├── AGENTS.md
 ├── .github/
 │   └── workflows/
