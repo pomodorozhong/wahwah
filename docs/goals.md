@@ -45,7 +45,7 @@ The [Rust/WASM port](https://github.com/pomodorozhong/wahwah/issues/10) is compl
 - **Additional 3D and 2.5D hosts.** Rig support, model-specific expression mappings and renderer choices belong in `wahwah-avatar`. A custom 2.5D host is an option if that app needs an entirely open-source runtime.
 - **Streaming integrations.** Twitch chat and OBS Browser Source are part of the `wahwah-avatar` use case. Consider NDI or Syphon when a consumer needs it.
 
-See the [handoff](../HANDOFF.md) for the current work order.
+See the [GitHub issues](https://github.com/pomodorozhong/wahwah/issues) for the current work.
 
 ## Design references
 
